@@ -1,0 +1,527 @@
+﻿@page "/roster"
+@rendermode InteractiveServer
+@using System.Text.Json
+@using WarHammerRoster.Models
+@using System.IO
+@inject IWebHostEnvironment Env
+
+<div class="header-container">
+    <h3>T'au Empire Datasheets</h3>
+    <div class="points-badge">
+        @CurrentPoints <span class="text-muted">/</span> @LimitPoints <small>pts</small>
+    </div>
+</div>
+
+@if (rosterData == null)
+{
+    <div class="loading-state">
+        <div class="spinner-border text-warning" role="status"></div>
+        <p>Retrieving Cadre Data...</p>
+    </div>
+}
+else
+{
+    <div class="roster-grid">
+        @foreach (var unit in GetUnits())
+        {
+            <div class="datasheet" id="@GetId(unit)">
+
+                <div class="datasheet-header">
+                    <div class="header-content">
+                        <h2 class="unit-name">@unit.Name</h2>
+                        <div class="role-icon">
+                            <i class="bi bi-crosshair"></i>
+                        </div>
+                    </div>
+                    <div class="points-box">
+                        <span class="pts-val">@GetPointCost(unit)</span>
+                        <span class="pts-label">pts</span>
+                    </div>
+                </div>
+
+                @{
+                    var stats = GetProfileByType(unit, "Unit");
+                }
+                @if (stats != null)
+                {
+                    <div class="stats-strip">
+                        @foreach (var stat in stats.Characteristics)
+                        {
+                            <div class="stat-cell">
+                                <span class="stat-label">@stat.Name</span>
+                                <span class="stat-value">@stat.Value</span>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="datasheet-body">
+
+                    @{
+                        var ranged = GetWeapons(unit, "Ranged Weapons");
+                    }
+                    @if (ranged.Any())
+                    {
+                        <div class="section-header">
+                            <span><i class="bi bi-crosshair2 me-2"></i>Ranged Weapons</span>
+                        </div>
+                        <table class="weapon-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40%">Weapon</th>
+                                    <th class="text-center">Range</th>
+                                    <th class="text-center">A</th>
+                                    <th class="text-center">BS</th>
+                                    <th class="text-center">S</th>
+                                    <th class="text-center">AP</th>
+                                    <th class="text-center">D</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var w in ranged)
+                                {
+                                    <tr>
+                                        <td class="weapon-name">
+                                            @w.Name
+                                            <div class="weapon-keywords">@GetChar(w, "Keywords")</div>
+                                        </td>
+                                        <td class="text-center">@GetChar(w, "Range")</td>
+                                        <td class="text-center">@GetChar(w, "A")</td>
+                                        <td class="text-center">@GetChar(w, "BS")</td>
+                                        <td class="text-center">@GetChar(w, "S")</td>
+                                        <td class="text-center">@GetChar(w, "AP")</td>
+                                        <td class="text-center">@GetChar(w, "D")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+
+                    @{
+                        var melee = GetWeapons(unit, "Melee Weapons");
+                    }
+                    @if (melee.Any())
+                    {
+                        <div class="section-header mt-3">
+                            <span><i class="bi bi-hammer me-2"></i>Melee Weapons</span>
+                        </div>
+                        <table class="weapon-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40%">Weapon</th>
+                                    <th class="text-center">Range</th>
+                                    <th class="text-center">A</th>
+                                    <th class="text-center">WS</th>
+                                    <th class="text-center">S</th>
+                                    <th class="text-center">AP</th>
+                                    <th class="text-center">D</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var w in melee)
+                                {
+                                    <tr>
+                                        <td class="weapon-name">
+                                            @w.Name
+                                            <div class="weapon-keywords">@GetChar(w, "Keywords")</div>
+                                        </td>
+                                        <td class="text-center">@GetChar(w, "Range")</td>
+                                        <td class="text-center">@GetChar(w, "A")</td>
+                                        <td class="text-center">@GetChar(w, "WS")</td>
+                                        <td class="text-center">@GetChar(w, "S")</td>
+                                        <td class="text-center">@GetChar(w, "AP")</td>
+                                        <td class="text-center">@GetChar(w, "D")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+
+                    @{
+                        var abilities = GetAbilities(unit);
+                    }
+                    @if (abilities.Any())
+                    {
+                        <div class="section-header mt-3">
+                            <span>Abilities</span>
+                        </div>
+                        <div class="abilities-box">
+                            @foreach (var rule in abilities)
+                            {
+                                <div class="ability-row">
+                                    <span class="ability-name">@rule.Name:</span>
+                                    <span class="ability-desc">@rule.Description</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                @{
+                    var keywords = GetKeywords(unit);
+                }
+                @if (keywords.Any())
+                {
+                    <div class="datasheet-footer">
+                        <span class="footer-label">KEYWORDS:</span>
+                        <div class="keyword-list">
+                            @foreach (var k in keywords)
+                            {
+                                <span class="kw">@k</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+<style>
+    /* --- LAYOUT CONTAINER --- */
+    .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #333;
+        padding-bottom: 10px;
+    }
+
+    .points-badge {
+        font-size: 1.2rem;
+        color: #d35400;
+        font-weight: bold;
+    }
+
+    .roster-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+        max-width: 900px;
+        margin: 0 auto;
+        padding-bottom: 100px; /* Space for scrolling */
+    }
+
+    /* --- THE DATASHEET CARD (The "Look") --- */
+    .datasheet {
+        background-color: #e2e2e2; /* Light Grey (Classic Index Card Look) or switch to #2b2b2b for Dark Mode */
+        border: 1px solid #999;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        font-family: 'Oswald', sans-serif; /* Technical Font */
+        color: #1a1a1a; /* Dark text for readability on light card */
+        scroll-margin-top: 20px;
+        position: relative;
+    }
+
+    /* FOR DARK MODE (Matches your App Theme) - Uncomment to use Dark Cards instead */
+    .datasheet {
+        background-color: #242424;
+        border: 1px solid #444;
+        color: #e0e0e0;
+    }
+
+    /* 1. HEADER */
+    .datasheet-header {
+        background-color: #d35400; /* T'au Ochre */
+        color: white;
+        padding: 8px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 3px solid #a04000;
+    }
+
+    .unit-name {
+        margin: 0;
+        font-size: 1.6rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 1px;
+    }
+
+    .points-box {
+        background: rgba(0,0,0,0.3);
+        padding: 2px 8px;
+        border-radius: 4px;
+        text-align: center;
+        line-height: 1;
+    }
+
+    .pts-val {
+        display: block;
+        font-size: 1.2rem;
+        font-weight: bold;
+    }
+
+    .pts-label {
+        font-size: 0.6rem;
+        text-transform: uppercase;
+        opacity: 0.8;
+    }
+
+    /* 2. STATS STRIP */
+    .stats-strip {
+        display: flex;
+        background-color: #dcdcdc; /* Light Grey Strip */
+        border-bottom: 1px solid #aaa;
+    }
+    /* Dark Mode Override */
+    .datasheet-header + .stats-strip {
+        background-color: #333;
+        border-bottom: 1px solid #555;
+    }
+
+    .stat-cell {
+        flex: 1;
+        text-align: center;
+        padding: 5px 0;
+        border-right: 1px solid rgba(0,0,0,0.1);
+    }
+
+        .stat-cell:last-child {
+            border-right: none;
+        }
+
+    .stat-label {
+        display: block;
+        font-size: 0.7rem;
+        font-weight: bold;
+        color: #666;
+    }
+
+    .stat-value {
+        font-size: 1.4rem;
+        font-weight: 900;
+        color: #111;
+    }
+
+    /* Dark Mode Stats */
+    .datasheet-header + .stats-strip .stat-label {
+        color: #aaa;
+    }
+
+    .datasheet-header + .stats-strip .stat-value {
+        color: #fff;
+    }
+
+
+    /* 3. BODY & WEAPONS */
+    .datasheet-body {
+        padding: 15px;
+    }
+
+    .section-header {
+        background-color: #3b3b3b; /* Dark Header for sections */
+        color: white;
+        padding: 4px 10px;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        margin-bottom: 0;
+    }
+
+    .weapon-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+        background: #f1f1f1; /* Table Background */
+    }
+    /* Dark Mode Table */
+    .datasheet .weapon-table {
+        background: #2a2a2a;
+        color: #ddd;
+    }
+
+    .weapon-table th {
+        background: #ccc;
+        color: #333;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        padding: 4px;
+        border-bottom: 1px solid #999;
+    }
+    /* Dark Mode Header */
+    .datasheet .weapon-table th {
+        background: #1a1a1a;
+        color: #d35400;
+        border-bottom: 1px solid #444;
+    }
+
+    .weapon-table td {
+        padding: 6px 4px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .datasheet .weapon-table td {
+        border-bottom: 1px solid #444;
+    }
+
+    .weapon-table tr:nth-child(even) {
+        background-color: rgba(0,0,0,0.03);
+    }
+
+    .datasheet .weapon-table tr:nth-child(even) {
+        background-color: rgba(255,255,255,0.03);
+    }
+
+    .weapon-name {
+        font-weight: bold;
+    }
+
+    .weapon-keywords {
+        font-size: 0.7rem;
+        color: #d35400;
+        font-style: italic;
+    }
+
+    /* 4. ABILITIES */
+    .abilities-box {
+        padding: 10px 0;
+        font-size: 0.9rem;
+    }
+
+    .ability-row {
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
+
+    .ability-name {
+        font-weight: bold;
+        color: #d35400;
+        margin-right: 5px;
+    }
+
+    .ability-desc {
+        color: #ccc;
+    }
+
+    /* 5. FOOTER (Keywords) */
+    .datasheet-footer {
+        background-color: #1a1a1a; /* Black Bar at bottom */
+        color: #888;
+        padding: 8px 15px;
+        border-top: 1px solid #444;
+        font-size: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .footer-label {
+        font-weight: bold;
+        text-transform: uppercase;
+        color: #555;
+    }
+
+    .keyword-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+
+    .kw {
+        text-transform: uppercase;
+        font-weight: bold;
+        color: #aaa;
+    }
+</style>
+
+@code {
+    private RosterRoot? rosterData;
+    private double CurrentPoints => rosterData?.Roster.Costs.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
+    private double LimitPoints => rosterData?.Roster.CostLimits.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var filePath = Path.Combine(Env.WebRootPath, "roster.json");
+        if (File.Exists(filePath))
+        {
+            var jsonString = await File.ReadAllTextAsync(filePath);
+            // Ensure case-insensitivity to match "TypeName" vs "typeName"
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            rosterData = JsonSerializer.Deserialize<RosterRoot>(jsonString, options);
+        }
+    }
+
+    private IEnumerable<Selection> GetUnits()
+    {
+        if (rosterData?.Roster?.Forces?.FirstOrDefault() == null) return Enumerable.Empty<Selection>();
+        return rosterData.Roster.Forces.First().Selections
+            .Where(s => s.Name != "Configuration" && s.Name != "Battle Size" && s.Name != "Detachment" && s.Name != "Show/Hide Options");
+    }
+
+    private string GetId(Selection unit) => unit.Name.Replace(" ", "-").Replace("'", "").Replace("’", "");
+
+    private double GetPointCost(Selection unit) => unit.Costs.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
+
+    private string GetChar(Profile p, string statName) => p.Characteristics.FirstOrDefault(c => c.Name == statName)?.Value ?? "-";
+
+    // --- 1. THE UNIVERSAL RECURSIVE FINDER ---
+    private List<Profile> GetAllProfilesRecursive(Selection current, string typeName)
+    {
+        var found = new List<Profile>();
+
+        // A. Check for profiles on this specific item (Unit, Model, or Upgrade)
+        if (current.Profiles != null)
+        {
+            found.AddRange(current.Profiles.Where(p => p.TypeName == typeName));
+        }
+
+        // B. Dig deeper into children (Recursion)
+        if (current.Selections != null)
+        {
+            foreach (var child in current.Selections)
+            {
+                found.AddRange(GetAllProfilesRecursive(child, typeName));
+            }
+        }
+        return found;
+    }
+
+    // --- 2. UPDATED GET STATS (Uses Recursion) ---
+    private Profile? GetProfileByType(Selection unit, string type)
+    {
+        // Finds the first stat block (M, T, SV) anywhere in the unit hierarchy
+        return GetAllProfilesRecursive(unit, type).FirstOrDefault();
+    }
+
+    // --- 3. UPDATED GET WEAPONS (Uses Recursion) ---
+    private List<Profile> GetWeapons(Selection unit, string type)
+    {
+        // Finds all weapons, even those inside Wargear/Drones
+        var weapons = GetAllProfilesRecursive(unit, type);
+        return weapons.DistinctBy(w => w.Name).ToList();
+    }
+
+    // --- 4. UPDATED GET ABILITIES (Uses Recursion) ---
+    private List<Rule> GetAbilities(Selection unit)
+    {
+        var list = new List<Rule>();
+
+        // A. Get Rules attached directly (e.g., Faction Rules)
+        if (unit.Rules != null) list.AddRange(unit.Rules);
+
+        // B. Get "Abilities" Profiles recursively (e.g., Shield Drone, Shield Generator)
+        var abilityProfiles = GetAllProfilesRecursive(unit, "Abilities");
+
+        foreach (var p in abilityProfiles)
+        {
+            var desc = p.Characteristics.FirstOrDefault(c => c.Name == "Description")?.Value ?? "";
+            list.Add(new Rule { Name = p.Name, Description = desc });
+        }
+
+        return list.DistinctBy(r => r.Name).ToList();
+    }
+
+    private List<string> GetKeywords(Selection unit)
+    {
+        // Keywords are usually on the top-level Unit, so recursion isn't strictly necessary
+        // but checking Categories is the correct way for BattleScribe data.
+        return unit.Categories
+            .Where(c => c.Name != "Configuration" && c.Name != "Uncategorized")
+            .Select(c => c.Name).ToList();
+    }
+}

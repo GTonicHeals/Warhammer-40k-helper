@@ -1,0 +1,319 @@
+﻿@page "/corestratagems"
+@rendermode InteractiveServer
+
+<div class="strat-container">
+    <div class="header-section">
+        <h1 class="page-title">Core Stratagems</h1>
+        <p class="text-muted">Standard 10th Edition Tactical Ploy</p>
+    </div>
+
+    <div class="turn-section">
+        <h3 class="turn-header"><i class="bi bi-arrow-left-right me-2"></i>Either Player's Turn</h3>
+        <div class="strat-grid">
+            @foreach (var strat in Strats.Where(s => s.Category == "Either"))
+            {
+                <div class="strat-card">
+                    <div class="strat-header">
+                        <span class="strat-name">@strat.Name</span>
+                        <span class="strat-cost">@strat.Cost</span>
+                    </div>
+                    <div class="strat-type">@strat.Type</div>
+                    <div class="strat-body">
+                        <div class="rule-block">
+                            <strong>WHEN:</strong> @strat.When
+                        </div>
+                        @if (!string.IsNullOrEmpty(strat.Target))
+                        {
+                            <div class="rule-block">
+                                <strong>TARGET:</strong> @strat.Target
+                            </div>
+                        }
+                        <div class="rule-block">
+                            <strong>EFFECT:</strong> @strat.Effect
+                        </div>
+                        @if (!string.IsNullOrEmpty(strat.Restriction))
+                        {
+                            <div class="rule-block restriction">
+                                <strong>RESTRICTION:</strong> @strat.Restriction
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="turn-section">
+        <h3 class="turn-header text-tau"><i class="bi bi-person-fill me-2"></i>Your Turn</h3>
+        <div class="strat-grid">
+            @foreach (var strat in Strats.Where(s => s.Category == "Your Turn"))
+            {
+                <div class="strat-card">
+                    <div class="strat-header">
+                        <span class="strat-name">@strat.Name</span>
+                        <span class="strat-cost">@strat.Cost</span>
+                    </div>
+                    <div class="strat-type">@strat.Type</div>
+                    <div class="strat-body">
+                        <div class="rule-block">
+                            <strong>WHEN:</strong> @strat.When
+                        </div>
+                        @if (!string.IsNullOrEmpty(strat.Target))
+                        {
+                            <div class="rule-block">
+                                <strong>TARGET:</strong> @strat.Target
+                            </div>
+                        }
+                        <div class="rule-block">
+                            <strong>EFFECT:</strong> @strat.Effect
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="turn-section">
+        <h3 class="turn-header text-danger"><i class="bi bi-shield-fill-exclamation me-2"></i>Opponent's Turn</h3>
+        <div class="strat-grid">
+            @foreach (var strat in Strats.Where(s => s.Category == "Opponent's Turn"))
+            {
+                <div class="strat-card">
+                    <div class="strat-header">
+                        <span class="strat-name">@strat.Name</span>
+                        <span class="strat-cost">@strat.Cost</span>
+                    </div>
+                    <div class="strat-type">@strat.Type</div>
+                    <div class="strat-body">
+                        <div class="rule-block">
+                            <strong>WHEN:</strong> @strat.When
+                        </div>
+                        @if (!string.IsNullOrEmpty(strat.Target))
+                        {
+                            <div class="rule-block">
+                                <strong>TARGET:</strong> @strat.Target
+                            </div>
+                        }
+                        <div class="rule-block">
+                            <strong>EFFECT:</strong> @strat.Effect
+                        </div>
+                        @if (!string.IsNullOrEmpty(strat.Restriction))
+                        {
+                            <div class="rule-block restriction">
+                                <strong>RESTRICTION:</strong> @strat.Restriction
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Stratagem> Strats = new List<Stratagem>
+    {
+        // EITHER TURN
+        new Stratagem("Command Re-Roll", "1CP", "Battle Tactic", "Either",
+            "In any phase, just after you have made a Hit roll, a Wound roll, a Damage roll, a saving throw, an Advance roll, a Charge roll, a Desperate Escape test, a Hazardous test, or just after you have rolled the dice to determine the number of attacks made with a weapon.",
+            "",
+            "You re-roll that roll, test or saving throw."),
+
+        new Stratagem("Counter-Offensive", "2CP", "Strategic Ploy", "Either",
+            "Fight phase, just after an enemy unit has fought.",
+            "One unit from your army that is within Engagement Range of one or more enemy units and that has not already been selected to fight this phase.",
+            "Your unit fights next."),
+
+        new Stratagem("Epic Challenge", "1CP", "Strategic Ploy", "Either",
+            "Fight phase, when a CHARACTER unit from your army that is within Engagement Range of one or more Attached units is selected to fight.",
+            "One CHARACTER model in your unit.",
+            "Until the end of the phase, all melee attacks made by that model have the [PRECISION] ability."),
+
+        // YOUR TURN
+        new Stratagem("Tank Shock", "1CP", "Strategic Ploy", "Your Turn",
+            "Your Charge phase.",
+            "One VEHICLE unit from your army.",
+            "Select one enemy unit within Engagement Range, then select one melee weapon. Roll D6 equal to weapon's Strength. If Strength > Enemy Toughness, roll 2 extra D6. For each 5+, enemy suffers 1 MW (max 6)."),
+
+        new Stratagem("Insane Bravery", "1CP", "Epic Deed", "Your Turn",
+            "Battle-shock step of your Command phase, just after you have failed a Battle-shock test.",
+            "The unit that failed the test.",
+            "Your unit is treated as having passed that test instead."),
+
+        new Stratagem("Grenade", "1CP", "Wargear", "Your Turn",
+            "Your Shooting phase.",
+            "One GRENADES unit from your army not in Engagement Range and hasn't shot yet.",
+            "Select enemy within 8\" and visible. Roll six D6: for each 4+, that enemy unit suffers 1 mortal wound."),
+
+        // OPPONENT'S TURN
+        new Stratagem("Rapid Ingress", "1CP", "Strategic Ploy", "Opponent's Turn",
+            "End of your opponent's Movement phase.",
+            "One unit from your army that is in Reserves.",
+            "Your unit can arrive on the battlefield as if it were the Reinforcements step of your Movement phase.",
+            "Cannot use if the unit wouldn't normally be able to arrive this round."),
+
+        new Stratagem("Smokescreen", "1CP", "Wargear", "Opponent's Turn",
+            "Your opponent's Shooting phase, just after an enemy unit has selected its targets.",
+            "One SMOKE unit from your army that was selected as the target.",
+            "Until the end of the phase, all models in your unit have the Benefit of Cover and the Stealth ability."),
+
+        new Stratagem("Fire Overwatch", "1CP", "Strategic Ploy", "Opponent's Turn",
+            "Your opponent's Movement or Charge phase, just after an enemy unit is set up or when an enemy unit starts or ends a Normal, Advance, Fall Back or Charge move.",
+            "One unit from your army within 24\" of that enemy unit and eligible to shoot.",
+            "Your unit can shoot that enemy unit as if it were your Shooting phase.",
+            "Unmodified Hit roll of 6 is required to score a hit. You can only use this Stratagem once per turn."),
+
+        new Stratagem("Go to Ground", "1CP", "Battle Tactic", "Opponent's Turn",
+            "Your opponent's Shooting phase, just after an enemy unit has selected its targets.",
+            "One INFANTRY unit from your army that was selected as the target.",
+            "Until the end of the phase, all models in your unit have a 6+ invulnerable save and have the Benefit of Cover."),
+
+        new Stratagem("Heroic Intervention", "2CP", "Strategic Ploy", "Opponent's Turn",
+            "Your opponent's Charge phase, just after an enemy unit ends a Charge move.",
+            "One unit from your army that is within 6\" of that enemy unit and would be eligible to charge.",
+            "Your unit now declares a charge that targets only that enemy unit.",
+            "You receive no Charge bonus. VEHICLES can only be selected if they are WALKERS.")
+    };
+
+    public class Stratagem
+    {
+        public string Name { get; set; }
+        public string Cost { get; set; }
+        public string Type { get; set; }
+        public string Category { get; set; }
+        public string When { get; set; }
+        public string Target { get; set; }
+        public string Effect { get; set; }
+        public string Restriction { get; set; }
+
+        public Stratagem(string n, string c, string t, string cat, string w, string tg, string e, string r = "")
+        {
+            Name = n; Cost = c; Type = t; Category = cat; When = w; Target = tg; Effect = e; Restriction = r;
+        }
+    }
+}
+
+<style>
+    .strat-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding-bottom: 80px;
+        color: #e0e0e0;
+    }
+
+    .header-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        border-bottom: 2px solid #444;
+        padding-bottom: 10px;
+    }
+
+    .page-title {
+        color: #d35400;
+        font-weight: 900;
+        letter-spacing: 1px;
+        margin: 0;
+    }
+
+    .turn-section {
+        margin-bottom: 40px;
+    }
+
+    .turn-header {
+        font-size: 1.2rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #444;
+        padding-bottom: 5px;
+        color: #aaa;
+    }
+
+    .text-tau {
+        color: #d35400;
+    }
+
+    .strat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+    }
+
+    .strat-card {
+        background: #242424;
+        border: 1px solid #444;
+        border-radius: 8px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    }
+
+    .strat-header {
+        background: #333;
+        padding: 10px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #555;
+    }
+
+    .strat-name {
+        font-weight: bold;
+        font-size: 1rem;
+        text-transform: uppercase;
+        color: #e0e0e0;
+    }
+
+    .strat-cost {
+        background: #d35400;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 0.85rem;
+    }
+
+    .strat-type {
+        background: #222;
+        color: #888;
+        font-size: 0.7rem;
+        padding: 4px 15px;
+        text-transform: uppercase;
+        font-style: italic;
+        border-bottom: 1px solid #333;
+    }
+
+    .strat-body {
+        padding: 15px;
+        font-size: 0.9rem;
+        color: #ccc;
+        line-height: 1.4;
+        flex-grow: 1;
+    }
+
+    .rule-block {
+        margin-bottom: 10px;
+    }
+
+        .rule-block strong {
+            color: #f39c12;
+            display: block;
+            font-size: 0.75rem;
+            margin-bottom: 2px;
+        }
+
+    .restriction {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed #555;
+        color: #aaa;
+        font-style: italic;
+    }
+
+        .restriction strong {
+            color: #c0392b;
+        }
+</style>

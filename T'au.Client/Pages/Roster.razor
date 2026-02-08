@@ -1,0 +1,151 @@
+﻿@page "/roster"
+@using System.Text.Json
+@using WarHammerRoster.Models
+
+<h3>T'au Empire Datasheets</h3>
+
+@if (rosterData == null)
+{
+    <p><em>Loading roster data...</em></p>
+}
+else
+{
+    <div class="stats-bar">
+        <strong>Total Points:</strong> @CurrentPoints / @LimitPoints
+    </div>
+
+    <div class="roster-grid">
+        @foreach (var unit in GetUnits())
+        {
+            <div class="unit-card">
+                <div class="card-header">
+                    <span class="unit-name">@unit.Name</span>
+                    <span class="unit-cost">@GetPointCost(unit) pts</span>
+                </div>
+
+                @{
+                    var stats = GetProfileByType(unit, "Unit");
+                }
+                @if (stats != null)
+                {
+                    <div class="stats-row">
+                        @foreach (var stat in stats.Characteristics)
+                        {
+                            <div class="stat-box">
+                                <span class="stat-label">@stat.Name</span>
+                                <span class="stat-value">@stat.Value</span>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @{
+                    var weapons = GetAllProfilesRecursively(unit, new[] { "Ranged Weapons", "Melee Weapons" });
+                }
+                @if (weapons.Any())
+                {
+                    <table class="table table-sm table-dark mt-3">
+                        <thead>
+                            <tr>
+                                <th>Weapon</th>
+                                <th>Range</th>
+                                <th>A</th>
+                                <th>BS/WS</th>
+                                <th>S</th>
+                                <th>AP</th>
+                                <th>D</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var w in weapons)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@w.Name</strong><br />
+                                        <small class="text-muted">@GetChar(w, "Keywords")</small>
+                                    </td>
+                                    <td>@GetChar(w, "Range")</td>
+                                    <td>@GetChar(w, "A")</td>
+                                    <td>@(GetChar(w, "BS") != "-" ? GetChar(w, "BS") : GetChar(w, "WS"))</td>
+                                    <td>@GetChar(w, "S")</td>
+                                    <td>@GetChar(w, "AP")</td>
+                                    <td>@GetChar(w, "D")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 20px; }
+    .unit-card { background: #2b2b2b; color: white; border: 1px solid #444; border-radius: 8px; padding: 15px; }
+    .card-header { display: flex; justify-content: space-between; border-bottom: 2px solid #d35400; margin-bottom: 10px; font-size: 1.2rem; font-weight: bold; }
+    .stats-row { display: flex; gap: 10px; background: #1a1a1a; padding: 8px; border-radius: 5px; justify-content: space-around; }
+    .stat-box { text-align: center; }
+    .stat-label { display: block; font-size: 0.75rem; color: #888; }
+    .stat-value { font-weight: bold; color: #fff; }
+</style>
+
+@code {
+    private RosterRoot? rosterData;
+    private double CurrentPoints => rosterData?.Roster.Costs.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
+    private double LimitPoints => rosterData?.Roster.CostLimits.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
+
+    protected override void OnInitialized()
+    {
+        // PASTE YOUR HUGE JSON STRING HERE
+        string jsonString = @"{ ""roster"": { ... PASTE YOUR JSON HERE ... } }";
+
+        // In a real app, you would load this from a file or your API
+        // string jsonString = await File.ReadAllTextAsync("data.json");
+
+        rosterData = JsonSerializer.Deserialize<RosterRoot>(jsonString);
+    }
+
+    // Helper to get top-level units only (filtering out configuration metadata)
+    private IEnumerable<Selection> GetUnits()
+    {
+        if (rosterData?.Roster?.Forces?.FirstOrDefault() == null) return Enumerable.Empty<Selection>();
+
+        return rosterData.Roster.Forces.First().Selections
+            .Where(s => s.Name != "Configuration" && s.Name != "Battle Size" && s.Name != "Detachment");
+    }
+
+    private double GetPointCost(Selection unit) => unit.Costs.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
+
+    // Helper to extract a specific stat value (like "Range" or "S")
+    private string GetChar(Profile p, string statName) =>
+        p.Characteristics.FirstOrDefault(c => c.Name == statName)?.Value ?? "-";
+
+    // Helper to find the "Unit" profile (Movement, Toughness, etc.)
+    private Profile? GetProfileByType(Selection unit, string type)
+    {
+        // Check the unit itself
+        var p = unit.Profiles.FirstOrDefault(x => x.TypeName == type);
+        if (p != null) return p;
+
+        // Check nested selections (sometimes the profile is inside a child node)
+        return unit.Selections.SelectMany(s => s.Profiles).FirstOrDefault(x => x.TypeName == type);
+    }
+
+    // Recursive helper to find all weapons (even those inside nested upgrades/drones)
+    private List<Profile> GetAllProfilesRecursively(Selection node, string[] types)
+    {
+        var found = new List<Profile>();
+
+        // Add profiles from current node
+        found.AddRange(node.Profiles.Where(p => types.Contains(p.TypeName)));
+
+        // Recurse into children
+        foreach (var child in node.Selections)
+        {
+            found.AddRange(GetAllProfilesRecursively(child, types));
+        }
+
+        return found;
+    }
+}

@@ -1,0 +1,373 @@
+﻿@page "/corerules"
+@rendermode InteractiveServer
+
+<div class="rules-container">
+
+    <div class="header-section">
+        <h1 class="page-title">Core Rules Reference</h1>
+        <div class="btn-group" role="group">
+            <a href="#turn-sequence" class="btn btn-outline-warning btn-sm">Turn Sequence</a>
+            <a href="#keywords" class="btn btn-outline-warning btn-sm">Universal Keywords</a>
+        </div>
+    </div>
+
+    <div id="turn-sequence">
+        <h3 class="section-header">Turn Sequence</h3>
+
+        <div class="phase-card command-phase">
+            <div class="phase-header">
+                <div class="phase-icon">I</div>
+                <div class="phase-title">Command Phase</div>
+            </div>
+            <div class="phase-body">
+                <div class="step-row">
+                    <span class="step-num">1</span>
+                    <div class="step-content">
+                        <strong>Command Step</strong>
+                        <p>Both players gain <strong>1 CP</strong>.</p>
+                        <p>Resolve "Start of Command Phase" abilities.</p>
+                    </div>
+                </div>
+                <div class="step-row">
+                    <span class="step-num">2</span>
+                    <div class="step-content">
+                        <strong>Battle-shock Step</strong>
+                        <p>Test for every unit <strong>Below Half-strength</strong>.</p>
+                        <div class="mechanic-box">
+                            <strong>Test:</strong> 2D6 ≥ Leadership (LD).<br />
+                            <span class="text-danger">Fail:</span> OC = 0, No Stratagems, Desperate Escape on Fall Back.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="phase-card movement-phase">
+            <div class="phase-header">
+                <div class="phase-icon">II</div>
+                <div class="phase-title">Movement Phase</div>
+            </div>
+            <div class="phase-body">
+                <div class="step-row">
+                    <span class="step-num">1</span>
+                    <div class="step-content">
+                        <strong>Move Units</strong>
+                        <ul>
+                            <li><strong>Normal:</strong> Move up to M".</li>
+                            <li><strong>Advance:</strong> Move M + D6". <span class="text-warning">(No Shoot/Charge)</span></li>
+                            <li><strong>Fall Back:</strong> Move M" (if in Engagement). <span class="text-warning">(No Shoot/Charge)</span></li>
+                            <li><strong>Remain Stationary:</strong> Do not move.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="step-row">
+                    <span class="step-num">2</span>
+                    <div class="step-content">
+                        <strong>Reinforcements</strong>
+                        <p>Set up Reserves / Deep Strike units (>9" from enemy).</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="phase-card shooting-phase">
+            <div class="phase-header">
+                <div class="phase-icon">III</div>
+                <div class="phase-title">Shooting Phase</div>
+            </div>
+            <div class="phase-body">
+                <div class="step-row">
+                    <span class="step-num">1</span>
+                    <div class="step-content">
+                        <strong>Select Targets</strong>
+                        <p>Must be <strong>Visible</strong> and within <strong>Range</strong>.</p>
+                        <p><em>Lone Operative:</em> Can't be targeted >12".</p>
+                    </div>
+                </div>
+                <div class="step-row">
+                    <span class="step-num">2</span>
+                    <div class="step-content">
+                        <strong>Resolve Attacks</strong>
+                        <div class="attack-sequence">
+                            <span><strong>HIT:</strong> D6 vs BS</span> ➜
+                            <span><strong>WOUND:</strong> D6 vs S/T</span> ➜
+                            <span><strong>SAVE:</strong> D6 vs Sv</span> ➜
+                            <span><strong>DAMAGE:</strong> Remove Wounds</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="phase-card charge-phase">
+            <div class="phase-header">
+                <div class="phase-icon">IV</div>
+                <div class="phase-title">Charge Phase</div>
+            </div>
+            <div class="phase-body">
+                <div class="step-row">
+                    <span class="step-num">1</span>
+                    <div class="step-content">
+                        <strong>Charge Move</strong>
+                        <p>Select target within 12". Roll <strong>2D6</strong>.</p>
+                        <p>If roll allows ending within Engagement Range (1") of all targets, move unit.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="phase-card fight-phase">
+            <div class="phase-header">
+                <div class="phase-icon">V</div>
+                <div class="phase-title">Fight Phase</div>
+            </div>
+            <div class="phase-body">
+                <div class="alert alert-dark mb-3">
+                    <strong>Fights First:</strong> Chargers & Abilities.<br />
+                    <strong>Fights Normal:</strong> Everyone else.
+                </div>
+                <div class="step-row">
+                    <span class="step-num">1</span>
+                    <div class="step-content">
+                        <strong>Sequence</strong>
+                        <p>1. <strong>Pile In:</strong> Move 3" closer.</p>
+                        <p>2. <strong>Attacks:</strong> Resolve Melee profiles.</p>
+                        <p>3. <strong>Consolidate:</strong> Move 3" to engagement/objective.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="keywords" class="mt-5">
+        <h3 class="section-header">Universal Special Rules (USR)</h3>
+
+        <div class="input-group mb-3 sticky-search">
+            <span class="input-group-text bg-dark text-white border-secondary"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control bg-dark text-white border-secondary" placeholder="Search keywords..." @bind="filterText" @bind:event="oninput" />
+        </div>
+
+        <div class="keyword-grid">
+            @foreach (var kw in FilteredKeywords)
+            {
+                <div class="keyword-card">
+                    <div class="kw-header">@kw.Name</div>
+                    <div class="kw-body">@kw.Definition</div>
+                </div>
+            }
+        </div>
+    </div>
+
+</div>
+
+@code {
+    private string filterText = "";
+
+    private List<KeywordDef> AllKeywords = new List<KeywordDef>
+    {
+        new KeywordDef("Anti-Keyword, X+", "CRITICAL WOUNDS the named unit type on X. E.g. ANTI-VEHICLE 3+ scores a CRITICAL WOUND on a VEHICLE on a Wound roll of 3+."),
+        new KeywordDef("Assault", "Can Advance and Shoot."),
+        new KeywordDef("Blast", "Add 1 to the attacks characteristics for every 5 models in a unit (round down). Can't be fired at any units in Engagement Range."),
+        new KeywordDef("Conversion X", "Each time attack is made if model is more than X away, an unmodified successful hit of 4+ scores a CRITICAL HIT."),
+        new KeywordDef("Critical Hits", "An unmodified Hit roll of 6. Always successful."),
+        new KeywordDef("Critical Wounds", "An unmodified Wound roll of 6. Always successful."),
+        new KeywordDef("Deadly Demise X", "When this model is destroyed roll one d6, on a 6 each unit within 6\" range suffers X Mortal Wounds."),
+        new KeywordDef("Deep Strike", "Unit can be set up in Reserves instead of on the battlefield, Must be 9” horizontally away from all enemy models."),
+        new KeywordDef("Desperate Escape", "Roll one dice for each model in the unit when Falling Back after failing a Battle Shock test, or when Falling Back through enemy models. On a 1 or 2, a model in the unit is removed."),
+        new KeywordDef("Devastating Wounds", "On a CRITICAL WOUND, convert the damage to Mortal Wounds and the attack sequence ends."),
+        new KeywordDef("Extra Attacks", "Weapons ability. Each time bearer fights, they can make a number of, additional attacks with weapon as listed. The number cannot be modified by other rules."),
+        new KeywordDef("Feel no pain, X+", "Each time this model would lose a wound, roll one D6: if the result is equal to or greater than X that wound is not lost."),
+        new KeywordDef("First Fight", "Units with this ability that are eligible to fight do so in the Fights First step, provided every model in the unit has this ability."),
+        new KeywordDef("Firing Deck-X", "Allows a number of models embarked on a TRANSPORT to fire out."),
+        new KeywordDef("Fly", "FLY models move over enemy models when they Normal Move, Advance, Fall Back or Charge. Move distance is measured through the air."),
+        new KeywordDef("Hazardous", "After the unit has finished its attacks. Take a hazard test for each weapon used, for each roll of a 1 a model with a HAZARDOUS weapon is destroyed. CHARACTERS, MONSTERS and VEHICLES suffer 3 Mortal Wounds on a roll of a 1 instead."),
+        new KeywordDef("Heavy", "+1 to hit when the bearer’s unit REMAINS STATIONARY."),
+        new KeywordDef("Ignores Cover", "Weapons with this ability in their profile do not allow for the Benefit of Cover against that attack."),
+        new KeywordDef("Indirect Fire", "This weapon can fire at models that are not visible. If it does so, subtract 1 from the hit roll, and the target has the Benefit of Cover."),
+        new KeywordDef("Infiltrators", "A unit can be set up outside of your deployment zone. It must still be 9\" away from enemy models and the enemy deployment zone."),
+        new KeywordDef("Lance", "Weapons with this ability get +1 to wound when Charging."),
+        new KeywordDef("Leader", "CHARACTER units with LEADER USR can be attached to one of their Bodyguard units before the battle. Attached units can only contain one LEADER. Attacks can not be allocated to the CHARACTER model in Attached units."),
+        new KeywordDef("Lethal Hits", "CRITICAL HITS automatically wound the target."),
+        new KeywordDef("Melta X", "Add X to the damage when fired at half range."),
+        new KeywordDef("Objective Control (OC)", "This shows how effectively a model can exert control over objectives."),
+        new KeywordDef("One Shot", "This weapon can only be fired once per battle."),
+        new KeywordDef("Pistol", "A unit can fire this weapon in Engagement Range, but must target one of those enemy units, Can not be shot alongside non-PISTOL weapons (unless a MONSTER / VEHICLE)."),
+        new KeywordDef("Precision Hits", "Can allocate attacks to a CHARACTER models that is visible when targeting an Attached unit."),
+        new KeywordDef("Rapid Deployment", "A unit can disembark after this model has advanced. They cannot charge but can otherwise act normally."),
+        new KeywordDef("Rapid Fire X", "Increase the attacks by X when targeting unit is within half range."),
+        new KeywordDef("Scout X", "Pre-game movement of X\" after Deployment phase. DEDICATED TRANSPORT units also inherit the ability if occupied by SCOUT units. Must end more than 9\" horizontally away from enemy models."),
+        new KeywordDef("Stealth", "If every model in a unit has this ability, they are -1 to hit vs ranged."),
+        new KeywordDef("Sustained Hits X", "CRITICAL HITS score X additional hits."),
+        new KeywordDef("Torrent", "Attacks with TORRENT weapons automatically hit."),
+        new KeywordDef("Twin-Linked", "You can reroll the attack’s Wound rolls.")
+    };
+
+    private IEnumerable<KeywordDef> FilteredKeywords =>
+        string.IsNullOrWhiteSpace(filterText)
+        ? AllKeywords
+        : AllKeywords.Where(k => k.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase));
+
+    public class KeywordDef
+    {
+        public string Name { get; set; }
+        public string Definition { get; set; }
+        public KeywordDef(string n, string d) { Name = n; Definition = d; }
+    }
+}
+
+<style>
+    .rules-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding-bottom: 80px;
+        color: #e0e0e0;
+    }
+
+    .header-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        border-bottom: 2px solid #444;
+        padding-bottom: 10px;
+    }
+
+    .page-title {
+        color: #d35400;
+        font-weight: 900;
+        letter-spacing: 1px;
+        margin: 0;
+    }
+
+    .section-header {
+        color: #f39c12;
+        margin-bottom: 20px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-left: 4px solid #d35400;
+        padding-left: 10px;
+    }
+
+    /* --- PHASE CARDS --- */
+    .phase-card {
+        background: #242424;
+        border: 1px solid #444;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .phase-header {
+        padding: 10px 15px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .command-phase .phase-header {
+        background: #c0392b;
+        color: white;
+    }
+
+    .movement-phase .phase-header {
+        background: #d35400;
+        color: white;
+    }
+
+    .shooting-phase .phase-header {
+        background: #27ae60;
+        color: white;
+    }
+
+    .charge-phase .phase-header {
+        background: #f39c12;
+        color: #222;
+    }
+
+    .fight-phase .phase-header {
+        background: #8e44ad;
+        color: white;
+    }
+
+    .phase-body {
+        padding: 15px;
+        font-size: 0.95rem;
+    }
+
+    .step-row {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid #333;
+        padding-bottom: 12px;
+    }
+
+        .step-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+    .step-num {
+        background: #333;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 0.8rem;
+        font-weight: bold;
+        flex-shrink: 0;
+    }
+
+    /* --- KEYWORD GRID --- */
+    .keyword-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 15px;
+    }
+
+    .keyword-card {
+        background: #1a1a1a;
+        border: 1px solid #444;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .kw-header {
+        background: #333;
+        color: #f39c12;
+        padding: 6px 10px;
+        font-weight: bold;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        border-bottom: 1px solid #444;
+    }
+
+    .kw-body {
+        padding: 10px;
+        font-size: 0.9rem;
+        color: #ccc;
+        line-height: 1.4;
+    }
+
+    .attack-sequence {
+        background: #111;
+        padding: 8px;
+        border-radius: 4px;
+        margin-top: 5px;
+        font-size: 0.85rem;
+        color: #aaa;
+    }
+
+        .attack-sequence span {
+            color: #eee;
+        }
+
+    .sticky-search {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+</style>

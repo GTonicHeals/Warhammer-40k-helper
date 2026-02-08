@@ -1,0 +1,254 @@
+﻿@page "/rules"
+@rendermode InteractiveServer
+
+<div class="rules-container">
+    <h1 class="page-title">T'au Empire Rules Reference</h1>
+
+    <div class="rule-card army-rule">
+        <div class="rule-header">
+            <i class="bi bi-crosshair me-2"></i> FACTION RULE: For The Greater Good
+        </div>
+        <div class="rule-body">
+            <p>
+                If your Army Faction is <strong>T'au Empire</strong>, at the start of your <strong>Shooting phase</strong>,
+                you can select units from your army with this ability to become <strong>Observer units</strong>.
+            </p>
+
+            <div class="ftgg-diagram">
+                <div class="step">
+                    <span class="badge bg-secondary">1</span>
+                    <strong>Select Observer</strong>
+                    <small>Must have Line of Sight to Target</small>
+                </div>
+                <div class="arrow">➜</div>
+                <div class="step">
+                    <span class="badge bg-danger">2</span>
+                    <strong>Select Guided Unit</strong>
+                    <small>Must shoot the SAME Target</small>
+                </div>
+            </div>
+
+            <ul class="bonus-list">
+                <li class="good">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <strong>Guided Unit:</strong> Improves <strong>Ballistic Skill</strong> by 1 when shooting the Spotted unit.
+                </li>
+                <li class="good">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <strong>Marketlight Keyword:</strong> If Observer has <em>Markerlight</em>, the Guided unit also ignores <strong>Cover</strong>.
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="rule-card detachment-rule">
+        <div class="rule-header">
+            <i class="bi bi-diagram-3 me-2"></i> DETACHMENT: Kauyon
+        </div>
+        <div class="rule-body">
+            <p><strong>Patient Hunter:</strong> From Battle Round 3 onwards, ranged weapons equipped by T'au Empire models from your army have the <strong>[SUSTAINED HITS 1]</strong> ability.</p>
+            <div class="alert alert-dark mt-2">
+                <strong>[SUSTAINED HITS 1]:</strong> A Critical Hit (unmodified roll of 6) generates 1 additional hit.
+            </div>
+            <p class="mt-2 text-muted">
+                <em>*If the unit is a Guided unit (see above), rolls of 6 score [SUSTAINED HITS 2] instead.</em>
+            </p>
+        </div>
+    </div>
+
+    <h3 class="mt-4 mb-3 text-warning">Stratagems</h3>
+    <div class="stratagem-grid">
+
+        <div class="strat-card">
+            <div class="strat-top">
+                <span class="strat-name">Point-Blank Ambush</span>
+                <span class="cp-cost">1CP</span>
+            </div>
+            <div class="strat-type">Battle Tactic - Shooting Phase</div>
+            <div class="strat-text">
+                <strong>When:</strong> Your Shooting phase.<br />
+                <strong>Target:</strong> One T'au Empire unit from your army.<br />
+                <strong>Effect:</strong> Until the end of the phase, improve the AP by 1 for attacks made against targets within 9".
+            </div>
+        </div>
+
+        <div class="strat-card">
+            <div class="strat-top">
+                <span class="strat-name">Coordinate to Engage</span>
+                <span class="cp-cost">1CP</span>
+            </div>
+            <div class="strat-type">Strategic Ploy - Shooting Phase</div>
+            <div class="strat-text">
+                <strong>Effect:</strong> Select one Observer unit. Until the end of the phase, that unit also gains the benefit of being Guided (BS+1) when shooting at their Spotted target.
+            </div>
+        </div>
+
+        <div class="strat-card">
+            <div class="strat-top">
+                <span class="strat-name">Stimulant Injectors</span>
+                <span class="cp-cost">1CP</span>
+            </div>
+            <div class="strat-type">Epic Deed - Fight Phase</div>
+            <div class="strat-text">
+                <strong>Target:</strong> One <strong>Battlesuit</strong> unit.<br />
+                <strong>Effect:</strong> You gain a 6+ Feel No Pain (Ignore wounds on a roll of 6).
+            </div>
+        </div>
+
+        <div class="strat-card">
+            <div class="strat-top">
+                <span class="strat-name">Strike and Fade</span>
+                <span class="cp-cost">2CP</span>
+            </div>
+            <div class="strat-type">Strategic Ploy - Shooting Phase</div>
+            <div class="strat-text">
+                <strong>Target:</strong> One <strong>Battlesuit</strong> unit that can Fly.<br />
+                <strong>Effect:</strong> You can shoot, and then immediately make a Normal Move of 6". You cannot charge this turn.
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    .rules-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding-bottom: 50px;
+        color: #e0e0e0;
+    }
+
+    .page-title {
+        color: #d35400;
+        border-bottom: 2px solid #444;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+
+    /* --- RULE CARDS --- */
+    .rule-card {
+        background: #242424;
+        border: 1px solid #444;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .rule-header {
+        padding: 10px 15px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .army-rule .rule-header {
+        background: #d35400;
+        color: white;
+    }
+
+    .detachment-rule .rule-header {
+        background: #555;
+        color: white;
+        border-left: 5px solid #d35400;
+    }
+
+    .rule-body {
+        padding: 15px;
+    }
+
+    /* Diagram for Greater Good */
+    .ftgg-diagram {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: rgba(0,0,0,0.3);
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 6px;
+    }
+
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .arrow {
+        font-size: 1.5rem;
+        color: #777;
+    }
+
+    .bonus-list {
+        list-style: none;
+        padding: 0;
+        margin-top: 10px;
+    }
+
+        .bonus-list li {
+            margin-bottom: 8px;
+            padding: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+        }
+
+    .good {
+        border-left: 4px solid #27ae60;
+    }
+
+    /* --- STRATAGEMS GRID --- */
+    .stratagem-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+
+    .strat-card {
+        background: #1a1a1a;
+        border: 1px solid #444;
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .strat-top {
+        background: #333;
+        padding: 8px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #555;
+    }
+
+    .strat-name {
+        font-weight: bold;
+        color: #e0e0e0;
+        text-transform: uppercase;
+    }
+
+    .cp-cost {
+        background: #d35400;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 0.8rem;
+    }
+
+    .strat-type {
+        background: #222;
+        color: #888;
+        font-size: 0.75rem;
+        padding: 4px 12px;
+        font-style: italic;
+        border-bottom: 1px solid #333;
+    }
+
+    .strat-text {
+        padding: 12px;
+        font-size: 0.9rem;
+        color: #ccc;
+        line-height: 1.4;
+    }
+</style>

@@ -1,0 +1,36 @@
+/* 1. FORCE SIDE-BY-SIDE LAYOUT */
+.page {
+    display: flex; /* Enables Flexbox */
+    flex-direction: row; /* CRITICAL: Forces Left (Sidebar) and Right (Main) */
+    height: 100vh; /* Full screen height */
+    width: 100vw; /* Full screen width */
+    overflow: hidden; /* Prevents the whole window from scrolling */
+}
+
+/* 2. SIDEBAR (Left Column) */
+.sidebar {
+    width: 280px; /* Fixed width */
+    min-width: 280px; /* Stop it from shrinking */
+    height: 100%; /* Full height of the screen */
+    background-color: #1a0505; /* Dark Red/Black background to match your theme */
+    border-right: 1px solid #444;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto; /* Scrollbar INSIDE the sidebar */
+    z-index: 10; /* Sit on top */
+}
+
+/* 3. MAIN CONTENT (Right Column) */
+main {
+    flex: 1; /* Take up the rest of the screen width */
+    height: 100%; /* Full height */
+    background-color: #1a1a1a; /* Dark Grey background */
+
+    overflow-y: auto; /* Scrollbar INSIDE the content area */
+    position: relative;
+}
+
+/* 4. CONTENT PADDING */
+.content {
+    padding: 2rem;
+}

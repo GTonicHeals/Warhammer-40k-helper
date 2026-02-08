@@ -1,0 +1,87 @@
+﻿@using System.Text.Json
+@using WarHammerRoster.Models
+@using System.IO
+@inject IWebHostEnvironment Env
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">T'au Roster</a>
+    </div>
+</div>
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="roster" Match="NavLinkMatch.Prefix">
+                <span class="bi bi-list-nested" aria-hidden="true"></span> Full Roster
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3 mt-3 mb-1">
+            <span class="text-uppercase fw-bold text-white-50 small ps-3">Reference</span>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="rules">
+                <span class="bi bi-book" aria-hidden="true"></span> Army Rules
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="corerules">
+                <span class="bi bi-journals" aria-hidden="true"></span> Core Rules
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="corestratagems">
+                <span class="bi bi-lightning-charge" aria-hidden="true"></span> Core Stratagems
+            </NavLink>
+        </div>
+
+        @if (units != null)
+        {
+            <div class="nav-item px-3 mt-3 mb-1">
+                <span class="text-uppercase fw-bold text-white-50 small ps-3">Datasheets</span>
+            </div>
+
+            @foreach (var unit in units)
+            {
+                <div class="nav-item px-3">
+                    <a class="nav-link py-1" href="roster#@GetId(unit)">
+                        <span class="bi bi-chevron-right small me-2" aria-hidden="true"></span>
+                        <span style="font-size: 0.9em;">@unit.Name</span>
+                    </a>
+                </div>
+            }
+        }
+    </nav>
+</div>
+
+@code {
+    private List<Selection>? units;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var filePath = Path.Combine(Env.WebRootPath, "roster.json");
+        if (File.Exists(filePath))
+        {
+            var jsonString = await File.ReadAllTextAsync(filePath);
+            var rosterData = JsonSerializer.Deserialize<RosterRoot>(jsonString);
+
+            if (rosterData?.Roster?.Forces?.FirstOrDefault() != null)
+            {
+                units = rosterData.Roster.Forces.First().Selections
+                    .Where(s => s.Name != "Configuration" && s.Name != "Battle Size" && s.Name != "Detachment" && s.Name != "Show/Hide Options")
+                    .ToList();
+            }
+        }
+    }
+
+    private string GetId(Selection unit) => unit.Name.Replace(" ", "-").Replace("'", "").Replace("’", "");
+}
