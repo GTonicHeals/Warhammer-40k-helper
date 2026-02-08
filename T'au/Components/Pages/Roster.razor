@@ -1,10 +1,49 @@
-﻿@page "/roster"
+﻿@page "/roster/{Side?}"
 @rendermode InteractiveServer
 @using System.Text.Json
 @using WarHammerRoster.Models
 @using System.IO
 @inject IWebHostEnvironment Env
+@inject NavigationManager Nav
 
+@if (Side == "enemy")
+{
+    <style>
+        .datasheet-header {
+            background-color: #c0392b !important;
+            border-bottom-color: #962d22 !important;
+        }
+
+        .role-icon {
+            color: white !important;
+        }
+
+        .detachment-box {
+            border-color: #c0392b !important;
+            border-left-color: #c0392b !important;
+        }
+
+        h5.text-warning {
+            color: #e74c3c !important;
+        }
+    </style>
+}
+
+<div class="header-container">
+    <div class="header-left">
+        <h3>@(Side == "enemy" ? "Enemy Forces" : "My Cadre")</h3>
+        @if (!string.IsNullOrEmpty(DetachmentName))
+        {
+            <div class="detachment-badge">
+                <span class="text-muted">Detachment:</span>
+                <span class="@(Side == "enemy" ? "text-danger" : "text-warning")">@DetachmentName</span>
+            </div>
+        }
+    </div>
+    <div class="points-badge" style="color: @(Side == "enemy" ? "#c0392b" : "#d35400")">
+        @CurrentPoints <span class="text-muted">/</span> @LimitPoints <small>pts</small>
+    </div>
+</div>
 <div class="header-container">
     <div class="header-left">
         <h3>T'au Empire Datasheets</h3>
@@ -427,6 +466,8 @@ else
 </style>
 
 @code {
+    [Parameter]
+    public string? Side { get; set; } // "my" or "enemy"
     private RosterRoot? rosterData;
     private double CurrentPoints => rosterData?.Roster?.Costs?.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
     private double LimitPoints => rosterData?.Roster?.CostLimits?.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
@@ -434,11 +475,23 @@ else
     private string DetachmentName = "";
     private Rule? DetachmentRule;
 
-    protected override async Task OnInitializedAsync()
+    // Use OnParametersSetAsync instead of OnInitializedAsync
+    // This runs every time the URL changes (e.g. switching from My -> Enemy)
+    protected override async Task OnParametersSetAsync()
     {
+        // Default to "my" if no side is specified
+        if (string.IsNullOrEmpty(Side)) Side = "my";
+
+        // Determine which file to load
+        var fileName = Side == "enemy" ? "enemy.json" : "roster.json";
+        var filePath = Path.Combine(Env.WebRootPath, fileName);
+
+        rosterData = null; // Clear old data while loading
+        DetachmentName = "";
+        DetachmentRule = null;
+
         try
         {
-            var filePath = Path.Combine(Env.WebRootPath, "roster.json");
             if (File.Exists(filePath))
             {
                 var jsonString = await File.ReadAllTextAsync(filePath);
@@ -449,7 +502,7 @@ else
         }
         catch
         {
-            // Fail silently to avoid UI crash, rosterData will remain null
+            // Handle error
         }
     }
 
