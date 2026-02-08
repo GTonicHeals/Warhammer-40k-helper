@@ -2,10 +2,14 @@
 @using WarHammerRoster.Models
 @using System.IO
 @inject IWebHostEnvironment Env
+@inject NavigationManager Nav
+@implements IDisposable
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">T'au Roster</a>
+        <a class="navbar-brand" href="">
+            @(IsEnemyView ? "Enemy Intel" : "T'au Roster")
+        </a>
     </div>
 </div>
 
@@ -22,7 +26,6 @@
                 <span class="bi bi-person-fill" aria-hidden="true"></span> My Army
             </NavLink>
         </div>
-
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="roster/enemy" Match="NavLinkMatch.All">
                 <span class="bi bi-skull-fill" aria-hidden="true"></span> Enemy Army
@@ -32,7 +35,6 @@
         <div class="nav-item px-3 mt-3 mb-1">
             <span class="text-uppercase fw-bold text-white-50 small ps-3">Reference</span>
         </div>
-
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="rules">
                 <span class="bi bi-book" aria-hidden="true"></span> Army Rules
@@ -43,23 +45,38 @@
                 <span class="bi bi-journals" aria-hidden="true"></span> Core Rules
             </NavLink>
         </div>
-
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="corestratagems">
-                <span class="bi bi-lightning-charge" aria-hidden="true"></span> Core Stratagems
+                <span class="bi bi-lightning-charge" aria-hidden="true"></span> Stratagems
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3 mt-3 mb-1">
+            <span class="text-uppercase fw-bold text-white-50 small ps-3">Tactical Objectives</span>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="objectives/my">
+                <span class="bi bi-person-badge" aria-hidden="true"></span> My Objectives
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="objectives/enemy">
+                <span class="bi bi-person-badge-fill" aria-hidden="true"></span> Enemy Objectives
             </NavLink>
         </div>
 
         @if (units != null)
         {
             <div class="nav-item px-3 mt-3 mb-1">
-                <span class="text-uppercase fw-bold text-white-50 small ps-3">Datasheets</span>
+                <span class="text-uppercase fw-bold text-white-50 small ps-3">
+                    @(IsEnemyView ? "Enemy Units" : "My Units")
+                </span>
             </div>
 
             @foreach (var unit in units)
             {
                 <div class="nav-item px-3">
-                    <a class="nav-link py-1" href="roster#@GetId(unit)">
+                    <a class="nav-link py-1" href="roster/@(IsEnemyView ? "enemy" : "my")#@GetId(unit)">
                         <span class="bi bi-chevron-right small me-2" aria-hidden="true"></span>
                         <span style="font-size: 0.9em;">@unit.Name</span>
                     </a>
@@ -71,23 +88,61 @@
 
 @code {
     private List<Selection>? units;
+    private bool IsEnemyView => Nav.Uri.Contains("/enemy");
 
     protected override async Task OnInitializedAsync()
     {
-        var filePath = Path.Combine(Env.WebRootPath, "roster.json");
+        // Listen for URL changes so the menu updates when you click "Enemy Army"
+        Nav.LocationChanged += OnLocationChanged;
+        await LoadUnits();
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        await LoadUnits();
+        StateHasChanged(); // Force the menu to redraw with the new list
+    }
+
+    private async Task LoadUnits()
+    {
+        // 1. Decide which file to load based on the URL
+        string fileName = IsEnemyView ? "enemy.json" : "roster.json";
+        var filePath = Path.Combine(Env.WebRootPath, fileName);
+
         if (File.Exists(filePath))
         {
-            var jsonString = await File.ReadAllTextAsync(filePath);
-            var rosterData = JsonSerializer.Deserialize<RosterRoot>(jsonString);
-
-            if (rosterData?.Roster?.Forces?.FirstOrDefault() != null)
+            try
             {
-                units = rosterData.Roster.Forces.First().Selections
-                    .Where(s => s.Name != "Configuration" && s.Name != "Battle Size" && s.Name != "Detachment" && s.Name != "Show/Hide Options")
-                    .ToList();
+                var jsonString = await File.ReadAllTextAsync(filePath);
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var rosterData = JsonSerializer.Deserialize<RosterRoot>(jsonString, options);
+
+                if (rosterData?.Roster?.Forces?.FirstOrDefault() != null)
+                {
+                    units = rosterData.Roster.Forces.First().Selections
+                        .Where(s => s.Name != "Configuration" &&
+                                    s.Name != "Battle Size" &&
+                                    s.Name != "Detachment" &&
+                                    s.Name != "Show/Hide Options")
+                        .ToList();
+                }
             }
+            catch
+            {
+                units = new List<Selection>(); // Clear list on error
+            }
+        }
+        else
+        {
+            units = null;
         }
     }
 
     private string GetId(Selection unit) => unit.Name.Replace(" ", "-").Replace("'", "").Replace("’", "");
+
+    public void Dispose()
+    {
+        // Cleanup the event listener when the menu is destroyed
+        Nav.LocationChanged -= OnLocationChanged;
+    }
 }
