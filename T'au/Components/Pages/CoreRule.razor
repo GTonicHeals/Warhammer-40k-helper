@@ -6,8 +6,9 @@
     <div class="header-section">
         <h1 class="page-title">Core Rules Reference</h1>
         <div class="btn-group" role="group">
-            <a href="#turn-sequence" class="btn btn-outline-warning btn-sm">Turn Sequence</a>
-            <a href="#keywords" class="btn btn-outline-warning btn-sm">Universal Keywords</a>
+            <a href="#turn-sequence" class="btn btn-outline-warning btn-sm">Sequence</a>
+            <a href="#wound-chart" class="btn btn-outline-warning btn-sm">Wound Chart</a>
+            <a href="#keywords" class="btn btn-outline-warning btn-sm">Keywords</a>
         </div>
     </div>
 
@@ -139,8 +140,59 @@
         </div>
     </div>
 
+    <div id="wound-chart" class="mt-5">
+        <h3 class="section-header">Wound Roll Chart</h3>
+        <div class="chart-card">
+            <table class="chart-table">
+                <thead>
+                    <tr>
+                        <th>Comparison</th>
+                        <th>Required Roll</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="high-success">
+                        <td>
+                            Strength is <strong>2x</strong> Toughness<br />
+                            <small class="text-muted">(e.g. S8 vs T4)</small>
+                        </td>
+                        <td class="roll-val">2+</td>
+                    </tr>
+                    <tr class="med-success">
+                        <td>
+                            Strength is <strong>Greater</strong> than Toughness<br />
+                            <small class="text-muted">(e.g. S5 vs T4)</small>
+                        </td>
+                        <td class="roll-val">3+</td>
+                    </tr>
+                    <tr class="neutral">
+                        <td>
+                            Strength is <strong>Equal</strong> to Toughness<br />
+                            <small class="text-muted">(e.g. S4 vs T4)</small>
+                        </td>
+                        <td class="roll-val">4+</td>
+                    </tr>
+                    <tr class="med-fail">
+                        <td>
+                            Strength is <strong>Less</strong> than Toughness<br />
+                            <small class="text-muted">(e.g. S3 vs T4)</small>
+                        </td>
+                        <td class="roll-val">5+</td>
+                    </tr>
+                    <tr class="high-fail">
+                        <td>
+                            Strength is <strong>Half</strong> Toughness<br />
+                            <small class="text-muted">(e.g. S4 vs T8)</small>
+                        </td>
+                        <td class="roll-val">6+</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <div id="keywords" class="mt-5">
-        <h3 class="section-header">Universal Special Rules (USR)</h3>
+        <h3 class="section-header">Universal Special Rules</h3>
 
         <div class="input-group mb-3 sticky-search">
             <span class="input-group-text bg-dark text-white border-secondary"><i class="bi bi-search"></i></span>
@@ -164,43 +216,46 @@
     private string filterText = "";
 
     private List<KeywordDef> AllKeywords = new List<KeywordDef>
-    {
-        new KeywordDef("Anti-Keyword, X+", "CRITICAL WOUNDS the named unit type on X. E.g. ANTI-VEHICLE 3+ scores a CRITICAL WOUND on a VEHICLE on a Wound roll of 3+."),
-        new KeywordDef("Assault", "Can Advance and Shoot."),
-        new KeywordDef("Blast", "Add 1 to the attacks characteristics for every 5 models in a unit (round down). Can't be fired at any units in Engagement Range."),
-        new KeywordDef("Conversion X", "Each time attack is made if model is more than X away, an unmodified successful hit of 4+ scores a CRITICAL HIT."),
-        new KeywordDef("Critical Hits", "An unmodified Hit roll of 6. Always successful."),
-        new KeywordDef("Critical Wounds", "An unmodified Wound roll of 6. Always successful."),
-        new KeywordDef("Deadly Demise X", "When this model is destroyed roll one d6, on a 6 each unit within 6\" range suffers X Mortal Wounds."),
-        new KeywordDef("Deep Strike", "Unit can be set up in Reserves instead of on the battlefield, Must be 9” horizontally away from all enemy models."),
-        new KeywordDef("Desperate Escape", "Roll one dice for each model in the unit when Falling Back after failing a Battle Shock test, or when Falling Back through enemy models. On a 1 or 2, a model in the unit is removed."),
-        new KeywordDef("Devastating Wounds", "On a CRITICAL WOUND, convert the damage to Mortal Wounds and the attack sequence ends."),
-        new KeywordDef("Extra Attacks", "Weapons ability. Each time bearer fights, they can make a number of, additional attacks with weapon as listed. The number cannot be modified by other rules."),
-        new KeywordDef("Feel no pain, X+", "Each time this model would lose a wound, roll one D6: if the result is equal to or greater than X that wound is not lost."),
-        new KeywordDef("First Fight", "Units with this ability that are eligible to fight do so in the Fights First step, provided every model in the unit has this ability."),
-        new KeywordDef("Firing Deck-X", "Allows a number of models embarked on a TRANSPORT to fire out."),
-        new KeywordDef("Fly", "FLY models move over enemy models when they Normal Move, Advance, Fall Back or Charge. Move distance is measured through the air."),
-        new KeywordDef("Hazardous", "After the unit has finished its attacks. Take a hazard test for each weapon used, for each roll of a 1 a model with a HAZARDOUS weapon is destroyed. CHARACTERS, MONSTERS and VEHICLES suffer 3 Mortal Wounds on a roll of a 1 instead."),
-        new KeywordDef("Heavy", "+1 to hit when the bearer’s unit REMAINS STATIONARY."),
-        new KeywordDef("Ignores Cover", "Weapons with this ability in their profile do not allow for the Benefit of Cover against that attack."),
-        new KeywordDef("Indirect Fire", "This weapon can fire at models that are not visible. If it does so, subtract 1 from the hit roll, and the target has the Benefit of Cover."),
-        new KeywordDef("Infiltrators", "A unit can be set up outside of your deployment zone. It must still be 9\" away from enemy models and the enemy deployment zone."),
-        new KeywordDef("Lance", "Weapons with this ability get +1 to wound when Charging."),
-        new KeywordDef("Leader", "CHARACTER units with LEADER USR can be attached to one of their Bodyguard units before the battle. Attached units can only contain one LEADER. Attacks can not be allocated to the CHARACTER model in Attached units."),
-        new KeywordDef("Lethal Hits", "CRITICAL HITS automatically wound the target."),
-        new KeywordDef("Melta X", "Add X to the damage when fired at half range."),
-        new KeywordDef("Objective Control (OC)", "This shows how effectively a model can exert control over objectives."),
-        new KeywordDef("One Shot", "This weapon can only be fired once per battle."),
-        new KeywordDef("Pistol", "A unit can fire this weapon in Engagement Range, but must target one of those enemy units, Can not be shot alongside non-PISTOL weapons (unless a MONSTER / VEHICLE)."),
-        new KeywordDef("Precision Hits", "Can allocate attacks to a CHARACTER models that is visible when targeting an Attached unit."),
-        new KeywordDef("Rapid Deployment", "A unit can disembark after this model has advanced. They cannot charge but can otherwise act normally."),
-        new KeywordDef("Rapid Fire X", "Increase the attacks by X when targeting unit is within half range."),
-        new KeywordDef("Scout X", "Pre-game movement of X\" after Deployment phase. DEDICATED TRANSPORT units also inherit the ability if occupied by SCOUT units. Must end more than 9\" horizontally away from enemy models."),
-        new KeywordDef("Stealth", "If every model in a unit has this ability, they are -1 to hit vs ranged."),
-        new KeywordDef("Sustained Hits X", "CRITICAL HITS score X additional hits."),
-        new KeywordDef("Torrent", "Attacks with TORRENT weapons automatically hit."),
-        new KeywordDef("Twin-Linked", "You can reroll the attack’s Wound rolls.")
-    };
+{
+    new KeywordDef("Anti-Keyword, X+", "CRITICAL WOUNDS the named unit type on X. E.g. ANTI-VEHICLE 3+ scores a CRITICAL WOUND on a VEHICLE on a Wound roll of 3+."),
+    new KeywordDef("Assault", "Can Advance and Shoot."),
+    new KeywordDef("Blast", "Add 1 to the attacks characteristics for every 5 models in a unit (round down). Can't be fired at any units in Engagement Range."),
+    new KeywordDef("Conversion X", "Each time attack is made if model is more than X away, an unmodified successful hit of 4+ scores a CRITICAL HIT."),
+    new KeywordDef("Critical Hits", "An unmodified Hit roll of 6. Always successful."),
+    new KeywordDef("Critical Wounds", "An unmodified Wound roll of 6. Always successful."),
+    new KeywordDef("Deadly Demise X", "When this model is destroyed roll one d6, on a 6 each unit within 6\" range suffers X Mortal Wounds."),
+    new KeywordDef("Deep Strike", "Unit can be set up in Reserves instead of on the battlefield, Must be 9” horizontally away from all enemy models."),
+    new KeywordDef("Desperate Escape", "Roll one dice for each model in the unit when Falling Back after failing a Battle Shock test, or when Falling Back through enemy models. On a 1 or 2, a model in the unit is removed."),
+    new KeywordDef("Devastating Wounds", "On a CRITICAL WOUND, convert the damage to Mortal Wounds and the attack sequence ends."),
+    new KeywordDef("Extra Attacks", "Weapons ability. Each time bearer fights, they can make a number of, additional attacks with weapon as listed. The number cannot be modified by other rules."),
+    new KeywordDef("Feel no pain, X+", "Each time this model would lose a wound, roll one D6: if the result is equal to or greater than X that wound is not lost."),
+    new KeywordDef("Fights First", "Units with this ability that are eligible to fight do so in the Fights First step, provided every model in the unit has this ability."),
+    new KeywordDef("Firing Deck-X", "Allows a number of models embarked on a TRANSPORT to fire out."),
+    new KeywordDef("Fly", "FLY models move over enemy models when they Normal Move, Advance, Fall Back or Charge. Move distance is measured through the air."),
+    new KeywordDef("Grenades", "KEYWORD: Enables the 'Grenade' Stratagem."),
+    new KeywordDef("Hazardous", "After the unit has finished its attacks. Take a hazard test for each weapon used, for each roll of a 1 a model with a HAZARDOUS weapon is destroyed. CHARACTERS, MONSTERS and VEHICLES suffer 3 Mortal Wounds on a roll of a 1 instead."),
+    new KeywordDef("Heavy", "+1 to hit when the bearer’s unit REMAINS STATIONARY."),
+    new KeywordDef("Ignores Cover", "Weapons with this ability in their profile do not allow for the Benefit of Cover against that attack."),
+    new KeywordDef("Indirect Fire", "This weapon can fire at models that are not visible. If it does so, subtract 1 from the hit roll, and the target has the Benefit of Cover."),
+    new KeywordDef("Infiltrators", "A unit can be set up outside of your deployment zone. It must still be 9\" away from enemy models and the enemy deployment zone."),
+    new KeywordDef("Lance", "Weapons with this ability get +1 to wound when Charging."),
+    new KeywordDef("Leader", "CHARACTER units with LEADER USR can be attached to one of their Bodyguard units before the battle. Attached units can only contain one LEADER. Attacks can not be allocated to the CHARACTER model in Attached units."),
+    new KeywordDef("Lethal Hits", "CRITICAL HITS automatically wound the target."),
+    new KeywordDef("Lone Operative", "Unless part of an Attached Unit, this unit can only be selected as a target of a ranged attack if the attacking model is within 12\"."),
+    new KeywordDef("Melta X", "Add X to the damage when fired at half range."),
+    new KeywordDef("Objective Control (OC)", "This shows how effectively a model can exert control over objectives."),
+    new KeywordDef("One Shot", "This weapon can only be fired once per battle."),
+    new KeywordDef("Pistol", "A unit can fire this weapon in Engagement Range, but must target one of those enemy units, Can not be shot alongside non-PISTOL weapons (unless a MONSTER / VEHICLE)."),
+    new KeywordDef("Precision", "When targeting an Attached unit, the attacking player can allocate the attack to a CHARACTER model visible to the bearer."),
+    new KeywordDef("Rapid Deployment", "A unit can disembark after this model has advanced. They cannot charge but can otherwise act normally."),
+    new KeywordDef("Rapid Fire X", "Increase the attacks by X when targeting unit is within half range."),
+    new KeywordDef("Scout X", "Pre-game movement of X\" after Deployment phase. DEDICATED TRANSPORT units also inherit the ability if occupied by SCOUT units. Must end more than 9\" horizontally away from enemy models."),
+    new KeywordDef("Smoke", "KEYWORD: Enables the 'Smokescreen' Stratagem."),
+    new KeywordDef("Stealth", "If every model in a unit has this ability, they are -1 to hit vs ranged."),
+    new KeywordDef("Sustained Hits X", "CRITICAL HITS score X additional hits."),
+    new KeywordDef("Torrent", "Attacks with TORRENT weapons automatically hit."),
+    new KeywordDef("Twin-Linked", "You can reroll the attack’s Wound rolls.")
+};
 
     private IEnumerable<KeywordDef> FilteredKeywords =>
         string.IsNullOrWhiteSpace(filterText)
@@ -248,7 +303,66 @@
         padding-left: 10px;
     }
 
-    /* --- PHASE CARDS --- */
+    /* --- CHART STYLES --- */
+    .chart-card {
+        background: #242424;
+        border: 1px solid #444;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 40px;
+    }
+
+    .chart-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .chart-table th {
+            background: #333;
+            color: #d35400;
+            padding: 12px;
+            text-align: left;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            border-bottom: 2px solid #555;
+        }
+
+        .chart-table td {
+            padding: 15px;
+            border-bottom: 1px solid #444;
+            color: #e0e0e0;
+        }
+
+    .roll-val {
+        font-size: 1.5rem;
+        font-weight: 900;
+        text-align: center;
+        width: 80px;
+    }
+
+    /* Color coding for success rates */
+    .high-success .roll-val {
+        color: #2ecc71;
+    }
+    /* Green for 2+ */
+    .med-success .roll-val {
+        color: #a2d9ce;
+    }
+    /* Light Green for 3+ */
+    .neutral .roll-val {
+        color: #fff;
+    }
+    /* White for 4+ */
+    .med-fail .roll-val {
+        color: #e74c3c;
+    }
+    /* Red for 5+ */
+    .high-fail .roll-val {
+        color: #922b21;
+    }
+    /* Dark Red for 6+ */
+
+    /* --- PHASE CARDS & KEYWORDS --- */
     .phase-card {
         background: #242424;
         border: 1px solid #444;
@@ -264,6 +378,7 @@
         gap: 15px;
     }
 
+    /* Phase Colors */
     .command-phase .phase-header {
         background: #c0392b;
         color: white;
@@ -320,7 +435,27 @@
         flex-shrink: 0;
     }
 
-    /* --- KEYWORD GRID --- */
+    .mechanic-box {
+        background: rgba(0,0,0,0.3);
+        border-left: 3px solid #c0392b;
+        padding: 8px;
+        margin-top: 5px;
+        font-size: 0.9rem;
+    }
+
+    .attack-sequence {
+        background: #111;
+        padding: 8px;
+        border-radius: 4px;
+        margin-top: 5px;
+        font-size: 0.85rem;
+        color: #aaa;
+    }
+
+        .attack-sequence span {
+            color: #eee;
+        }
+
     .keyword-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -350,19 +485,6 @@
         color: #ccc;
         line-height: 1.4;
     }
-
-    .attack-sequence {
-        background: #111;
-        padding: 8px;
-        border-radius: 4px;
-        margin-top: 5px;
-        font-size: 0.85rem;
-        color: #aaa;
-    }
-
-        .attack-sequence span {
-            color: #eee;
-        }
 
     .sticky-search {
         position: sticky;
