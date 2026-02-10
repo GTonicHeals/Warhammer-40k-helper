@@ -21,3 +21,12 @@
 </body>
 
 </html>
+
+<script>
+    window.scrollToElementId = (elementId) => {
+        var element = document.getElementById(elementId);
+        if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+        }
+    }
+</script>

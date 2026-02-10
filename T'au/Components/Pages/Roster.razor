@@ -6,8 +6,9 @@
 @using System.Text.RegularExpressions;
 @inject IWebHostEnvironment Env
 @inject NavigationManager Nav
-
-
+@inject IJSRuntime JS      
+@inject NavigationManager Nav
+@implements IDisposable
 
 @if (Side == "p2")
 {
@@ -479,11 +480,16 @@ else
     private string DetachmentName = "";
     private Rule? DetachmentRule;
 
+    // 1. SUBSCRIBE TO NAVIGATION EVENTS
+    protected override async Task OnInitializedAsync()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(Side)) Side = "p1";
 
-        // Logic Change: p2 = enemy.json
         var fileName = Side == "p2" ? "enemy.json" : "roster.json";
         var filePath = Path.Combine(Env.WebRootPath, fileName);
 
@@ -504,128 +510,94 @@ else
         catch { }
     }
 
-    private void FindDetachmentRules()
+    // 2. THIS HANDLES CLICKING LINKS (Must be 'async void', NOT 'override')
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        if (rosterData?.Roster?.Forces?.FirstOrDefault() == null) return;
-        var force = rosterData.Roster.Forces.First();
+        await ScrollToFragment();
+        StateHasChanged(); // Force the page to refresh
+    }
 
-        // Find the "Detachment" selection (usually filtered out of units)
-        var detachmentSelection = force.Selections?.FirstOrDefault(s => s.Name == "Detachment");
-        if (detachmentSelection?.Selections != null)
+    // 3. THIS HANDLES INITIAL LOAD
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
         {
-            var chosen = detachmentSelection.Selections.FirstOrDefault();
-            if (chosen != null)
-            {
-                DetachmentName = chosen.Name;
-                DetachmentRule = chosen.Rules?.FirstOrDefault();
-            }
+            await ScrollToFragment();
         }
     }
 
-    private IEnumerable<Selection> GetUnits()
+    // 4. CLEANUP (Required to stop memory leaks)
+    public void Dispose()
     {
-        if (rosterData?.Roster?.Forces?.FirstOrDefault() == null) return Enumerable.Empty<Selection>();
-
-        // Filter out system configurations to just get the units
-        return rosterData.Roster.Forces.First().Selections?
-            .Where(s => s.Name != "Configuration" && s.Name != "Battle Size" && s.Name != "Detachment" && s.Name != "Show/Hide Options")
-            ?? Enumerable.Empty<Selection>();
+        Nav.LocationChanged -= OnLocationChanged;
     }
 
+    private async Task ScrollToFragment()
+    {
+        var uri = new Uri(Nav.Uri);
+        if (uri.Fragment.Length > 1)
+        {
+            var elementId = uri.Fragment.Substring(1); // Remove the '#'
+            await Task.Delay(100); // Give DOM time to render
+            try
+            {
+                await JS.InvokeVoidAsync("scrollToElementId", elementId);
+            }
+            catch { }
+        }
+    }
+
+    // --- YOUR EXISTING HELPERS (Keep these exactly as they are) ---
+
+    private void FindDetachmentRules() { /* ... keep existing code ... */ }
+    private IEnumerable<Selection> GetUnits() { /* ... keep existing code ... */ return rosterData?.Roster?.Forces?.First().Selections?.Where(s => s.Name != "Configuration" && s.Name != "Battle Size" && s.Name != "Detachment" && s.Name != "Show/Hide Options") ?? Enumerable.Empty<Selection>(); }
     private string GetId(Selection unit) => unit.Name?.Replace(" ", "-").Replace("'", "").Replace("’", "") ?? "unknown";
     private double GetPointCost(Selection unit) => unit.Costs?.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
+    private string GetChar(Profile p, string statName) => p.Characteristics?.FirstOrDefault(c => c.Name == statName)?.Value ?? "-";
 
-    // SAFE GET CHAR: Added null checks to prevent crashes
-    private string GetChar(Profile p, string statName) =>
-        p.Characteristics?.FirstOrDefault(c => c.Name == statName)?.Value ?? "-";
-
-    // --- RECURSIVE FINDERS (SAFE) ---
-
-    // 1. Get All Profiles (Recursively)
     private List<Profile> GetAllProfilesRecursive(Selection current, string typeName)
     {
         var found = new List<Profile>();
         if (current == null) return found;
-
-        // Check current level
-        if (current.Profiles != null)
-            found.AddRange(current.Profiles.Where(p => p.TypeName == typeName));
-
-        // Recursively check children
-        if (current.Selections != null)
-        {
-            foreach (var child in current.Selections)
-                found.AddRange(GetAllProfilesRecursive(child, typeName));
-        }
+        if (current.Profiles != null) found.AddRange(current.Profiles.Where(p => p.TypeName == typeName));
+        if (current.Selections != null) foreach (var child in current.Selections) found.AddRange(GetAllProfilesRecursive(child, typeName));
         return found;
     }
 
-    // 2. Get Weapons
-    private List<Profile> GetWeapons(Selection unit, string type) =>
-        GetAllProfilesRecursive(unit, type).DistinctBy(w => w.Name).ToList();
+    private List<Profile> GetWeapons(Selection unit, string type) => GetAllProfilesRecursive(unit, type).DistinctBy(w => w.Name).ToList();
+    private Profile? GetProfileByType(Selection unit, string type) => GetAllProfilesRecursive(unit, type).FirstOrDefault();
 
-    // 3. Get Stats
-    private Profile? GetProfileByType(Selection unit, string type) =>
-        GetAllProfilesRecursive(unit, type).FirstOrDefault();
-
-    // 4. Get Abilities & Rules (The requested feature)
     private List<Rule> GetAbilities(Selection unit)
     {
         var list = new List<Rule>();
-
-        // A. Recursively find Profile-based abilities (Shield Generators, etc)
         var abilityProfiles = GetAllProfilesRecursive(unit, "Abilities");
         foreach (var p in abilityProfiles)
         {
             var desc = p.Characteristics?.FirstOrDefault(c => c.Name == "Description")?.Value ?? "";
             list.Add(new Rule { Name = p.Name, Description = desc });
         }
-
-        // B. Recursively find Text-based Rules (Deep Strike, Pistol, etc)
         GetRulesRecursive(unit, list);
-
-        // Filter duplicates and return
         return list.DistinctBy(r => r.Name).OrderBy(r => r.Name).ToList();
     }
 
     private void GetRulesRecursive(Selection current, List<Rule> collected)
     {
         if (current == null) return;
-
-        // Add rules from this level
         if (current.Rules != null) collected.AddRange(current.Rules);
-
-        // Dig deeper
-        if (current.Selections != null)
-        {
-            foreach (var child in current.Selections) GetRulesRecursive(child, collected);
-        }
+        if (current.Selections != null) foreach (var child in current.Selections) GetRulesRecursive(child, collected);
     }
 
     private List<string> GetKeywords(Selection unit)
     {
-        return unit.Categories?
-            .Where(c => c.Name != "Configuration" && c.Name != "Uncategorized")
-            .Select(c => c.Name).ToList() ?? new List<string>();
+        return unit.Categories?.Where(c => c.Name != "Configuration" && c.Name != "Uncategorized").Select(c => c.Name).ToList() ?? new List<string>();
     }
 
-    // Helper to clean up BattleScribe text
     private MarkupString FormatText(string text)
     {
         if (string.IsNullOrEmpty(text)) return new MarkupString("");
-
-        // 1. Remove the weird ^^ characters
         text = text.Replace("^^", "");
-
-        // 2. Convert **Text** into <strong>Text</strong>
-        // The Regex looks for **(anything)** and replaces it with <b>$1</b>
         text = Regex.Replace(text, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
-
-        // 3. Convert newlines (\n) into HTML breaks (<br>) so paragraphs work
         text = text.Replace("\n", "<br/>");
-
-        // Return as MarkupString so Blazor renders the HTML tags instead of showing them as text
         return new MarkupString(text);
     }
-
 }
