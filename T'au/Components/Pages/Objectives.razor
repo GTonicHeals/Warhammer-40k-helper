@@ -1,24 +1,27 @@
 ﻿@page "/objectives/{Side?}"
 @rendermode InteractiveServer
+@inject ObjectiveService ObjService
 
 <div class="header-container">
     <div class="header-left">
-        <h3>@(Side == "enemy" ? "Enemy Tactical Objectives" : "My Tactical Objectives")</h3>
+        <h3>@(Side == "p2" ? "Player 2 Objectives" : "Player 1 Objectives")</h3>
     </div>
-    <div class="cp-badge" style="color: @(Side == "enemy" ? "#c0392b" : "#d35400")">
-        <span class="text-muted">Cards in Deck:</span> @Deck.Count
+    <div class="cp-badge" style="color: @(Side == "p2" ? "#5dade2" : "#d35400")">
+        <span class="text-muted">Cards in Deck:</span> @CurrentState.Deck.Count
     </div>
 </div>
 
 <div class="controls mb-4">
-    @if (ActiveMissions.Count < 2)
+    @if (CurrentState.ActiveMissions.Count < 2)
     {
-        <button class="btn btn-lg btn-outline-warning w-100 mb-2" @onclick="DrawCard">
-            <i class="bi bi-stack me-2"></i>Draw Tactical Objective
+        <button class="btn btn-lg w-100 mb-2"
+                style="border-color: @(Side == "p2" ? "#5dade2" : "#d35400"); color: @(Side == "p2" ? "#5dade2" : "#d35400");"
+                @onclick="DrawCard">
+            <i class="bi bi-stack me-2"></i>Draw Objective
         </button>
     }
 
-    @if (ActiveMissions.Count > 0)
+    @if (CurrentState.ActiveMissions.Count > 0)
     {
         <button class="btn btn-sm btn-outline-secondary w-100" @onclick="ResetDeck">
             <i class="bi bi-arrow-counterclockwise me-2"></i>Reset Deck
@@ -27,7 +30,7 @@
 </div>
 
 <div class="mission-grid">
-    @if (ActiveMissions.Count == 0)
+    @if (CurrentState.ActiveMissions.Count == 0)
     {
         <div class="empty-state">
             <i class="bi bi-layers text-muted" style="font-size: 3rem;"></i>
@@ -37,9 +40,9 @@
     }
     else
     {
-        @foreach (var mission in ActiveMissions)
+        @foreach (var mission in CurrentState.ActiveMissions)
         {
-            <div class="mission-card @(Side == "enemy" ? "enemy-card" : "")">
+            <div class="mission-card @(Side == "p2" ? "p2-card" : "p1-card")">
                 <div class="mission-header">
                     <span class="mission-title">@mission.Name</span>
                     <span class="mission-type">@mission.Type</span>
@@ -63,12 +66,12 @@
     }
 </div>
 
-@if (ScoredMissions.Any())
+@if (CurrentState.ScoredMissions.Any())
 {
     <div class="mt-5">
         <h5 class="text-muted border-bottom pb-2">Completed Missions</h5>
         <ul class="list-unstyled text-white-50 small">
-            @foreach (var m in ScoredMissions)
+            @foreach (var m in CurrentState.ScoredMissions)
             {
                 <li><i class="bi bi-check-circle-fill text-success me-2"></i>@m.Name</li>
             }
@@ -80,76 +83,46 @@
     [Parameter]
     public string? Side { get; set; }
 
-    private List<Objective> Deck = new();
-    private List<Objective> ActiveMissions = new();
-    private List<Objective> ScoredMissions = new();
+    // Helper property to access the correct state easily
+    private PlayerState CurrentState => ObjService.GetState(Side ?? "p1");
     private Random Rnd = new Random();
 
     protected override void OnParametersSet()
     {
-        if (string.IsNullOrEmpty(Side)) Side = "my";
+        if (string.IsNullOrEmpty(Side)) Side = "p1";
 
-        // Only reset if deck is empty (first load) to prevent losing state when switching tabs
-        if (Deck.Count == 0 && ActiveMissions.Count == 0)
+        // Only reset if it has NEVER been used before
+        if (!CurrentState.IsInitialized)
         {
-            ResetDeck();
+            CurrentState.Reset();
         }
     }
 
     private void DrawCard()
     {
-        if (Deck.Count == 0) return;
+        if (CurrentState.Deck.Count == 0) return;
 
-        int index = Rnd.Next(Deck.Count);
-        var card = Deck[index];
+        int index = Rnd.Next(CurrentState.Deck.Count);
+        var card = CurrentState.Deck[index];
 
-        Deck.RemoveAt(index);
-        ActiveMissions.Add(card);
+        CurrentState.Deck.RemoveAt(index);
+        CurrentState.ActiveMissions.Add(card);
     }
 
     private void ScoreMission(Objective m)
     {
-        ActiveMissions.Remove(m);
-        ScoredMissions.Add(m);
+        CurrentState.ActiveMissions.Remove(m);
+        CurrentState.ScoredMissions.Add(m);
     }
 
     private void DiscardMission(Objective m)
     {
-        ActiveMissions.Remove(m);
-        // Discarded cards usually go back to box, or we can track CP gain
+        CurrentState.ActiveMissions.Remove(m);
     }
 
     private void ResetDeck()
     {
-        ActiveMissions.Clear();
-        ScoredMissions.Clear();
-        Deck = new List<Objective>
-        {
-            new Objective("Assassination", "Purge the Enemy", "Score 5VP if one or more enemy CHARACTER models are destroyed this turn. Score 5VP if the enemy Warlord is destroyed.", "5VP"),
-            new Objective("Bring It Down", "Purge the Enemy", "Score 2VP for each enemy MONSTER or VEHICLE destroyed. Score 5VP if the target had Wounds 10+.", "2VP / 5VP"),
-            new Objective("Cleanse", "No Man's Land", "Select up to two units eligible to shoot. They cannot shoot or charge. At end of turn, score VP for each objective they control that is not in your deployment zone.", "2VP / 4VP"),
-            new Objective("Deploy Teleport Homers", "Battlefield Supremacy", "Select units in opponent's deployment zone or center. They cannot shoot/charge. Score VP at end of turn.", "2VP / 4VP"),
-            new Objective("Engage On All Fronts", "Battlefield Supremacy", "Score VP if you have units wholly within 3 or 4 different table quarters, and more than 3\" from center.", "2VP / 4VP"),
-            new Objective("Extend Battle Lines", "No Man's Land", "Score 5VP if you control your home objective and one or more No Man's Land objectives.", "5VP"),
-            new Objective("Investigate Signals", "No Man's Land", "Select units within 9\" of corners. They cannot shoot/charge. Score 2VP for each corner secured.", "2VP per corner"),
-            new Objective("No Prisoners", "Purge the Enemy", "Score 2VP if one enemy unit is destroyed. Score 5VP if two or more are destroyed.", "2VP / 5VP"),
-            new Objective("Overwhelming Force", "Purge the Enemy", "Score 3VP if an enemy unit on an objective is destroyed. Score 5VP if two or more are destroyed.", "3VP / 5VP"),
-            new Objective("Secure No Man's Land", "Battlefield Supremacy", "Score 2VP if you control 1 objective in No Man's Land. Score 5VP if you control 2+.", "2VP / 5VP"),
-            new Objective("Storm Hostile Objective", "Take and Hold", "Score 5VP if you control an objective that the enemy controlled at the start of the turn.", "5VP"),
-            new Objective("Area Denial", "Battlefield Supremacy", "Score 5VP if there are no enemy units wholly within 6\" of the center of the battlefield.", "5VP"),
-            new Objective("Capture Enemy Outpost", "Take and Hold", "Score 8VP if you control the objective marker in your opponent's deployment zone.", "8VP"),
-            new Objective("Defend Stronghold", "Take and Hold", "Score 3VP if you control your home objective. Score more if you hold more.", "3VP+"),
-            new Objective("A Tempting Target", "Take and Hold", "Opponent chooses one No Man's Land objective. Score 5VP if you control it at end of turn.", "5VP")
-        };
-    }
-
-    public class Objective
-    {
-        public string Name { get; set; }
-        public string Type { get; set; }
-        public string Description { get; set; }
-        public string Reward { get; set; }
-        public Objective(string n, string t, string d, string r) { Name = n; Type = t; Description = d; Reward = r; }
+        CurrentState.Reset();
     }
 }
 
@@ -178,7 +151,7 @@
         color: #666;
     }
 
-    /* CARD STYLING */
+    /* GENERAL CARD STYLING */
     .mission-card {
         background: #e2e2e2;
         color: #222;
@@ -191,7 +164,6 @@
     }
 
     .mission-header {
-        background: #d35400;
         color: white;
         padding: 10px 15px;
         display: flex;
@@ -223,7 +195,6 @@
         padding: 5px 10px;
         border-radius: 4px;
         font-weight: bold;
-        color: #d35400;
         text-align: center;
     }
 
@@ -234,12 +205,23 @@
         justify-content: space-between;
     }
 
-    /* ENEMY THEME OVERRIDE */
-    .enemy-card .mission-header {
-        background: #c0392b;
+    /* --- THEMES --- */
+
+    /* PLAYER 1 (ORANGE) */
+    .p1-card .mission-header {
+        background: #d35400;
     }
 
-    .enemy-card .vp-box {
-        color: #c0392b;
+    .p1-card .vp-box {
+        color: #d35400;
+    }
+
+    /* PLAYER 2 (BLUE) */
+    .p2-card .mission-header {
+        background: #2e86c1;
+    }
+
+    .p2-card .vp-box {
+        color: #2e86c1;
     }
 </style>

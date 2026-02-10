@@ -8,7 +8,7 @@
     position: absolute;
     top: 0.5rem;
     right: 1rem;
-    border: 1px solid rgba(211, 84, 0, 0.3); /* Orange Tint */
+    border: 1px solid rgba(211, 84, 0, 0.3);
     background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28211, 84, 0, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") no-repeat center/1.75rem rgba(0, 0, 0, 0.5);
     border-radius: 4px;
     transition: all 0.2s ease;
@@ -36,7 +36,7 @@
     padding-left: 1rem;
 }
 
-/* --- ICONS (Keep your SVGs, but position them better) --- */
+/* --- ICONS --- */
 .bi {
     display: inline-block;
     position: relative;
@@ -45,11 +45,11 @@
     margin-right: 0.75rem;
     top: -1px;
     background-size: cover;
-    opacity: 0.7; /* Dimmed by default */
+    opacity: 0.7;
     transition: opacity 0.2s;
 }
 
-/* Specific Icons */
+/* Define Icon Images */
 .bi-house-door-fill-nav-menu {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-house-door-fill' viewBox='0 0 16 16'%3E%3Cpath d='M6.5 14.5v-3.505c0-.245.25-.495.5-.495h2c.25 0 .5.25.5.5v3.5a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5Z'/%3E%3C/svg%3E");
 }
@@ -59,7 +59,6 @@
 }
 
 .bi-chevron-right {
-    /* If you added chevron icons, this ensures they align */
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-chevron-right' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
 }
 
@@ -81,14 +80,27 @@
         color: #a0a0a0;
         background: transparent;
         border: none;
-        border-left: 3px solid transparent; /* Hidden border for active state */
+        border-left: 3px solid transparent;
         height: 3rem;
         display: flex;
         align-items: center;
-        line-height: 3rem;
         width: 100%;
-        transition: all 0.2s ease-in-out;
+        position: relative; /* Needed for the background animation layer */
+        z-index: 1; /* Ensures text sits on top of background */
+        transition: color 0.3s ease, border-left-color 0.3s ease;
     }
+
+        /* BACKGROUND ANIMATION LAYER */
+        .nav-item ::deep .nav-link::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            opacity: 0; /* Hidden by default */
+            transition: opacity 0.4s ease; /* THE SMOOTH FADE ANIMATION */
+            /* Default Player 1 (Orange) Gradient */
+            background: linear-gradient(90deg, rgba(211, 84, 0, 0.15) 0%, transparent 100%);
+        }
 
         /* --- HOVER STATE --- */
         .nav-item ::deep .nav-link:hover {
@@ -100,19 +112,36 @@
                 opacity: 1;
             }
 
-    /* --- ACTIVE STATE (The Sci-Fi Look) --- */
+    /* --- ACTIVE STATE (Standard / Player 1) --- */
     .nav-item ::deep a.active {
-        background: linear-gradient(90deg, rgba(211, 84, 0, 0.15) 0%, transparent 100%); /* Orange fade */
         color: white;
-        border-left: 3px solid #d35400; /* T'au Orange Accent */
+        border-left-color: #d35400; /* Orange Border */
     }
 
+        .nav-item ::deep a.active::before {
+            opacity: 1;
+        }
+        /* Show Gradient */
         .nav-item ::deep a.active .bi {
             opacity: 1;
         }
 
-/* --- SCROLLBAR (Chrome/Edge/Safari) --- */
-/* This makes the scrollbar dark instead of the ugly default grey */
+/* --- PLAYER 2 OVERRIDES (BLUE) --- */
+.p2-section ::deep a.active {
+    color: #5dade2 !important;
+    border-left-color: #5dade2 !important;
+}
+
+    .p2-section ::deep a.active .bi {
+        color: #5dade2 !important;
+    }
+
+    /* Blue Gradient Background */
+    .p2-section ::deep a.active::before {
+        background: linear-gradient(90deg, rgba(93, 173, 226, 0.15) 0%, transparent 100%);
+    }
+
+/* --- SCROLLBAR --- */
 ::-webkit-scrollbar {
     width: 8px;
 }
@@ -148,7 +177,6 @@
         display: block;
         height: calc(100vh - 3.5rem);
         overflow-y: auto;
-        /* Firefox Scrollbar */
         scrollbar-width: thin;
         scrollbar-color: #444 #1a1a1a;
     }

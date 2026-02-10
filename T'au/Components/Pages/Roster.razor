@@ -3,59 +3,64 @@
 @using System.Text.Json
 @using WarHammerRoster.Models
 @using System.IO
+@using System.Text.RegularExpressions;
 @inject IWebHostEnvironment Env
 @inject NavigationManager Nav
 
-@if (Side == "enemy")
+
+
+@if (Side == "p2")
 {
     <style>
+        /* Change Header from Orange to Blue */
         .datasheet-header {
-            background-color: #c0392b !important;
-            border-bottom-color: #962d22 !important;
+            background-color: #2e86c1 !important;
+            border-bottom-color: #1b4f72 !important;
         }
 
+        /* Change Detachment Box Border */
+        .detachment-box {
+            border-color: #2e86c1 !important;
+            border-left-color: #2e86c1 !important;
+        }
+
+        /* Change Detachment Text */
+        h5.text-warning {
+            color: #5dade2 !important;
+        }
+
+        .detachment-badge span.text-warning {
+            color: #5dade2 !important;
+        }
+
+        /* Change Icons */
         .role-icon {
             color: white !important;
         }
 
-        .detachment-box {
-            border-color: #c0392b !important;
-            border-left-color: #c0392b !important;
+        .weapon-keywords {
+            color: #5dade2 !important;
         }
 
-        h5.text-warning {
-            color: #e74c3c !important;
+        .ability-name {
+            color: #5dade2 !important;
         }
     </style>
 }
 
 <div class="header-container">
     <div class="header-left">
-        <h3>@(Side == "enemy" ? "Enemy Forces" : "My Cadre")</h3>
+        <h3>@(Side == "p2" ? "Player 2 Army" : "Player 1 Army")</h3>
         @if (!string.IsNullOrEmpty(DetachmentName))
         {
             <div class="detachment-badge">
-                <span class="text-muted">Detachment:</span>
-                <span class="@(Side == "enemy" ? "text-danger" : "text-warning")">@DetachmentName</span>
+                <span class="text-warning">Detachment:</span>
+                <span class="text-warning">@DetachmentName</span>
             </div>
         }
     </div>
-    <div class="points-badge" style="color: @(Side == "enemy" ? "#c0392b" : "#d35400")">
+    <div class="points-badge" style="color: @(Side == "p2" ? "#5dade2" : "#d35400")">
         @CurrentPoints <span class="text-muted">/</span> @LimitPoints <small>pts</small>
-    </div>
-</div>
-<div class="header-container">
-    <div class="header-left">
-        <h3>T'au Empire Datasheets</h3>
-        @if (!string.IsNullOrEmpty(DetachmentName))
-        {
-            <div class="detachment-badge">
-                <span class="text-warning">Detachment:</span> <span class="text-warning">@DetachmentName</span>
-            </div>
-        }
-    </div>
-    <div class="points-badge">
-        @CurrentPoints <span class="text-warning">/</span> @LimitPoints <small>pts</small>
     </div>
 </div>
 
@@ -70,8 +75,8 @@
 @if (rosterData == null)
 {
     <div class="loading-state">
-        <div class="spinner-border text-warning" role="status"></div>
-        <p>Retrieving Cadre Data...</p>
+        <div class="spinner-border text-info" role="status"></div>
+        <p>Retrieving Data...</p>
     </div>
 }
 else
@@ -109,7 +114,6 @@ else
                 }
 
                 <div class="datasheet-body">
-
                     @{
                         var ranged = GetWeapons(unit, "Ranged Weapons");
                     }
@@ -195,15 +199,14 @@ else
                     }
                     @if (abilities.Any())
                     {
-                        <div class="section-header mt-3">
-                            <span>Abilities & Rules</span>
-                        </div>
+                        <div class="section-header mt-3"><span>Abilities & Rules</span></div>
                         <div class="abilities-box">
                             @foreach (var rule in abilities)
                             {
                                 <div class="ability-row">
                                     <span class="ability-name">@rule.Name:</span>
-                                    <span class="ability-desc">@rule.Description</span>
+
+                                    <span class="ability-desc">@FormatText(rule.Description)</span>
                                 </div>
                             }
                         </div>
@@ -465,28 +468,26 @@ else
     }
 </style>
 
+
 @code {
     [Parameter]
-    public string? Side { get; set; } // "my" or "enemy"
+    public string? Side { get; set; }
+
     private RosterRoot? rosterData;
     private double CurrentPoints => rosterData?.Roster?.Costs?.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
     private double LimitPoints => rosterData?.Roster?.CostLimits?.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
-
     private string DetachmentName = "";
     private Rule? DetachmentRule;
 
-    // Use OnParametersSetAsync instead of OnInitializedAsync
-    // This runs every time the URL changes (e.g. switching from My -> Enemy)
     protected override async Task OnParametersSetAsync()
     {
-        // Default to "my" if no side is specified
-        if (string.IsNullOrEmpty(Side)) Side = "my";
+        if (string.IsNullOrEmpty(Side)) Side = "p1";
 
-        // Determine which file to load
-        var fileName = Side == "enemy" ? "enemy.json" : "roster.json";
+        // Logic Change: p2 = enemy.json
+        var fileName = Side == "p2" ? "enemy.json" : "roster.json";
         var filePath = Path.Combine(Env.WebRootPath, fileName);
 
-        rosterData = null; // Clear old data while loading
+        rosterData = null;
         DetachmentName = "";
         DetachmentRule = null;
 
@@ -500,10 +501,7 @@ else
                 FindDetachmentRules();
             }
         }
-        catch
-        {
-            // Handle error
-        }
+        catch { }
     }
 
     private void FindDetachmentRules()
@@ -610,4 +608,24 @@ else
             .Where(c => c.Name != "Configuration" && c.Name != "Uncategorized")
             .Select(c => c.Name).ToList() ?? new List<string>();
     }
+
+    // Helper to clean up BattleScribe text
+    private MarkupString FormatText(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return new MarkupString("");
+
+        // 1. Remove the weird ^^ characters
+        text = text.Replace("^^", "");
+
+        // 2. Convert **Text** into <strong>Text</strong>
+        // The Regex looks for **(anything)** and replaces it with <b>$1</b>
+        text = Regex.Replace(text, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+
+        // 3. Convert newlines (\n) into HTML breaks (<br>) so paragraphs work
+        text = text.Replace("\n", "<br/>");
+
+        // Return as MarkupString so Blazor renders the HTML tags instead of showing them as text
+        return new MarkupString(text);
+    }
+
 }

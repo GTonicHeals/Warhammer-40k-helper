@@ -19,16 +19,16 @@
         </div>
 
         <div class="nav-item px-3 mt-3 mb-1">
-            <span class="text-uppercase fw-bold text-white-50 small ps-3">Tactical</span>
+            <span class="text-uppercase fw-bold text-white-50 small ps-3">Tactical Objectives</span>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="objectives/my">
-                <span class="bi bi-person-badge" aria-hidden="true"></span> My Objectives
+            <NavLink class="nav-link" href="objectives/p1">
+                <span class="bi bi-person-badge" aria-hidden="true"></span> P1 Objectives
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="objectives/enemy">
-                <span class="bi bi-person-badge-fill" aria-hidden="true"></span> Enemy Objectives
+            <NavLink class="nav-link" href="objectives/p2">
+                <span class="bi bi-person-badge-fill" aria-hidden="true" style="color: #5dade2;"></span> P2 Objectives
             </NavLink>
         </div>
 
@@ -51,66 +51,65 @@
             </NavLink>
         </div>
 
-        @if (myUnits != null)
+        @if (p1Units != null)
         {
             <div class="nav-item px-3 mt-3 mb-1">
-                <span class="text-uppercase fw-bold text-warning small ps-3" style="letter-spacing: 1px;">My Cadre</span>
+                <span class="text-uppercase fw-bold text-warning small ps-3" style="letter-spacing: 1px;">Player 1</span>
             </div>
 
             <div class="nav-item px-3">
-                <NavLink class="nav-link" href="roster/my">
-                    <span class="bi bi-list-nested" aria-hidden="true"></span> View All
+                <NavLink class="nav-link" href="roster/p1">
+                    <span class="bi bi-list-nested" aria-hidden="true"></span> Full Roster
                 </NavLink>
             </div>
 
-            @foreach (var unit in myUnits)
+            @foreach (var unit in p1Units)
             {
                 <div class="nav-item px-3">
-                    <a class="nav-link py-1" href="roster/my#@GetId(unit)">
+                    <NavLink class="nav-link py-0" href="@($"roster/p1#{GetId(unit)}")">
                         <span class="bi bi-chevron-right small me-2 text-warning" aria-hidden="true"></span>
                         <span style="font-size: 0.9em;">@unit.Name</span>
-                    </a>
+                    </NavLink>
                 </div>
             }
         }
 
-        @if (enemyUnits != null && enemyUnits.Any())
+        @if (p2Units != null && p2Units.Any())
         {
-            <div class="nav-item px-3 mt-3 mb-1">
-                <span class="text-uppercase fw-bold text-danger small ps-3" style="letter-spacing: 1px;">Enemy Forces</span>
-            </div>
-
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="roster/enemy">
-                    <span class="bi bi-list-nested" aria-hidden="true"></span> View All
-                </NavLink>
-            </div>
-
-            @foreach (var unit in enemyUnits)
-            {
-                <div class="nav-item px-3">
-                    <a class="nav-link py-1" href="roster/enemy#@GetId(unit)">
-                        <span class="bi bi-crosshair small me-2 text-danger" aria-hidden="true"></span>
-                        <span style="font-size: 0.9em;">@unit.Name</span>
-                    </a>
+            <div class="p2-section">
+                <div class="nav-item px-3 mt-3 mb-1">
+                    <span class="text-uppercase fw-bold small ps-3" style="letter-spacing: 1px; color: #5dade2;">Player 2</span>
                 </div>
-            }
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="roster/p2">
+                        <span class="bi bi-list-nested" aria-hidden="true" style="color: #5dade2;"></span> Full Roster
+                    </NavLink>
+                </div>
+
+                @foreach (var unit in p2Units)
+                {
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link py-0" href="@($"roster/p2#{GetId(unit)}")">
+                            <span class="bi bi-crosshair small me-2" aria-hidden="true" style="color: #5dade2;"></span>
+                            <span style="font-size: 0.9em;">@unit.Name</span>
+                        </NavLink>
+                    </div>
+                }
+            </div>
         }
 
     </nav>
 </div>
 
 @code {
-    private List<Selection>? myUnits;
-    private List<Selection>? enemyUnits;
+    private List<Selection>? p1Units;
+    private List<Selection>? p2Units;
 
     protected override async Task OnInitializedAsync()
     {
-        // Load My Army
-        myUnits = await LoadUnitsFromFile("roster.json");
-
-        // Load Enemy Army
-        enemyUnits = await LoadUnitsFromFile("enemy.json");
+        p1Units = await LoadUnitsFromFile("roster.json");
+        p2Units = await LoadUnitsFromFile("enemy.json");
     }
 
     private async Task<List<Selection>?> LoadUnitsFromFile(string fileName)
@@ -134,8 +133,7 @@
                     .ToList();
             }
         }
-        catch { /* Ignore errors */ }
-
+        catch { }
         return null;
     }
 

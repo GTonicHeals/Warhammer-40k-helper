@@ -12,6 +12,8 @@ builder.Services.AddScoped(sp => new HttpClient
 {
     BaseAddress = new Uri(builder.Configuration["BaseAddress"] ?? "https://localhost:7000/")
 });
+// Add this line to register your new service
+builder.Services.AddScoped<ObjectiveService>();
 
 var app = builder.Build();
 
