@@ -141,6 +141,8 @@
         background: linear-gradient(90deg, rgba(93, 173, 226, 0.15) 0%, transparent 100%);
     }
 
+
+
 /* --- SCROLLBAR --- */
 ::-webkit-scrollbar {
     width: 8px;
