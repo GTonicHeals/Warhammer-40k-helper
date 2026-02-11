@@ -1,0 +1,280 @@
+﻿@page "/smrules"
+@rendermode InteractiveServer
+
+<div class="rules-container">
+    <h1 class="page-title">Adeptus Astartes Rules Reference</h1>
+
+    <div class="rule-card army-rule">
+        <div class="rule-header">
+            <i class="bi bi-crosshair me-2"></i> FACTION RULE: Oath of Moment
+        </div>
+        <div class="rule-body">
+            <p>
+                If your Army Faction is <strong>Adeptus Astartes</strong>, at the start of your <strong>Command phase</strong>, select one unit from your opponent’s army.
+            </p>
+            <p>
+                Until the start of your next Command phase, each time a model from your army with this ability makes an attack that targets that unit, you can <strong>re-roll the Hit roll</strong>.
+            </p>
+
+            <div class="oath-diagram">
+                <div class="step">
+                    <span class="badge bg-primary">1</span>
+                    <strong>Command Phase</strong>
+                    <small>Select 1 Enemy Unit</small>
+                </div>
+                <div class="arrow">➜</div>
+                <div class="step">
+                    <span class="badge bg-danger">2</span>
+                    <strong>Destroy It</strong>
+                    <small>Re-roll ALL Hits vs Target</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="rule-card detachment-rule">
+        <div class="rule-header">
+            <i class="bi bi-shield-shaded me-2"></i> DETACHMENT: Gladius Task Force
+        </div>
+        <div class="rule-body">
+            <p><strong>Combat Doctrines:</strong> At the start of your Command phase, you can select one of the following Combat Doctrines. You can select each doctrine once per battle.</p>
+
+            <ul class="bonus-list">
+                <li class="doctrine">
+                    <strong><i class="bi bi-arrow-right-circle-fill text-primary me-2"></i>Devastator Doctrine</strong>
+                    <br /><span class="text-muted small">Units can Advance and Shoot.</span>
+                </li>
+                <li class="doctrine">
+                    <strong><i class="bi bi-arrow-right-circle-fill text-primary me-2"></i>Tactical Doctrine</strong>
+                    <br /><span class="text-muted small">Units can Fall Back and Shoot / Charge.</span>
+                </li>
+                <li class="doctrine">
+                    <strong><i class="bi bi-arrow-right-circle-fill text-primary me-2"></i>Assault Doctrine</strong>
+                    <br /><span class="text-muted small">Units can Advance and Charge.</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <h3 class="mt-4 mb-3 text-primary">Stratagems (Gladius Task Force)</h3>
+    <div class="stratagem-grid">
+
+        <div class="strat-card">
+            <div class="strat-top">
+                <span class="strat-name">Armour of Contempt</span>
+                <span class="cp-cost">1CP</span>
+            </div>
+            <div class="strat-type">Battle Tactic - Opponent's Shooting/Fight Phase</div>
+            <div class="strat-text">
+                <strong>Target:</strong> One Adeptus Astartes unit.<br />
+                <strong>Effect:</strong> Until the end of the phase, worsen the AP characteristic of attacks against this unit by 1.
+            </div>
+        </div>
+
+        <div class="strat-card">
+            <div class="strat-top">
+                <span class="strat-name">Honour the Chapter</span>
+                <span class="cp-cost">1CP</span>
+            </div>
+            <div class="strat-type">Battle Tactic - Fight Phase</div>
+            <div class="strat-text">
+                <strong>Target:</strong> One Adeptus Astartes unit.<br />
+                <strong>Effect:</strong> Melee weapons gain <strong>[LANCE]</strong> (+1 to Wound on Charge).<br />
+                <em>(If Assault Doctrine is active, gain AP-1 as well).</em>
+            </div>
+        </div>
+
+        <div class="strat-card">
+            <div class="strat-top">
+                <span class="strat-name">Only In Death Does Duty End</span>
+                <span class="cp-cost">2CP</span>
+            </div>
+            <div class="strat-type">Epic Deed - Fight Phase</div>
+            <div class="strat-text">
+                <strong>Target:</strong> One Adeptus Astartes unit that was just destroyed.<br />
+                <strong>Effect:</strong> Use this stratagem immediately after a unit is destroyed. Roll a D6 for each model. On a 4+, that model can fight before being removed.
+            </div>
+        </div>
+
+        <div class="strat-card">
+            <div class="strat-top">
+                <span class="strat-name">Adaptive Strategy</span>
+                <span class="cp-cost">1CP</span>
+            </div>
+            <div class="strat-type">Strategic Ploy - Command Phase</div>
+            <div class="strat-text">
+                <strong>Target:</strong> One Adeptus Astartes unit.<br />
+                <strong>Effect:</strong> That unit is treated as having all Combat Doctrines active until the start of your next Command phase.
+            </div>
+        </div>
+
+        <div class="strat-card">
+            <div class="strat-top">
+                <span class="strat-name">Squad Tactics</span>
+                <span class="cp-cost">1CP</span>
+            </div>
+            <div class="strat-type">Strategic Ploy - Opponent's Movement Phase</div>
+            <div class="strat-text">
+                <strong>Target:</strong> One Infantry or Mounted unit.<br />
+                <strong>Effect:</strong> If an enemy unit ends a Move within 9", your unit can make a Normal Move of D6" (or 6"). You cannot use this to move into Engagement Range.
+            </div>
+        </div>
+
+        <div class="strat-card">
+            <div class="strat-top">
+                <span class="strat-name">Storm of Fire</span>
+                <span class="cp-cost">1CP</span>
+            </div>
+            <div class="strat-type">Battle Tactic - Shooting Phase</div>
+            <div class="strat-text">
+                <strong>Target:</strong> One Adeptus Astartes unit.<br />
+                <strong>Effect:</strong> Ranged weapons gain <strong>[IGNORES COVER]</strong>. <br />
+                <em>(If Devastator Doctrine is active, improve AP by 1 as well).</em>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    /* SHARED STYLES (Keep these consistent) */
+    .rules-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding-bottom: 50px;
+        color: #e0e0e0;
+    }
+
+    .page-title {
+        color: #2e86c1;
+        border-bottom: 2px solid #444;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+
+    .rule-card {
+        background: #242424;
+        border: 1px solid #444;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .rule-header {
+        padding: 10px 15px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .rule-body {
+        padding: 15px;
+    }
+
+    /* BLUE THEME OVERRIDES */
+    .army-rule .rule-header {
+        background: #2e86c1;
+        color: white;
+    }
+    /* Ultramarine Blue */
+    .detachment-rule .rule-header {
+        background: #555;
+        color: white;
+        border-left: 5px solid #2e86c1;
+    }
+
+    /* DIAGRAM */
+    .oath-diagram {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        background: rgba(0,0,0,0.3);
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 6px;
+    }
+
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .arrow {
+        font-size: 1.5rem;
+        color: #777;
+    }
+
+    /* LISTS */
+    .bonus-list {
+        list-style: none;
+        padding: 0;
+        margin-top: 10px;
+    }
+
+    .doctrine {
+        margin-bottom: 8px;
+        padding: 8px;
+        background: rgba(46, 134, 193, 0.1);
+        border-radius: 4px;
+        border-left: 4px solid #2e86c1;
+    }
+
+    /* STRATAGEMS */
+    .stratagem-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+
+    .strat-card {
+        background: #1a1a1a;
+        border: 1px solid #444;
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .strat-top {
+        background: #333;
+        padding: 8px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #555;
+    }
+
+    .strat-name {
+        font-weight: bold;
+        color: #e0e0e0;
+        text-transform: uppercase;
+    }
+
+    .cp-cost {
+        background: #2e86c1;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 0.8rem;
+    }
+    /* Blue CP Cost */
+
+    .strat-type {
+        background: #222;
+        color: #888;
+        font-size: 0.75rem;
+        padding: 4px 12px;
+        font-style: italic;
+        border-bottom: 1px solid #333;
+    }
+
+    .strat-text {
+        padding: 12px;
+        font-size: 0.9rem;
+        color: #ccc;
+        line-height: 1.4;
+    }
+</style>
