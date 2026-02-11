@@ -6,9 +6,9 @@
     <div class="header-section">
         <h1 class="page-title">Core Rules Reference</h1>
         <div class="btn-group" role="group">
-            <a href="#turn-sequence" class="btn btn-outline-warning btn-sm">Sequence</a>
-            <a href="#wound-chart" class="btn btn-outline-warning btn-sm">Wound Chart</a>
-            <a href="#keywords" class="btn btn-outline-warning btn-sm">Keywords</a>
+            <a href="corerules#turn-sequence" class="btn btn-outline-warning btn-sm">Sequence</a>
+            <a href="corerules#wound-chart" class="btn btn-outline-warning btn-sm">Wound Chart</a>
+            <a href="corerules#keywords" class="btn btn-outline-warning btn-sm">Keywords</a>
         </div>
     </div>
 
@@ -33,11 +33,18 @@
                     <span class="step-num">2</span>
                     <div class="step-content">
                         <strong>Battle-shock Step</strong>
-                        <p>Test for every unit <strong>Below Half-strength</strong>.</p>
-                        <div class="mechanic-box">
+                        <p>Test for every unit <strong>Below Half-strength</strong>. 
+                            For units that start as a <strong>single model</strong> (like a Vehicle or Monster), they are <strong>Below Half-strength</strong> 
+                            if they have lost more than half of their starting Wounds.</p>
+
+                        <div class="mechanic-box" style="margin-bottom: 15px;">
                             <strong>Test:</strong> 2D6 ≥ Leadership (LD).<br />
                             <span class="text-danger">Fail:</span> OC = 0, No Stratagems, Desperate Escape on Fall Back.
                         </div>
+
+                        <strong> Desperate Escape </strong>
+                        <p><small> If the unit attempts to Fall Back, it must take a Desperate Escape test for every model. 
+                            For each model, roll a D6; on a result of 1 or 2, that model is destroyed.</small></p>
                     </div>
                 </div>
             </div>

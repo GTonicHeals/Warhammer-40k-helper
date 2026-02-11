@@ -6,7 +6,7 @@
 @using System.Text.RegularExpressions;
 @inject IWebHostEnvironment Env
 @inject NavigationManager Nav
-@inject IJSRuntime JS      
+@inject IJSRuntime JS
 @inject NavigationManager Nav
 @implements IDisposable
 
@@ -69,7 +69,7 @@
 {
     <div class="detachment-box">
         <h5 class="text-warning"><i class="bi bi-star-fill me-2"></i>@DetachmentRule.Name</h5>
-        <p class="mb-0 small text-white-50">@DetachmentRule.Description</p>
+        <p class="mb-0 small text-white-50">@FormatText(DetachmentRule.Description)</p>
     </div>
 }
 
@@ -549,8 +549,44 @@ else
 
     // --- YOUR EXISTING HELPERS (Keep these exactly as they are) ---
 
-    private void FindDetachmentRules() { /* ... keep existing code ... */ }
-    private IEnumerable<Selection> GetUnits() { /* ... keep existing code ... */ return rosterData?.Roster?.Forces?.First().Selections?.Where(s => s.Name != "Configuration" && s.Name != "Battle Size" && s.Name != "Detachment" && s.Name != "Show/Hide Options") ?? Enumerable.Empty<Selection>(); }
+    private void FindDetachmentRules()
+    {
+        if (rosterData?.Roster?.Forces?.FirstOrDefault() == null) return;
+        var force = rosterData.Roster.Forces.First();
+
+        // 1. Find the "Detachment" category
+        var detachmentSelection = force.Selections?.FirstOrDefault(s => s.Name == "Detachment");
+
+        // 2. Find the specific choice (e.g., "Mont'ka" or "Gladius Task Force")
+        if (detachmentSelection?.Selections != null)
+        {
+            var chosen = detachmentSelection.Selections.FirstOrDefault();
+            if (chosen != null)
+            {
+                DetachmentName = chosen.Name;
+                DetachmentRule = chosen.Rules?.FirstOrDefault();
+            }
+        }
+    }
+
+    private IEnumerable<Selection> GetUnits()
+    {
+        // 1. Safety Check: Is data loaded?
+        if (rosterData?.Roster?.Forces?.FirstOrDefault() == null)
+            return Enumerable.Empty<Selection>();
+
+        // 2. Get the main force
+        var force = rosterData.Roster.Forces.First();
+
+        // 3. Return only real units (Filter out metadata)
+        return force.Selections?
+            .Where(s => s.Name != "Configuration" &&
+                        s.Name != "Battle Size" &&
+                        s.Name != "Detachment" &&
+                        s.Name != "Show/Hide Options")
+            .ToList() ?? new List<Selection>();
+    }
+
     private string GetId(Selection unit) => unit.Name?.Replace(" ", "-").Replace("'", "").Replace("’", "") ?? "unknown";
     private double GetPointCost(Selection unit) => unit.Costs?.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
     private string GetChar(Profile p, string statName) => p.Characteristics?.FirstOrDefault(c => c.Name == statName)?.Value ?? "-";
