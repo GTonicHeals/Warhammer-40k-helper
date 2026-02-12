@@ -1,5 +1,12 @@
-﻿@page "/taurules"
+﻿@page "/tau-rules"
 @rendermode InteractiveServer
+@using System.Xml
+@using System.Xml.Linq
+@using System.IO
+@using System.Text.RegularExpressions
+@inject IWebHostEnvironment Env
+
+<PageTitle>T'au Empire Reference</PageTitle>
 
 <div class="rules-container">
     <h1 class="page-title">T'au Empire Rules Reference</h1>
@@ -35,7 +42,7 @@
                 </li>
                 <li class="good">
                     <i class="bi bi-check-circle-fill"></i>
-                    <strong>Marketlight Keyword:</strong> If Observer has <em>Markerlight</em>, the Guided unit also ignores <strong>Cover</strong>.
+                    <strong>Markerlight Keyword:</strong> If Observer has <em>Markerlight</em>, the Guided unit also ignores <strong>Cover</strong>.
                 </li>
             </ul>
         </div>
@@ -47,7 +54,7 @@
         </div>
         <div class="rule-body">
             <p><strong>Patient Hunter:</strong> From Battle Round 3 onwards, ranged weapons equipped by T'au Empire models from your army have the <strong>[SUSTAINED HITS 1]</strong> ability.</p>
-            <div class="alert alert-dark mt-2">
+            <div class="alert alert-dark mt-2" style="border: 1px solid #444;">
                 <strong>[SUSTAINED HITS 1]:</strong> A Critical Hit (unmodified roll of 6) generates 1 additional hit.
             </div>
             <p class="mt-2 text-muted">
@@ -55,66 +62,179 @@
             </p>
         </div>
     </div>
-
-    <h3 class="mt-4 mb-3 text-warning">Stratagems</h3>
-    <div class="stratagem-grid">
-
-        <div class="strat-card">
-            <div class="strat-top">
-                <span class="strat-name">Point-Blank Ambush</span>
-                <span class="cp-cost">1CP</span>
-            </div>
-            <div class="strat-type">Battle Tactic - Shooting Phase</div>
-            <div class="strat-text">
-                <strong>When:</strong> Your Shooting phase.<br />
-                <strong>Target:</strong> One T'au Empire unit from your army.<br />
-                <strong>Effect:</strong> Until the end of the phase, improve the AP by 1 for attacks made against targets within 9".
-            </div>
-        </div>
-
-        <div class="strat-card">
-            <div class="strat-top">
-                <span class="strat-name">Coordinate to Engage</span>
-                <span class="cp-cost">1CP</span>
-            </div>
-            <div class="strat-type">Strategic Ploy - Shooting Phase</div>
-            <div class="strat-text">
-                <strong>Effect:</strong> Select one Observer unit. Until the end of the phase, that unit also gains the benefit of being Guided (BS+1) when shooting at their Spotted target.
-            </div>
-        </div>
-
-        <div class="strat-card">
-            <div class="strat-top">
-                <span class="strat-name">Stimulant Injectors</span>
-                <span class="cp-cost">1CP</span>
-            </div>
-            <div class="strat-type">Epic Deed - Fight Phase</div>
-            <div class="strat-text">
-                <strong>Target:</strong> One <strong>Battlesuit</strong> unit.<br />
-                <strong>Effect:</strong> You gain a 6+ Feel No Pain (Ignore wounds on a roll of 6).
-            </div>
-        </div>
-
-        <div class="strat-card">
-            <div class="strat-top">
-                <span class="strat-name">Strike and Fade</span>
-                <span class="cp-cost">2CP</span>
-            </div>
-            <div class="strat-type">Strategic Ploy - Shooting Phase</div>
-            <div class="strat-text">
-                <strong>Target:</strong> One <strong>Battlesuit</strong> unit that can Fly.<br />
-                <strong>Effect:</strong> You can shoot, and then immediately make a Normal Move of 6". You cannot charge this turn.
-            </div>
-        </div>
-
-    </div>
 </div>
 
+<div class="container mt-5">
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h2 class="text-warning fw-bold">Full Rules Database</h2>
+            <p class="text-light">Search Stratagems, Enhancements, and Datasheet Abilities</p>
+        </div>
+    </div>
+
+    <div class="row mb-4 justify-content-center">
+        <div class="col-md-8">
+            <div class="input-group input-group-lg">
+                <span class="input-group-text bg-dark text-warning border-warning"><i class="bi bi-search"></i></span>
+                <input type="text"
+                       class="form-control bg-dark text-light border-warning"
+                       placeholder="Search (e.g. 'Strike and Fade', 'Stimulant Injectors')..."
+                       @bind="searchTerm"
+                       @bind:event="oninput" />
+                @if (!string.IsNullOrEmpty(searchTerm))
+                {
+                    <button class="btn btn-outline-warning" @onclick="() => searchTerm = string.Empty">Clear</button>
+                }
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center py-5">
+            <div class="spinner-border text-warning" role="status"></div>
+        </div>
+    }
+    else if (!FilteredRules.Any())
+    {
+        <div class="alert alert-dark text-center border-warning">
+            <span class="text-warning">No results found for "@searchTerm"</span>
+        </div>
+    }
+    else
+    {
+        <div class="row row-cols-1 row-cols-md-2 g-4 pb-5">
+            @foreach (var rule in FilteredRules)
+            {
+                <div class="col">
+                    <div class="card h-100 shadow-sm bg-dark text-light border-secondary">
+                        <div class="card-header border-bottom border-secondary d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0 text-warning">@rule.Name</h5>
+                            <span class="badge @GetBadgeClass(rule.Category)">@rule.Category</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text small" style="white-space: pre-wrap; color: #e0e0e0;">
+                                @((MarkupString)FormatText(rule.Description))
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<Rule> rules = new();
+    private string searchTerm = "";
+    private bool isLoading = true;
+
+    private IEnumerable<Rule> FilteredRules =>
+        string.IsNullOrWhiteSpace(searchTerm)
+            ? rules
+            : rules.Where(r => r.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                               r.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Run(() =>
+        {
+            var filePath = Path.Combine(Env.WebRootPath, "data", "T'au Empire.cat");
+            if (File.Exists(filePath))
+            {
+                rules = StreamTauRules(filePath);
+            }
+        });
+        isLoading = false;
+    }
+
+    private List<Rule> StreamTauRules(string path)
+    {
+        var found = new List<Rule>();
+        try
+        {
+            using var reader = XmlReader.Create(path, new XmlReaderSettings { IgnoreWhitespace = true });
+            reader.MoveToContent();
+
+            while (reader.Read())
+            {
+                if (reader.NodeType != XmlNodeType.Element) continue;
+
+                // 1. Army Rules
+                if (reader.LocalName == "rule")
+                {
+                    if (reader.GetAttribute("hidden") == "true") continue;
+                    var el = (XElement)XNode.ReadFrom(reader);
+
+                    var name = el.Attribute("name")?.Value;
+                    var desc = el.Descendants().FirstOrDefault(x => x.Name.LocalName == "description")?.Value;
+
+                    if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(desc))
+                        found.Add(new Rule { Name = name, Description = desc, Category = "Army Rule" });
+                }
+                // 2. Profiles (Stratagems, Enhancements)
+                else if (reader.LocalName == "profile")
+                {
+                    var type = reader.GetAttribute("typeName");
+                    if (type != "Stratagem" && type != "Abilities" && type != "Enhancement") continue;
+
+                    var el = (XElement)XNode.ReadFrom(reader);
+                    var name = el.Attribute("name")?.Value;
+                    var desc = el.Descendants()
+                                 .FirstOrDefault(x => x.Name.LocalName == "characteristic" &&
+                                                      x.Attribute("name")?.Value == "Description")?.Value;
+
+                    if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(desc))
+                        found.Add(new Rule { Name = name, Description = desc, Category = type });
+                }
+            }
+        }
+        catch (Exception ex) { Console.WriteLine(ex.Message); }
+
+        return found.OrderBy(r => r.Name).ToList();
+    }
+
+    // --- BADGE STYLING LOGIC ---
+    private string GetBadgeClass(string category)
+    {
+        // Normalize checking to be case-insensitive just in case
+        if (category.Equals("Stratagem", StringComparison.OrdinalIgnoreCase))
+            return "bg-tau-strat";
+
+        if (category.Equals("Enhancement", StringComparison.OrdinalIgnoreCase))
+            return "bg-tau-enhancement";
+
+        return "bg-tau-rule";
+    }
+
+    private string FormatText(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return "";
+        var text = input.Replace("\n", "<br/>");
+
+        // 1. Handle **Bold** text
+        text = Regex.Replace(text, @"\*\*(.*?)\*\*", "<strong>$1</strong>");
+
+        // 2. Handle ^^Keyword^^ text (Blue/Cyan style)
+        // This regex captures text between ^^ and ^^ and wraps it in a styled span
+        text = Regex.Replace(text, @"\^\^(.*?)\^\^", "<span class='text-warning fw-bold'>$1</span>");
+
+        return text;
+    }
+
+    public class Rule
+    {
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Category { get; set; } = "";
+    }
+}
+
 <style>
+    /* GLOBAL STYLES */
     .rules-container {
         max-width: 1000px;
         margin: 0 auto;
-        padding-bottom: 50px;
         color: #e0e0e0;
     }
 
@@ -197,58 +317,41 @@
         border-left: 4px solid #27ae60;
     }
 
-    /* --- STRATAGEMS GRID --- */
-    .stratagem-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 20px;
+    /* --- TAU SPECIFIC COLORS & BADGES --- */
+    .border-warning {
+        border-color: #d35400 !important;
     }
 
-    .strat-card {
-        background: #1a1a1a;
-        border: 1px solid #444;
-        border-radius: 6px;
-        display: flex;
-        flex-direction: column;
+    .text-warning {
+        color: #d35400 !important;
     }
 
-    .strat-top {
-        background: #333;
-        padding: 8px 12px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid #555;
+    .btn-outline-warning {
+        color: #d35400;
+        border-color: #d35400;
     }
 
-    .strat-name {
-        font-weight: bold;
-        color: #e0e0e0;
-        text-transform: uppercase;
+        .btn-outline-warning:hover {
+            background-color: #d35400;
+            color: white;
+        }
+
+    /* STRATAGEM BADGE - Red/Orange */
+    .bg-tau-strat {
+        background-color: #d35400 !important;
+        color: white !important;
     }
 
-    .cp-cost {
-        background: #d35400;
-        color: white;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-weight: bold;
-        font-size: 0.8rem;
+    /* ENHANCEMENT BADGE - Gold/Yellow */
+    .bg-tau-enhancement {
+        background-color: #f39c12 !important;
+        color: black !important;
     }
 
-    .strat-type {
-        background: #222;
-        color: #888;
-        font-size: 0.75rem;
-        padding: 4px 12px;
-        font-style: italic;
-        border-bottom: 1px solid #333;
-    }
-
-    .strat-text {
-        padding: 12px;
-        font-size: 0.9rem;
-        color: #ccc;
-        line-height: 1.4;
+    /* GENERIC RULE BADGE - Blue-Grey */
+    .bg-tau-rule {
+        background-color: #2c3e50 !important;
+        color: white !important;
+        border: 1px solid #d35400;
     }
 </style>
