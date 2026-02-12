@@ -1,4 +1,5 @@
 ﻿@page "/core-rules"
+@rendermode InteractiveServer
 @using System.Xml
 @using System.Xml.Linq
 @using System.IO
@@ -11,19 +12,32 @@
     <div class="row mb-4">
         <div class="col">
             <h1 class="display-4">Core Rules Reference</h1>
+            <p class="text-muted">Fast-loaded from Warhammer 40,000.gst</p>
         </div>
     </div>
 
     <div class="row mb-4">
-        <div class="col-md-6">
-            <input type="text"
-                   class="form-control form-control-lg"
-                   placeholder="Search rules (e.g. 'Deep Strike')..."
-                   @bind="searchTerm"
-                   @bind:event="oninput" />
+        <div class="col-md-8">
+            <div class="input-group input-group-lg">
+                <span class="input-group-text bg-dark text-white"><i class="bi bi-search"></i></span>
+
+                <input type="text"
+                       class="form-control"
+                       placeholder="Search rules (e.g. 'Deep Strike', 'Pistol')..."
+                       @bind="searchTerm"
+                       @bind:event="oninput" />
+
+                @if (!string.IsNullOrEmpty(searchTerm))
+                {
+                    <button class="btn btn-outline-secondary" @onclick="() => searchTerm = string.Empty">Clear</button>
+                }
+            </div>
+            <small class="text-muted">
+                Status: @(string.IsNullOrEmpty(searchTerm) ? "Showing All" : $"Filtering for '{searchTerm}'")
+            </small>
         </div>
-        <div class="col-md-6 d-flex align-items-center">
-            <span class="text-muted small">Loaded @rules.Count rules</span>
+        <div class="col-md-4 d-flex align-items-center">
+            <span class="badge bg-secondary ms-2">@FilteredRules.Count() / @rules.Count Loaded</span>
         </div>
     </div>
 
@@ -39,15 +53,15 @@
     else if (rules.Count == 0)
     {
         <div class="alert alert-danger">
-            <h4 class="alert-heading">No Rules Loaded</h4>
+            <h4 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i>No Rules Loaded</h4>
             <p>Could not find any rules in <code>Warhammer 40,000.gst</code>.</p>
-            <hr>
-            <p class="mb-0">Please ensure the file is in <code>wwwroot/data/</code> and is a valid BattleScribe Game System file.</p>
         </div>
     }
     else if (!FilteredRules.Any())
     {
-        <div class="alert alert-warning">No rules found matching "@searchTerm"</div>
+        <div class="alert alert-warning">
+            <i class="bi bi-search me-2"></i>No rules found matching "<strong>@searchTerm</strong>"
+        </div>
     }
     else
     {
@@ -56,12 +70,18 @@
             {
                 <div class="col">
                     <div class="card h-100 shadow-sm border-0 bg-dark text-light">
-                        <div class="card-header border-bottom border-secondary d-flex justify-content-between align-items-center bg-black bg-opacity-25">
-                            <h5 class="card-title mb-0 text-warning">@rule.Name</h5>
-                            @if (!string.IsNullOrEmpty(rule.Page))
-                            {
-                                <span class="badge bg-secondary">Pg @rule.Page</span>
-                            }
+                        <div class="card-header border-bottom border-secondary">
+                            <div class="d-flex justify-content-between align-items-center w-100">
+                                <h5 class="card-title mb-0 text-warning">@rule.Name</h5>
+                                <div>
+                                    <span class="badge bg-info text-dark me-1" style="font-size: 0.7rem;">@rule.Category</span>
+
+                                    @if (!string.IsNullOrEmpty(rule.Page))
+                                    {
+                                        <span class="badge bg-secondary" style="font-size: 0.7rem;">Pg @rule.Page</span>
+                                    }
+                                </div>
+                            </div>
                         </div>
                         <div class="card-body">
                             <p class="card-text small" style="white-space: pre-wrap; color: #d1d1d1;">
@@ -80,7 +100,6 @@
     private string searchTerm = "";
     private bool isLoading = true;
 
-    // Filter logic
     private IEnumerable<Rule> FilteredRules =>
         string.IsNullOrWhiteSpace(searchTerm)
             ? rules
@@ -104,71 +123,73 @@
     private List<Rule> StreamRulesFromFile(string path)
     {
         var foundRules = new List<Rule>();
-        var settings = new XmlReaderSettings { IgnoreWhitespace = true };
 
         try
         {
-            using var reader = XmlReader.Create(path, settings);
+            using var reader = XmlReader.Create(path, new XmlReaderSettings { IgnoreWhitespace = true });
+            reader.MoveToContent();
 
-            // Loop through the entire file node by node
             while (reader.Read())
             {
-                // Only look at Element nodes
-                if (reader.NodeType == XmlNodeType.Element)
+                if (reader.NodeType != XmlNodeType.Element) continue;
+
+                // 1. IS IT A <rule>?
+                if (reader.LocalName == "rule")
                 {
-                    // 1. LOOK FOR <rule> (Standard Core Rules)
-                    // We check LocalName to ignore namespaces
-                    if (reader.LocalName == "rule")
+                    if (reader.GetAttribute("hidden") == "true") continue;
+
+                    var el = (XElement)XNode.ReadFrom(reader);
+
+                    var name = el.Attribute("name")?.Value;
+                    var page = el.Attribute("page")?.Value;
+                    // Rules store text in <description> child
+                    var desc = el.Descendants().FirstOrDefault(x => x.Name.LocalName == "description")?.Value;
+
+                    if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(desc))
                     {
-                        // Optimization: Skip unit-specific rules, only want shared ones
-                        // BattleScribe usually puts core rules in 'sharedRules' or 'sharedProfiles'
-                        // We will just grab them all for now to ensure we get data.
-
-                        var name = reader.GetAttribute("name") ?? "";
-                        var page = reader.GetAttribute("page") ?? "";
-                        string desc = "";
-
-                        // Read the rule content safely using XElement
-                        // This prevents the reader from getting desynced
-                        using (var subReader = reader.ReadSubtree())
+                        foundRules.Add(new Rule
                         {
-                            var el = XElement.Load(subReader);
-                            // Find <description> anywhere inside this rule
-                            desc = el.Descendants().FirstOrDefault(x => x.Name.LocalName == "description")?.Value ?? "";
-                        }
-
-                        if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(desc))
-                        {
-                            foundRules.Add(new Rule { Name = name, Page = page, Description = desc });
-                        }
+                            Name = name,
+                            Page = page ?? "",
+                            Description = desc,
+                            Category = "Core Rule"
+                        });
                     }
+                }
+                // 2. IS IT A <profile>?
+                else if (reader.LocalName == "profile")
+                {
+                    if (reader.GetAttribute("hidden") == "true") continue;
 
-                    // 2. LOOK FOR <profile> with type="Abilities" (Common for 10th Ed)
-                    else if (reader.LocalName == "profile")
+                    var typeName = reader.GetAttribute("typeName");
+
+                    // FILTER: Include Abilities, Rules, and ALL Crusade/Narrative types
+                    if (typeName != "Abilities" &&
+                        typeName != "Rule" &&
+                        typeName != "Crusade Relic" &&
+                        typeName != "Crusade Battle Trait" &&
+                        typeName != "Crusade Battle Scar" &&
+                        typeName != "Weapon Ability") continue;
+
+                    var el = (XElement)XNode.ReadFrom(reader);
+
+                    var name = el.Attribute("name")?.Value;
+                    var page = el.Attribute("page")?.Value;
+
+                    // Profiles store text in <characteristic name="Description">
+                    var desc = el.Descendants()
+                                 .FirstOrDefault(x => x.Name.LocalName == "characteristic" &&
+                                                      x.Attribute("name")?.Value == "Description")?.Value;
+
+                    if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(desc))
                     {
-                        var typeName = reader.GetAttribute("typeName");
-                        if (typeName == "Abilities" || typeName == "Rule")
+                        foundRules.Add(new Rule
                         {
-                            var name = reader.GetAttribute("name") ?? "";
-                            var page = reader.GetAttribute("page") ?? "";
-                            string desc = "";
-
-                            using (var subReader = reader.ReadSubtree())
-                            {
-                                var el = XElement.Load(subReader);
-                                // Profiles store text in <characteristic name="Description">
-                                var charEl = el.Descendants()
-                                    .FirstOrDefault(x => x.Name.LocalName == "characteristic" &&
-                                                         (x.Attribute("name")?.Value == "Description"));
-
-                                desc = charEl?.Value ?? "";
-                            }
-
-                            if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(desc))
-                            {
-                                foundRules.Add(new Rule { Name = name, Page = page, Description = desc });
-                            }
-                        }
+                            Name = name,
+                            Page = page ?? "",
+                            Description = desc,
+                            Category = typeName ?? "Ability"
+                        });
                     }
                 }
             }
@@ -178,7 +199,10 @@
             Console.WriteLine($"Error streaming XML: {ex.Message}");
         }
 
-        return foundRules.OrderBy(r => r.Name).DistinctBy(r => r.Name).ToList();
+        return foundRules
+            .OrderBy(r => r.Name)
+            .DistinctBy(r => r.Name)
+            .ToList();
     }
 
     private string FormatBattleScribeText(string input)
@@ -186,13 +210,8 @@
         if (string.IsNullOrEmpty(input)) return string.Empty;
         var text = input;
 
-        // **Bold** -> <strong>Bold</strong>
         text = Regex.Replace(text, @"\*\*(.*?)\*\*", "<strong class='text-white'>$1</strong>");
-
-        // ^^Keyword^^ -> Italic/Bold (Blue)
         text = Regex.Replace(text, @"\^\^(.*?)\^\^", "<em class='text-info fw-bold'>$1</em>");
-
-        // Bullet points
         text = text.Replace("•", "<br/>•");
         text = text.Replace("\n", "<br/>");
 
@@ -204,5 +223,6 @@
         public string Name { get; set; } = "";
         public string Page { get; set; } = "";
         public string Description { get; set; } = "";
+        public string Category { get; set; } = "";
     }
 }
