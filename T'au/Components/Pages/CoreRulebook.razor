@@ -1,5 +1,6 @@
 ﻿@page "/core-rules"
-@using System.Xml.Serialization
+@using System.Xml
+@using System.Xml.Linq
 @using System.IO
 @using System.Text.RegularExpressions
 @inject IWebHostEnvironment Env
@@ -10,7 +11,6 @@
     <div class="row mb-4">
         <div class="col">
             <h1 class="display-4">Core Rules Reference</h1>
-            <p class="text-muted">sourced from Warhammer 40,000.gst</p>
         </div>
     </div>
 
@@ -22,14 +22,27 @@
                    @bind="searchTerm"
                    @bind:event="oninput" />
         </div>
+        <div class="col-md-6 d-flex align-items-center">
+            <span class="text-muted small">Loaded @rules.Count rules</span>
+        </div>
     </div>
 
-    @if (rules == null)
+    @if (isLoading)
     {
-        <div class="d-flex justify-content-center">
-            <div class="spinner-border" role="status">
+        <div class="d-flex flex-column align-items-center justify-content-center py-5">
+            <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
+            <p class="mt-3 text-muted">Scanning Game System file...</p>
+        </div>
+    }
+    else if (rules.Count == 0)
+    {
+        <div class="alert alert-danger">
+            <h4 class="alert-heading">No Rules Loaded</h4>
+            <p>Could not find any rules in <code>Warhammer 40,000.gst</code>.</p>
+            <hr>
+            <p class="mb-0">Please ensure the file is in <code>wwwroot/data/</code> and is a valid BattleScribe Game System file.</p>
         </div>
     }
     else if (!FilteredRules.Any())
@@ -42,16 +55,16 @@
             @foreach (var rule in FilteredRules)
             {
                 <div class="col">
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                            <h5 class="card-title mb-0">@rule.Name</h5>
+                    <div class="card h-100 shadow-sm border-0 bg-dark text-light">
+                        <div class="card-header border-bottom border-secondary d-flex justify-content-between align-items-center bg-black bg-opacity-25">
+                            <h5 class="card-title mb-0 text-warning">@rule.Name</h5>
                             @if (!string.IsNullOrEmpty(rule.Page))
                             {
                                 <span class="badge bg-secondary">Pg @rule.Page</span>
                             }
                         </div>
                         <div class="card-body">
-                            <p class="card-text" style="white-space: pre-wrap;">
+                            <p class="card-text small" style="white-space: pre-wrap; color: #d1d1d1;">
                                 @((MarkupString)FormatBattleScribeText(rule.Description))
                             </p>
                         </div>
@@ -63,88 +76,133 @@
 </div>
 
 @code {
-    private List<Rule>? rules;
+    private List<Rule> rules = new();
     private string searchTerm = "";
+    private bool isLoading = true;
 
+    // Filter logic
     private IEnumerable<Rule> FilteredRules =>
         string.IsNullOrWhiteSpace(searchTerm)
-            ? (rules ?? new List<Rule>())
+            ? rules
             : rules.Where(r => r.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
                                r.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        // Adjust this path to where you stored the .gst file
-        var filePath = Path.Combine(Env.WebRootPath, "data", "Warhammer 40,000.gst");
-
-        if (File.Exists(filePath))
+        await Task.Run(() =>
         {
-            rules = ParseGstFile(filePath);
-        }
+            var filePath = Path.Combine(Env.WebRootPath, "data", "Warhammer 40,000.gst");
+            if (File.Exists(filePath))
+            {
+                rules = StreamRulesFromFile(filePath);
+            }
+        });
+
+        isLoading = false;
     }
 
-    // --- XML Parsing Logic ---
-    private List<Rule> ParseGstFile(string path)
+    private List<Rule> StreamRulesFromFile(string path)
     {
+        var foundRules = new List<Rule>();
+        var settings = new XmlReaderSettings { IgnoreWhitespace = true };
+
         try
         {
-            var serializer = new XmlSerializer(typeof(GameSystem));
-            using var stream = new FileStream(path, FileMode.Open);
-            var system = (GameSystem?)serializer.Deserialize(stream);
+            using var reader = XmlReader.Create(path, settings);
 
-            return system?.SharedRules?.Rules.OrderBy(r => r.Name).ToList() ?? new List<Rule>();
+            // Loop through the entire file node by node
+            while (reader.Read())
+            {
+                // Only look at Element nodes
+                if (reader.NodeType == XmlNodeType.Element)
+                {
+                    // 1. LOOK FOR <rule> (Standard Core Rules)
+                    // We check LocalName to ignore namespaces
+                    if (reader.LocalName == "rule")
+                    {
+                        // Optimization: Skip unit-specific rules, only want shared ones
+                        // BattleScribe usually puts core rules in 'sharedRules' or 'sharedProfiles'
+                        // We will just grab them all for now to ensure we get data.
+
+                        var name = reader.GetAttribute("name") ?? "";
+                        var page = reader.GetAttribute("page") ?? "";
+                        string desc = "";
+
+                        // Read the rule content safely using XElement
+                        // This prevents the reader from getting desynced
+                        using (var subReader = reader.ReadSubtree())
+                        {
+                            var el = XElement.Load(subReader);
+                            // Find <description> anywhere inside this rule
+                            desc = el.Descendants().FirstOrDefault(x => x.Name.LocalName == "description")?.Value ?? "";
+                        }
+
+                        if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(desc))
+                        {
+                            foundRules.Add(new Rule { Name = name, Page = page, Description = desc });
+                        }
+                    }
+
+                    // 2. LOOK FOR <profile> with type="Abilities" (Common for 10th Ed)
+                    else if (reader.LocalName == "profile")
+                    {
+                        var typeName = reader.GetAttribute("typeName");
+                        if (typeName == "Abilities" || typeName == "Rule")
+                        {
+                            var name = reader.GetAttribute("name") ?? "";
+                            var page = reader.GetAttribute("page") ?? "";
+                            string desc = "";
+
+                            using (var subReader = reader.ReadSubtree())
+                            {
+                                var el = XElement.Load(subReader);
+                                // Profiles store text in <characteristic name="Description">
+                                var charEl = el.Descendants()
+                                    .FirstOrDefault(x => x.Name.LocalName == "characteristic" &&
+                                                         (x.Attribute("name")?.Value == "Description"));
+
+                                desc = charEl?.Value ?? "";
+                            }
+
+                            if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(desc))
+                            {
+                                foundRules.Add(new Rule { Name = name, Page = page, Description = desc });
+                            }
+                        }
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error parsing GST: {ex.Message}");
-            return new List<Rule>();
+            Console.WriteLine($"Error streaming XML: {ex.Message}");
         }
+
+        return foundRules.OrderBy(r => r.Name).DistinctBy(r => r.Name).ToList();
     }
 
-    // --- Helper to format BattleScribe specific markup ---
-    // Example: Converts **[KEYWORD]** to bold and ^^Unit^^ to italic/bold
     private string FormatBattleScribeText(string input)
     {
         if (string.IsNullOrEmpty(input)) return string.Empty;
+        var text = input;
 
-        // Replace **Text** with <strong>Text</strong>
-        var boldRegex = new Regex(@"\*\*(.*?)\*\*");
-        var result = boldRegex.Replace(input, "<strong>$1</strong>");
+        // **Bold** -> <strong>Bold</strong>
+        text = Regex.Replace(text, @"\*\*(.*?)\*\*", "<strong class='text-white'>$1</strong>");
 
-        // Replace ^^Text^^ with <em><strong>Text</strong></em> (often used for keywords like ^^Character^^)
-        var keywordRegex = new Regex(@"\^\^(.*?)\^\^");
-        result = keywordRegex.Replace(result, "<em class='text-primary fw-bold'>$1</em>");
+        // ^^Keyword^^ -> Italic/Bold (Blue)
+        text = Regex.Replace(text, @"\^\^(.*?)\^\^", "<em class='text-info fw-bold'>$1</em>");
 
-        // Replace newlines with <br> for HTML display
-        result = result.Replace("\n", "<br/>");
+        // Bullet points
+        text = text.Replace("•", "<br/>•");
+        text = text.Replace("\n", "<br/>");
 
-        return result;
-    }
-
-    // --- XML Mapping Models ---
-
-    [XmlRoot("gameSystem", Namespace = "http://www.battlescribe.net/schema/gameSystemSchema")]
-    public class GameSystem
-    {
-        [XmlElement("sharedRules")]
-        public SharedRules? SharedRules { get; set; }
-    }
-
-    public class SharedRules
-    {
-        [XmlElement("rule")]
-        public List<Rule> Rules { get; set; } = new();
+        return text;
     }
 
     public class Rule
     {
-        [XmlAttribute("name")]
         public string Name { get; set; } = "";
-
-        [XmlAttribute("page")]
         public string Page { get; set; } = "";
-
-        [XmlElement("description")]
         public string Description { get; set; } = "";
     }
 }

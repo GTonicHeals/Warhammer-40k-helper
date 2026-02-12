@@ -12,32 +12,12 @@
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3 mt-3 mb-1">
-            <span class="text-uppercase fw-bold text-white-50 small ps-3">Tactical Objectives</span>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="objectives/p1">
-                <span class="bi bi-person-badge" aria-hidden="true"></span> P1 Objectives
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="objectives/p2">
-                <span class="bi bi-person-badge-fill" aria-hidden="true" style="color: #5dade2;"></span> P2 Objectives
-            </NavLink>
-        </div>
-
         <div class="nav-item px-3 mt-3 mb-1">
             <span class="text-uppercase fw-bold text-white-50 small ps-3">Reference</span>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="corerules">
-                <span class="bi bi-journals" aria-hidden="true"></span> Core Rules
+            <NavLink class="nav-link" href="quickref">
+                <span class="bi bi-journals" aria-hidden="true"></span> Quick Handbook
             </NavLink>
         </div>
         <div class="nav-item px-3">
@@ -55,7 +35,26 @@
                 <span class="bi bi-book" aria-hidden="true"></span> Space Marines Rules
             </NavLink>
         </div>
-        
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="core-rules">
+                <span class="bi bi-journals" aria-hidden="true"></span> Core Rulebook
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3 mt-3 mb-1">
+            <span class="text-uppercase fw-bold text-white-50 small ps-3">Tactical Objectives</span>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="objectives/p1">
+                <span class="bi bi-person-badge" aria-hidden="true"></span> P1 Objectives
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="objectives/p2">
+                <span class="bi bi-person-badge-fill" aria-hidden="true" style="color: #5dade2;"></span> P2 Objectives
+            </NavLink>
+        </div>
+
 
         @if (p1Units != null)
         {
