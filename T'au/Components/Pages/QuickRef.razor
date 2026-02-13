@@ -2,21 +2,24 @@
 @rendermode InteractiveServer
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@using System.Text.RegularExpressions
 @implements IDisposable
 
 <div class="rules-container">
 
     <div class="header-section">
         <h1 class="page-title">Core Rules Reference</h1>
-        <div class="btn-group" role="group">
-            <a href="quickref#turn-sequence" class="btn btn-outline-warning btn-sm" @onclick='() => ScrollTo("turn-sequence")'>Sequence</a>
-            <a href="quickref#wound-chart" class="btn btn-outline-warning btn-sm" @onclick='() => ScrollTo("wound-chart")'>Wound Chart</a>
-            <a href="quickref#keywords" class="btn btn-outline-warning btn-sm" @onclick='() => ScrollTo("keywords")'>Keywords</a>
-        </div>
     </div>
 
     <div id="turn-sequence">
-        <h3 class="section-header">Turn Sequence</h3>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="section-header mb-0">Turn Sequence</h3>
+            <div class="btn-group" role="group">
+                <button class="btn btn-outline-warning btn-sm" @onclick='() => ScrollTo("turn-sequence")'>Sequence</button>
+                <button class="btn btn-outline-warning btn-sm" @onclick='() => ScrollTo("wound-calculator")'>Wounds</button>
+                <button class="btn btn-outline-warning btn-sm" @onclick='() => ScrollTo("keywords")'>Keywords</button>
+            </div>
+        </div>
 
         <div class="phase-card command-phase">
             <div class="phase-header">
@@ -143,6 +146,37 @@
         </div>
     </div>
 
+    <div id="wound-calculator" class="mt-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="section-header mb-0">Wound Calculator</h3>
+            <div class="btn-group" role="group">
+                <button class="btn btn-outline-warning btn-sm" @onclick='() => ScrollTo("turn-sequence")'>Sequence</button>
+                <button class="btn btn-outline-warning btn-sm" @onclick='() => ScrollTo("wound-calculator")'>Wounds</button>
+                <button class="btn btn-outline-warning btn-sm" @onclick='() => ScrollTo("keywords")'>Keywords</button>
+            </div>
+        </div>
+
+        <div class="calc-box mb-4">
+            <div class="row g-2 align-items-center justify-content-center">
+                <div class="col-4 text-center">
+                    <label class="calc-label">STR</label>
+                    <input type="number" class="form-control calc-input" @bind="Strength" @bind:event="oninput" min="1" />
+                </div>
+                <div class="col-1 text-center text-warning fw-bold">VS</div>
+                <div class="col-4 text-center">
+                    <label class="calc-label">TGH</label>
+                    <input type="number" class="form-control calc-input" @bind="Toughness" @bind:event="oninput" min="1" />
+                </div>
+            </div>
+
+            <div class="result-display mt-3 @GetResultColor()">
+                <span class="result-label">ROLL REQUIRED:</span>
+                <span class="result-value">@CalculateRoll()+</span>
+                <div class="result-reason">@GetResultReason()</div>
+            </div>
+        </div>
+    </div>
+
     <div id="wound-chart" class="mt-5">
         <h3 class="section-header">Wound Roll Chart</h3>
         <div class="chart-card">
@@ -180,7 +214,14 @@
     </div>
 
     <div id="keywords" class="mt-5">
-        <h3 class="section-header">Universal Special Rules</h3>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="section-header mb-0">Universal Special Rules</h3>
+            <div class="btn-group" role="group">
+                <button class="btn btn-outline-warning btn-sm" @onclick='() => ScrollTo("turn-sequence")'>Sequence</button>
+                <button class="btn btn-outline-warning btn-sm" @onclick='() => ScrollTo("wound-calculator")'>Wounds</button>
+                <button class="btn btn-outline-warning btn-sm" @onclick='() => ScrollTo("keywords")'>Keywords</button>
+            </div>
+        </div>
 
         <div class="input-group mb-3 sticky-search">
             <span class="input-group-text bg-dark text-white border-secondary"><i class="bi bi-search"></i></span>
@@ -194,13 +235,16 @@
             @foreach (var kw in FilteredKeywords)
             {
                 <div class="keyword-card">
-                    <div class="kw-header">@kw.Name</div>
-                    <div class="kw-body">@kw.Definition</div>
+                    <div class="kw-header">
+                        @((MarkupString)HighlightText(kw.Name))
+                    </div>
+                    <div class="kw-body">
+                        @((MarkupString)HighlightText(kw.Definition))
+                    </div>
                 </div>
             }
         </div>
     </div>
-
 </div>
 
 <script>
@@ -312,9 +356,140 @@
     {
         await JS.InvokeVoidAsync("quickRefState.scrollToId", id);
     }
+    // --- CALCULATOR LOGIC ---
+    private int Strength = 4;
+    private int Toughness = 4;
+
+    private int CalculateRoll()
+    {
+        if (Toughness == 0) return 0;
+        if (Strength >= Toughness * 2) return 2;
+        if (Strength > Toughness) return 3;
+        if (Strength == Toughness) return 4;
+        if (Strength <= Toughness / 2) return 6;
+        return 5;
+    }
+
+    private string GetResultReason()
+    {
+        if (Strength >= Toughness * 2) return "Strength is 2x Toughness";
+        if (Strength > Toughness) return "Strength > Toughness";
+        if (Strength == Toughness) return "Strength = Toughness";
+        if (Strength <= Toughness / 2) return "Strength is Half Toughness";
+        return "Strength < Toughness";
+    }
+
+    private string GetResultColor()
+    {
+        return CalculateRoll() switch
+        {
+            2 => "res-green",
+            3 => "res-teal",
+            4 => "res-white",
+            5 => "res-orange",
+            6 => "res-red",
+            _ => ""
+        };
+    }
+    // --- HIGHLIGHT HELPER ---
+    private string HighlightText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(filterText)) return text;
+
+        // Wraps matching text in a span with class 'highlight'
+        return Regex.Replace(
+            text,
+            $"({Regex.Escape(filterText)})",
+            "<span class='highlight'>$1</span>",
+            RegexOptions.IgnoreCase
+        );
+    }
 }
 
+
 <style>
+    /* CALCULATOR STYLES */
+    .calc-box {
+        background: #1a1a1a;
+        border: 1px solid #444;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+
+    .calc-label {
+        font-size: 0.75rem;
+        font-weight: bold;
+        color: #888;
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .calc-input {
+        background: #333;
+        border: 1px solid #555;
+        color: white;
+        text-align: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+
+    .result-display {
+        text-align: center;
+        background: #111;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #333;
+    }
+
+    .result-value {
+        font-size: 2.5rem;
+        font-weight: 900;
+        line-height: 1;
+        display: block;
+    }
+
+    .result-reason {
+        font-size: 0.8rem;
+        font-style: italic;
+        opacity: 0.8;
+    }
+
+    /* Result Colors */
+    .res-green {
+        color: #2ecc71;
+        border-color: #2ecc71;
+    }
+
+    .res-teal {
+        color: #1abc9c;
+        border-color: #1abc9c;
+    }
+
+    .res-white {
+        color: #ecf0f1;
+        border-color: #7f8c8d;
+    }
+
+    .res-orange {
+        color: #e67e22;
+        border-color: #e67e22;
+    }
+
+    .res-red {
+        color: #e74c3c;
+        border-color: #e74c3c;
+    }
+
+    /* HIGHLIGHT STYLE */
+    .highlight {
+        background-color: #d35400;
+        color: white;
+        padding: 0 2px;
+        border-radius: 2px;
+        font-weight: bold;
+    }
+
     .rules-container {
         max-width: 900px;
         margin: 0 auto;
