@@ -1,10 +1,10 @@
 ﻿@page "/core-rules"
-@rendermode InteractiveServer
+@rendermode InteractiveWebAssembly
 @using System.Xml
 @using System.Xml.Linq
 @using System.IO
 @using System.Text.RegularExpressions
-@inject IWebHostEnvironment Env
+@inject HttpClient Http
 
 <PageTitle>Core Rulebook</PageTitle>
 
@@ -53,7 +53,7 @@
     {
         <div class="alert alert-danger">
             <h4 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i>No Rules Loaded</h4>
-            <p>Could not find any rules in <code>Warhammer 40,000.gst</code>.</p>
+            <p>Could not find or parse <code>Warhammer 40,000.gst</code>.</p>
         </div>
     }
     else if (!FilteredRules.Any())
@@ -76,7 +76,7 @@
                                     @{
                                         var badgeClass = rule.Category == "Stratagem" ? "bg-danger text-white" :
                                         rule.Category == "Core Rule" ? "bg-warning text-dark" :
-                                        "bg-info text-dark";
+                                                                "bg-info text-dark";
                                     }
                                     <span class="badge @badgeClass me-1" style="font-size: 0.7rem;">@rule.Category</span>
 
@@ -112,25 +112,32 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await Task.Run(() =>
+        // UPDATED: Fetch the file stream via HTTP instead of File System
+        try
         {
-            var filePath = Path.Combine(Env.WebRootPath, "data", "Warhammer 40,000.gst");
-            if (File.Exists(filePath))
-            {
-                rules = StreamRulesFromFile(filePath);
-            }
-        });
+            // Ensure this file exists in wwwroot/data/
+            using var stream = await Http.GetStreamAsync("data/Warhammer 40,000.gst");
+
+            // We run parsing on a background thread to keep UI responsive
+            rules = await Task.Run(() => StreamRulesFromStream(stream));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load Core Rules: {ex.Message}");
+        }
 
         isLoading = false;
     }
 
-    private List<Rule> StreamRulesFromFile(string path)
+    // UPDATED: Changed parameter from 'string path' to 'Stream stream'
+    private List<Rule> StreamRulesFromStream(Stream stream)
     {
         var foundRules = new List<Rule>();
 
         try
         {
-            using var reader = XmlReader.Create(path, new XmlReaderSettings { IgnoreWhitespace = true });
+            // Pass the stream directly to XmlReader
+            using var reader = XmlReader.Create(stream, new XmlReaderSettings { IgnoreWhitespace = true });
             reader.MoveToContent();
 
             while (reader.Read())
@@ -173,9 +180,9 @@
                         typeName != "Crusade Battle Trait" &&
                         typeName != "Crusade Battle Scar" &&
                         typeName != "Weapon Ability" &&
-                        typeName != "Stratagem" &&    // Added!
-                        typeName != "Mission Rule" && // Added!
-                        typeName != "Terrain")        // Added!
+                        typeName != "Stratagem" &&
+                        typeName != "Mission Rule" &&
+                        typeName != "Terrain")
                         continue;
 
                     var el = (XElement)XNode.ReadFrom(reader);

@@ -4,7 +4,8 @@
 @using System.Xml.Linq
 @using System.IO
 @using System.Text.RegularExpressions
-@inject IWebHostEnvironment Env
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+@inject HttpClient Http
 
 <PageTitle>T'au Empire Reference</PageTitle>
 
@@ -137,33 +138,43 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await Task.Run(() =>
+        try
         {
-            var filePath = Path.Combine(Env.WebRootPath, "data", "T'au Empire.cat");
-            if (File.Exists(filePath))
-            {
-                rules = StreamTauRules(filePath);
-            }
-        });
+            // We fetch the file as a data stream over the network
+            using var stream = await Http.GetStreamAsync("data/T'au Empire.cat");
+            rules = StreamTauRules(stream);
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Could not find rules file: {ex.Message}");
+            // Handle 404 - maybe clear the list or show an error
+            rules = new List<Rule>();
+        }
+
         isLoading = false;
     }
 
-    private List<Rule> StreamTauRules(string path)
+    // 1. Change the parameter type from 'string' to 'Stream'
+    private List<Rule> StreamTauRules(Stream stream)
     {
         var found = new List<Rule>();
         try
         {
-            using var reader = XmlReader.Create(path, new XmlReaderSettings { IgnoreWhitespace = true });
+            // 2. Pass the stream directly to XmlReader
+            using var reader = XmlReader.Create(stream, new XmlReaderSettings { IgnoreWhitespace = true });
             reader.MoveToContent();
 
             while (reader.Read())
             {
                 if (reader.NodeType != XmlNodeType.Element) continue;
 
+                // ... (Your parsing logic remains exactly the same below) ...
+
                 // 1. Army Rules
                 if (reader.LocalName == "rule")
                 {
                     if (reader.GetAttribute("hidden") == "true") continue;
+                    // Read the current element (XNode.ReadFrom advances the reader)
                     var el = (XElement)XNode.ReadFrom(reader);
 
                     var name = el.Attribute("name")?.Value;
@@ -180,6 +191,8 @@
 
                     var el = (XElement)XNode.ReadFrom(reader);
                     var name = el.Attribute("name")?.Value;
+
+                    // Note: Ensure your XML structure matches this query
                     var desc = el.Descendants()
                                  .FirstOrDefault(x => x.Name.LocalName == "characteristic" &&
                                                       x.Attribute("name")?.Value == "Description")?.Value;
@@ -189,7 +202,10 @@
                 }
             }
         }
-        catch (Exception ex) { Console.WriteLine(ex.Message); }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error parsing XML: {ex.Message}");
+        }
 
         return found.OrderBy(r => r.Name).ToList();
     }

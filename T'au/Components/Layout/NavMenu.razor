@@ -1,7 +1,6 @@
 ﻿@using System.Text.Json
 @using Warhammer.Models
-@using System.IO
-@inject IWebHostEnvironment Env
+@inject HttpClient Http
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -115,20 +114,20 @@
 
     protected override async Task OnInitializedAsync()
     {
-        p1Units = await LoadUnitsFromFile("roster.json");
-        p2Units = await LoadUnitsFromFile("enemy.json");
+        // Load files via HTTP
+        p1Units = await LoadUnitsFromUrl("roster.json");
+        p2Units = await LoadUnitsFromUrl("enemy.json");
     }
 
-    private async Task<List<Selection>?> LoadUnitsFromFile(string fileName)
+    // UPDATED: Renamed to LoadUnitsFromUrl and uses HttpClient
+    private async Task<List<Selection>?> LoadUnitsFromUrl(string fileName)
     {
-        var filePath = Path.Combine(Env.WebRootPath, fileName);
-        if (!File.Exists(filePath)) return null;
-
         try
         {
-            var jsonString = await File.ReadAllTextAsync(filePath);
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var data = JsonSerializer.Deserialize<RosterRoot>(jsonString, options);
+
+            // This replaces File.ReadAllTextAsync
+            var data = await Http.GetFromJsonAsync<RosterRoot>(fileName, options);
 
             if (data?.Roster?.Forces?.FirstOrDefault() != null)
             {
@@ -140,7 +139,11 @@
                     .ToList();
             }
         }
-        catch { }
+        catch
+        {
+            // If the file is missing (404) or invalid JSON, we just return null
+            // This mimics the "if (!File.Exists)" check
+        }
         return null;
     }
 

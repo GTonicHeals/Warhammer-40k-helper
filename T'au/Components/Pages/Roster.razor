@@ -1,10 +1,9 @@
 ﻿@page "/roster/{Side?}"
-@rendermode InteractiveServer
+@rendermode InteractiveWebAssembly
 @using System.Text.Json
 @using Warhammer.Models
-@using System.IO
 @using System.Text.RegularExpressions
-@inject IWebHostEnvironment Env
+@inject HttpClient Http
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @implements IDisposable
@@ -42,8 +41,6 @@
         .ability-name {
             color: #5dade2 !important;
         }
-
-        /* FIX: Removed the .strat-badge override so Red/Green/Blue logic works! */
     </style>
 }
 
@@ -114,13 +111,11 @@ else
 
                 @{
                     var unitStrats = GetStratagemsForUnit(unit.Name);
-                    // Resolve objects
                     var resolvedStrats = unitStrats
                     .Select(name => AllStratagemsDetailed.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
                     .Where(s => s != null)
                     .ToList();
 
-                    // Sort: Your Turn (Blue) -> Opponent (Red) -> Either (Green)
                     var sortedStrats = resolvedStrats
                     .OrderBy(s => GetStratSortOrder(s))
                     .ThenBy(s => s.Name)
@@ -307,17 +302,18 @@ else
         public string Detachment { get; set; } = "";
     }
 
-    // 1. Setup Scroll Listener
     protected override async Task OnInitializedAsync()
     {
         Nav.LocationChanged += OnLocationChanged;
     }
 
+    // UPDATED: Now uses HttpClient instead of File.IO
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(Side)) Side = "p1";
+
+        // Ensure you have "roster.json" and "enemy.json" in your wwwroot folder
         var fileName = Side == "p2" ? "enemy.json" : "roster.json";
-        var filePath = Path.Combine(Env.WebRootPath, fileName);
 
         rosterData = null;
         DetachmentName = "";
@@ -325,19 +321,23 @@ else
 
         try
         {
-            if (File.Exists(filePath))
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            // Fetch directly from URL
+            rosterData = await Http.GetFromJsonAsync<RosterRoot>(fileName, options);
+
+            if (rosterData != null)
             {
-                var jsonString = await File.ReadAllTextAsync(filePath);
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                rosterData = JsonSerializer.Deserialize<RosterRoot>(jsonString, options);
                 FindDetachmentRules();
                 await LoadStratagemDatabase();
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading roster '{fileName}': {ex.Message}");
+            // Optional: Set an error state to show in UI
+        }
     }
 
-    // 2. Scroll Logic
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         await ScrollToFragment();
@@ -372,14 +372,14 @@ else
         }
     }
 
+    // UPDATED: Now uses HttpClient to fetch Stratagems
     private async Task LoadStratagemDatabase()
     {
-        var filePath = Path.Combine(Env.WebRootPath, "data", "Stratagems.json");
-        if (!File.Exists(filePath)) { isLoadingStrats = false; return; }
-
         try
         {
-            var jsonString = await File.ReadAllTextAsync(filePath);
+            // Fetch directly from wwwroot/data/Stratagems.json
+            var jsonString = await Http.GetStringAsync("data/Stratagems.json");
+
             using var doc = JsonDocument.Parse(jsonString);
             var root = doc.RootElement;
 
@@ -421,10 +421,14 @@ else
                 }
             }
         }
-        catch (Exception ex) { Console.WriteLine(ex.Message); }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Stratagem DB load failed: {ex.Message}");
+        }
         isLoadingStrats = false;
     }
 
+    // ... The rest of your helper methods (GetStratagemsForUnit, GetUnits, etc.) remain EXACTLY the same ...
     private List<string> GetStratagemsForUnit(string unitName)
     {
         if (string.IsNullOrEmpty(unitName)) return new List<string>();
@@ -444,10 +448,8 @@ else
             var stratObj = AllStratagemsDetailed.FirstOrDefault(s => s.Name.Equals(stratName, StringComparison.OrdinalIgnoreCase));
             if (stratObj != null)
             {
-                // NO CORE
                 if (string.IsNullOrEmpty(stratObj.FactionId)) continue;
 
-                // DETACHMENT MATCH
                 bool matchesDetachment = string.IsNullOrEmpty(stratObj.Detachment) ||
                                          DetachmentName.Contains(stratObj.Detachment, StringComparison.OrdinalIgnoreCase) ||
                                          stratObj.Detachment.Contains(DetachmentName, StringComparison.OrdinalIgnoreCase);
@@ -489,7 +491,6 @@ else
                 DetachmentName = chosen.Name; DetachmentRule = chosen.Rules?.FirstOrDefault();
             }
         }
-
     }
 
     private void ShowStratagem(string stratName) => SelectedStratagem = AllStratagemsDetailed.FirstOrDefault(s => s.Name.Equals(stratName, StringComparison.OrdinalIgnoreCase));
@@ -518,7 +519,7 @@ else
 </script>
 
 <style>
-    /* --- STRATAGEM BAR LAYOUT --- */
+    /* ... YOUR EXISTING CSS (Keep exact same CSS here) ... */
     .stratagem-bar {
         background: #1a1a1a;
         padding: 8px 15px;
@@ -542,7 +543,6 @@ else
         gap: 5px;
     }
 
-    /* BADGE STYLING */
     .strat-badge {
         border: 1px solid rgba(255,255,255,0.2);
         color: white;
@@ -564,7 +564,6 @@ else
             box-shadow: 0 2px 5px rgba(0,0,0,0.5);
         }
 
-    /* COLOR VARIANTS */
     .strat-blue {
         background-color: #2980b9;
         border-color: #3498db;
@@ -588,7 +587,6 @@ else
         font-family: monospace;
     }
 
-    /* Modal */
     .modal-backdrop.show {
         opacity: 0.7;
     }
@@ -606,7 +604,6 @@ else
         text-transform: uppercase;
     }
 
-    /* --- EXISTING STYLES --- */
     .header-container {
         display: flex;
         justify-content: space-between;
