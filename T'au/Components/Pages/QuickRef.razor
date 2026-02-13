@@ -1,20 +1,22 @@
 ﻿@page "/quickref"
 @rendermode InteractiveServer
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@implements IDisposable
 
 <div class="rules-container">
 
     <div class="header-section">
         <h1 class="page-title">Core Rules Reference</h1>
         <div class="btn-group" role="group">
-            <a href="quickref#turn-sequence" class="btn btn-outline-warning btn-sm">Sequence</a>
-            <a href="quickref#wound-chart" class="btn btn-outline-warning btn-sm">Wound Chart</a>
-            <a href="quickref#keywords" class="btn btn-outline-warning btn-sm">Keywords</a>
+            <a href="quickref#turn-sequence" class="btn btn-outline-warning btn-sm" @onclick='() => ScrollTo("turn-sequence")'>Sequence</a>
+            <a href="quickref#wound-chart" class="btn btn-outline-warning btn-sm" @onclick='() => ScrollTo("wound-chart")'>Wound Chart</a>
+            <a href="quickref#keywords" class="btn btn-outline-warning btn-sm" @onclick='() => ScrollTo("keywords")'>Keywords</a>
         </div>
     </div>
 
     <div id="turn-sequence">
         <h3 class="section-header">Turn Sequence</h3>
-
         <div class="phase-card command-phase">
             <div class="phase-header">
                 <div class="phase-icon">I</div>
@@ -203,7 +205,10 @@
 
         <div class="input-group mb-3 sticky-search">
             <span class="input-group-text bg-dark text-white border-secondary"><i class="bi bi-search"></i></span>
-            <input type="text" class="form-control bg-dark text-white border-secondary" placeholder="Search keywords..." @bind="filterText" @bind:event="oninput" />
+            <input type="text" class="form-control bg-dark text-white border-secondary"
+                   placeholder="Search keywords..."
+                   @bind="filterText"
+                   @bind:event="oninput" />
         </div>
 
         <div class="keyword-grid">
@@ -216,11 +221,39 @@
             }
         </div>
     </div>
-
 </div>
+
+
+<script>
+    window.quickRefState = {
+        // Called before leaving: Save Scroll Y and Filter Text
+        save: function (currentFilter) {
+            sessionStorage.setItem('qr_scroll', window.scrollY);
+            sessionStorage.setItem('qr_filter', currentFilter);
+        },
+        // Called on load: Restore Scroll Y and return Filter Text
+        load: function () {
+            const scrollY = sessionStorage.getItem('qr_scroll');
+            const filter = sessionStorage.getItem('qr_filter');
+
+            if (scrollY) {
+                // Slight delay to ensure DOM is rendered before scrolling
+                setTimeout(() => window.scrollTo(0, parseInt(scrollY)), 50);
+            }
+            return filter || "";
+        },
+        // Helper for the top buttons
+        scrollToId: function(id) {
+            const el = document.getElementById(id);
+            if(el) el.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+</script>
+
 
 @code {
     private string filterText = "";
+    private bool isLoaded = false;
 
     private List<KeywordDef> AllKeywords = new List<KeywordDef>
 {
@@ -274,6 +307,51 @@
         public string Name { get; set; }
         public string Definition { get; set; }
         public KeywordDef(string n, string d) { Name = n; Definition = d; }
+    }
+
+    // --- NEW LOGIC FOR SAVING STATE ---
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to navigation events so we save before we leave
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Restore state from SessionStorage
+            var savedFilter = await JS.InvokeAsync<string>("quickRefState.load");
+            if (!string.IsNullOrEmpty(savedFilter))
+            {
+                filterText = savedFilter;
+                StateHasChanged(); // Re-render to show filtered list
+            }
+            isLoaded = true;
+        }
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        // Save state to SessionStorage
+        await JS.InvokeVoidAsync("quickRefState.save", filterText);
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe to prevent memory leaks
+        Nav.LocationChanged -= OnLocationChanged;
+
+        // Final save attempt (fire and forget)
+        // Note: In some scenarios Dispose is too late for JS,
+        // which is why OnLocationChanged is safer for SPA navigation.
+        _ = JS.InvokeVoidAsync("quickRefState.save", filterText);
+    }
+
+    private async Task ScrollTo(string id)
+    {
+        await JS.InvokeVoidAsync("quickRefState.scrollToId", id);
     }
 }
 
