@@ -17,6 +17,7 @@
 
     <div id="turn-sequence">
         <h3 class="section-header">Turn Sequence</h3>
+
         <div class="phase-card command-phase">
             <div class="phase-header">
                 <div class="phase-icon">I</div>
@@ -35,18 +36,11 @@
                     <span class="step-num">2</span>
                     <div class="step-content">
                         <strong>Battle-shock Step</strong>
-                        <p>Test for every unit <strong>Below Half-strength</strong>. 
-                            For units that start as a <strong>single model</strong> (like a Vehicle or Monster), they are <strong>Below Half-strength</strong> 
-                            if they have lost more than half of their starting Wounds.</p>
-
+                        <p>Test for every unit <strong>Below Half-strength</strong>.</p>
                         <div class="mechanic-box" style="margin-bottom: 15px;">
                             <strong>Test:</strong> 2D6 ≥ Leadership (LD).<br />
                             <span class="text-danger">Fail:</span> OC = 0, No Stratagems, Desperate Escape on Fall Back.
                         </div>
-
-                        <strong> Desperate Escape </strong>
-                        <p><small> If the unit attempts to Fall Back, it must take a Desperate Escape test for every model. 
-                            For each model, roll a D6; on a result of 1 or 2, that model is destroyed.</small></p>
                     </div>
                 </div>
             </div>
@@ -161,38 +155,23 @@
                 </thead>
                 <tbody>
                     <tr class="high-success">
-                        <td>
-                            Strength is <strong>2x</strong> Toughness<br />
-                            <small class="text-muted">(e.g. S8 vs T4)</small>
-                        </td>
+                        <td>Strength is <strong>2x</strong> Toughness</td>
                         <td class="roll-val">2+</td>
                     </tr>
                     <tr class="med-success">
-                        <td>
-                            Strength is <strong>Greater</strong> than Toughness<br />
-                            <small class="text-muted">(e.g. S5 vs T4)</small>
-                        </td>
+                        <td>Strength is <strong>Greater</strong> than Toughness</td>
                         <td class="roll-val">3+</td>
                     </tr>
                     <tr class="neutral">
-                        <td>
-                            Strength is <strong>Equal</strong> to Toughness<br />
-                            <small class="text-muted">(e.g. S4 vs T4)</small>
-                        </td>
+                        <td>Strength is <strong>Equal</strong> to Toughness</td>
                         <td class="roll-val">4+</td>
                     </tr>
                     <tr class="med-fail">
-                        <td>
-                            Strength is <strong>Less</strong> than Toughness<br />
-                            <small class="text-muted">(e.g. S3 vs T4)</small>
-                        </td>
+                        <td>Strength is <strong>Less</strong> than Toughness</td>
                         <td class="roll-val">5+</td>
                     </tr>
                     <tr class="high-fail">
-                        <td>
-                            Strength is <strong>Half</strong> Toughness<br />
-                            <small class="text-muted">(e.g. S4 vs T8)</small>
-                        </td>
+                        <td>Strength is <strong>Half</strong> Toughness</td>
                         <td class="roll-val">6+</td>
                     </tr>
                 </tbody>
@@ -221,28 +200,18 @@
             }
         </div>
     </div>
-</div>
 
+</div>
 
 <script>
     window.quickRefState = {
-        // Called before leaving: Save Scroll Y and Filter Text
         save: function (currentFilter) {
-            sessionStorage.setItem('qr_scroll', window.scrollY);
             sessionStorage.setItem('qr_filter', currentFilter);
         },
-        // Called on load: Restore Scroll Y and return Filter Text
         load: function () {
-            const scrollY = sessionStorage.getItem('qr_scroll');
-            const filter = sessionStorage.getItem('qr_filter');
-
-            if (scrollY) {
-                // Slight delay to ensure DOM is rendered before scrolling
-                setTimeout(() => window.scrollTo(0, parseInt(scrollY)), 50);
-            }
-            return filter || "";
+            // Only returns the text, we ignore scrolling
+            return sessionStorage.getItem('qr_filter') || "";
         },
-        // Helper for the top buttons
         scrollToId: function(id) {
             const el = document.getElementById(id);
             if(el) el.scrollIntoView({ behavior: 'smooth' });
@@ -250,52 +219,50 @@
     };
 </script>
 
-
 @code {
     private string filterText = "";
-    private bool isLoaded = false;
 
+    // --- KEYWORDS DATA ---
     private List<KeywordDef> AllKeywords = new List<KeywordDef>
-{
-    new KeywordDef("Anti-Keyword, X+", "CRITICAL WOUNDS the named unit type on X. E.g. ANTI-VEHICLE 3+ scores a CRITICAL WOUND on a VEHICLE on a Wound roll of 3+."),
-    new KeywordDef("Assault", "Can Advance and Shoot."),
-    new KeywordDef("Blast", "Add 1 to the attacks characteristics for every 5 models in a unit (round down). Can't be fired at any units in Engagement Range."),
-    new KeywordDef("Conversion X", "Each time attack is made if model is more than X away, an unmodified successful hit of 4+ scores a CRITICAL HIT."),
-    new KeywordDef("Critical Hits", "An unmodified Hit roll of 6. Always successful."),
-    new KeywordDef("Critical Wounds", "An unmodified Wound roll of 6. Always successful."),
-    new KeywordDef("Deadly Demise X", "When this model is destroyed roll one d6, on a 6 each unit within 6\" range suffers X Mortal Wounds."),
-    new KeywordDef("Deep Strike", "Unit can be set up in Reserves instead of on the battlefield, Must be 9” horizontally away from all enemy models."),
-    new KeywordDef("Desperate Escape", "Roll one dice for each model in the unit when Falling Back after failing a Battle Shock test, or when Falling Back through enemy models. On a 1 or 2, a model in the unit is removed."),
-    new KeywordDef("Devastating Wounds", "On a CRITICAL WOUND, convert the damage to Mortal Wounds and the attack sequence ends."),
-    new KeywordDef("Extra Attacks", "Weapons ability. Each time bearer fights, they can make a number of, additional attacks with weapon as listed. The number cannot be modified by other rules."),
-    new KeywordDef("Feel no pain, X+", "Each time this model would lose a wound, roll one D6: if the result is equal to or greater than X that wound is not lost."),
-    new KeywordDef("Fights First", "Units with this ability that are eligible to fight do so in the Fights First step, provided every model in the unit has this ability."),
-    new KeywordDef("Firing Deck-X", "Allows a number of models embarked on a TRANSPORT to fire out."),
-    new KeywordDef("Fly", "FLY models move over enemy models when they Normal Move, Advance, Fall Back or Charge. Move distance is measured through the air."),
-    new KeywordDef("Grenades", "KEYWORD: Enables the 'Grenade' Stratagem."),
-    new KeywordDef("Hazardous", "After the unit has finished its attacks. Take a hazard test for each weapon used, for each roll of a 1 a model with a HAZARDOUS weapon is destroyed. CHARACTERS, MONSTERS and VEHICLES suffer 3 Mortal Wounds on a roll of a 1 instead."),
-    new KeywordDef("Heavy", "+1 to hit when the bearer’s unit REMAINS STATIONARY."),
-    new KeywordDef("Ignores Cover", "Weapons with this ability in their profile do not allow for the Benefit of Cover against that attack."),
-    new KeywordDef("Indirect Fire", "This weapon can fire at models that are not visible. If it does so, subtract 1 from the hit roll, and the target has the Benefit of Cover."),
-    new KeywordDef("Infiltrators", "A unit can be set up outside of your deployment zone. It must still be 9\" away from enemy models and the enemy deployment zone."),
-    new KeywordDef("Lance", "Weapons with this ability get +1 to wound when Charging."),
-    new KeywordDef("Leader", "CHARACTER units with LEADER USR can be attached to one of their Bodyguard units before the battle. Attached units can only contain one LEADER. Attacks can not be allocated to the CHARACTER model in Attached units."),
-    new KeywordDef("Lethal Hits", "CRITICAL HITS automatically wound the target."),
-    new KeywordDef("Lone Operative", "Unless part of an Attached Unit, this unit can only be selected as a target of a ranged attack if the attacking model is within 12\"."),
-    new KeywordDef("Melta X", "Add X to the damage when fired at half range."),
-    new KeywordDef("Objective Control (OC)", "This shows how effectively a model can exert control over objectives."),
-    new KeywordDef("One Shot", "This weapon can only be fired once per battle."),
-    new KeywordDef("Pistol", "A unit can fire this weapon in Engagement Range, but must target one of those enemy units, Can not be shot alongside non-PISTOL weapons (unless a MONSTER / VEHICLE)."),
-    new KeywordDef("Precision", "When targeting an Attached unit, the attacking player can allocate the attack to a CHARACTER model visible to the bearer."),
-    new KeywordDef("Rapid Deployment", "A unit can disembark after this model has advanced. They cannot charge but can otherwise act normally."),
-    new KeywordDef("Rapid Fire X", "Increase the attacks by X when targeting unit is within half range."),
-    new KeywordDef("Scout X", "Pre-game movement of X\" after Deployment phase. DEDICATED TRANSPORT units also inherit the ability if occupied by SCOUT units. Must end more than 9\" horizontally away from enemy models."),
-    new KeywordDef("Smoke", "KEYWORD: Enables the 'Smokescreen' Stratagem."),
-    new KeywordDef("Stealth", "If every model in a unit has this ability, they are -1 to hit vs ranged."),
-    new KeywordDef("Sustained Hits X", "CRITICAL HITS score X additional hits."),
-    new KeywordDef("Torrent", "Attacks with TORRENT weapons automatically hit."),
-    new KeywordDef("Twin-Linked", "You can reroll the attack’s Wound rolls.")
-};
+    {
+        new KeywordDef("Anti-Keyword, X+", "CRITICAL WOUNDS the named unit type on X."),
+        new KeywordDef("Assault", "Can Advance and Shoot."),
+        new KeywordDef("Blast", "Add 1 attack per 5 models in target unit. No melee."),
+        new KeywordDef("Conversion X", "Hit of 4+ is Critical if target > X\" away."),
+        new KeywordDef("Critical Hits", "Unmodified Hit roll of 6. Always hits."),
+        new KeywordDef("Critical Wounds", "Unmodified Wound roll of 6. Always wounds."),
+        new KeywordDef("Deadly Demise X", "On death (roll 6), deals X Mortal Wounds to units within 6\"."),
+        new KeywordDef("Deep Strike", "Set up in Reserves. Deploy >9\" from enemy."),
+        new KeywordDef("Desperate Escape", "Fall Back check. Roll 1-2 = Model Destroyed."),
+        new KeywordDef("Devastating Wounds", "Critical Wounds cause Mortal Wounds."),
+        new KeywordDef("Extra Attacks", "Weapon attacks do not replace profile, they add to it."),
+        new KeywordDef("Feel no pain, X+", "Ignore damage on a D6 roll of X+."),
+        new KeywordDef("Fights First", "Unit fights before normal speed units."),
+        new KeywordDef("Firing Deck-X", "Transport lets X models shoot out."),
+        new KeywordDef("Fly", "Move over models/terrain vertically."),
+        new KeywordDef("Grenades", "Keyword for Stratagem usage."),
+        new KeywordDef("Hazardous", "After shooting, roll D6. On 1, model destroyed (or 3MW)."),
+        new KeywordDef("Heavy", "+1 to Hit if unit remained stationary."),
+        new KeywordDef("Ignores Cover", "Target gets no cover save bonus."),
+        new KeywordDef("Indirect Fire", "Can shoot without line of sight. -1 Hit, Target gets Cover."),
+        new KeywordDef("Infiltrators", "Deploy outside zone, >9\" from enemy."),
+        new KeywordDef("Lance", "+1 to Wound on Charge."),
+        new KeywordDef("Leader", "Attaches to bodyguard unit."),
+        new KeywordDef("Lethal Hits", "Critical Hits automatically Wound."),
+        new KeywordDef("Lone Operative", "Can't be shot >12\" away."),
+        new KeywordDef("Melta X", "+X Damage at half range."),
+        new KeywordDef("Objective Control (OC)", "Used to hold objectives."),
+        new KeywordDef("One Shot", "Can only fire once per game."),
+        new KeywordDef("Pistol", "Can shoot while in Engagement Range."),
+        new KeywordDef("Precision", "Can target Character in attached unit."),
+        new KeywordDef("Rapid Fire X", "+X Attacks at half range."),
+        new KeywordDef("Scout X", "Pre-game move of X\"."),
+        new KeywordDef("Smoke", "Keyword for Stratagem usage."),
+        new KeywordDef("Stealth", "-1 to be Hit by ranged attacks."),
+        new KeywordDef("Sustained Hits X", "Critical Hits generate X extra hits."),
+        new KeywordDef("Torrent", "Auto-hits."),
+        new KeywordDef("Twin-Linked", "Re-roll Wound rolls.")
+    };
 
     private IEnumerable<KeywordDef> FilteredKeywords =>
         string.IsNullOrWhiteSpace(filterText)
@@ -309,11 +276,10 @@
         public KeywordDef(string n, string d) { Name = n; Definition = d; }
     }
 
-    // --- NEW LOGIC FOR SAVING STATE ---
+    // --- STATE LOGIC ---
 
     protected override async Task OnInitializedAsync()
     {
-        // Subscribe to navigation events so we save before we leave
         Nav.LocationChanged += OnLocationChanged;
     }
 
@@ -321,31 +287,24 @@
     {
         if (firstRender)
         {
-            // Restore state from SessionStorage
+            // Just load the filter text, don't scroll
             var savedFilter = await JS.InvokeAsync<string>("quickRefState.load");
             if (!string.IsNullOrEmpty(savedFilter))
             {
                 filterText = savedFilter;
-                StateHasChanged(); // Re-render to show filtered list
+                StateHasChanged();
             }
-            isLoaded = true;
         }
     }
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        // Save state to SessionStorage
         await JS.InvokeVoidAsync("quickRefState.save", filterText);
     }
 
     public void Dispose()
     {
-        // Unsubscribe to prevent memory leaks
         Nav.LocationChanged -= OnLocationChanged;
-
-        // Final save attempt (fire and forget)
-        // Note: In some scenarios Dispose is too late for JS,
-        // which is why OnLocationChanged is safer for SPA navigation.
         _ = JS.InvokeVoidAsync("quickRefState.save", filterText);
     }
 
@@ -425,29 +384,27 @@
         width: 80px;
     }
 
-    /* Color coding for success rates */
     .high-success .roll-val {
         color: #2ecc71;
     }
-    /* Green for 2+ */
+
     .med-success .roll-val {
         color: #a2d9ce;
     }
-    /* Light Green for 3+ */
+
     .neutral .roll-val {
         color: #fff;
     }
-    /* White for 4+ */
+
     .med-fail .roll-val {
         color: #e74c3c;
     }
-    /* Red for 5+ */
+
     .high-fail .roll-val {
         color: #922b21;
     }
-    /* Dark Red for 6+ */
 
-    /* --- PHASE CARDS & KEYWORDS --- */
+    /* --- PHASE CARDS --- */
     .phase-card {
         background: #242424;
         border: 1px solid #444;
@@ -463,7 +420,6 @@
         gap: 15px;
     }
 
-    /* Phase Colors */
     .command-phase .phase-header {
         background: #c0392b;
         color: white;
