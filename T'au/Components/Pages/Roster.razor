@@ -3,29 +3,26 @@
 @using System.Text.Json
 @using Warhammer.Models
 @using System.IO
-@using System.Text.RegularExpressions;
+@using System.Text.RegularExpressions
 @inject IWebHostEnvironment Env
 @inject NavigationManager Nav
 @inject IJSRuntime JS
-@inject NavigationManager Nav
 @implements IDisposable
 
 @if (Side == "p2")
 {
     <style>
-        /* Change Header from Orange to Blue */
+        /* P2 Theme Colors (Blue Headers/Borders) */
         .datasheet-header {
             background-color: #2e86c1 !important;
             border-bottom-color: #1b4f72 !important;
         }
 
-        /* Change Detachment Box Border */
         .detachment-box {
             border-color: #2e86c1 !important;
             border-left-color: #2e86c1 !important;
         }
 
-        /* Change Detachment Text */
         h5.text-warning {
             color: #5dade2 !important;
         }
@@ -34,7 +31,6 @@
             color: #5dade2 !important;
         }
 
-        /* Change Icons */
         .role-icon {
             color: white !important;
         }
@@ -46,6 +42,8 @@
         .ability-name {
             color: #5dade2 !important;
         }
+
+        /* FIX: Removed the .strat-badge override so Red/Green/Blue logic works! */
     </style>
 }
 
@@ -73,11 +71,11 @@
     </div>
 }
 
-@if (rosterData == null)
+@if (rosterData == null || isLoadingStrats)
 {
     <div class="loading-state">
         <div class="spinner-border text-info" role="status"></div>
-        <p>Retrieving Data...</p>
+        <p>Retrieving Data & Stratagems...</p>
     </div>
 }
 else
@@ -111,6 +109,37 @@ else
                                 <span class="stat-value">@stat.Value</span>
                             </div>
                         }
+                    </div>
+                }
+
+                @{
+                    var unitStrats = GetStratagemsForUnit(unit.Name);
+                    // Resolve objects
+                    var resolvedStrats = unitStrats
+                    .Select(name => AllStratagemsDetailed.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                    .Where(s => s != null)
+                    .ToList();
+
+                    // Sort: Your Turn (Blue) -> Opponent (Red) -> Either (Green)
+                    var sortedStrats = resolvedStrats
+                    .OrderBy(s => GetStratSortOrder(s))
+                    .ThenBy(s => s.Name)
+                    .ToList();
+                }
+
+                @if (sortedStrats.Any())
+                {
+                    <div class="stratagem-bar">
+                        <span class="strat-label">Stratagems:</span>
+                        <div class="strat-list">
+                            @foreach (var s in sortedStrats)
+                            {
+                                <button class="strat-badge @GetStratButtonClass(s)" @onclick="() => ShowStratagem(s.Name)">
+                                    <span class="strat-name-text">@s.Name</span>
+                                    <span class="cp-badge">@s.Cost CP</span>
+                                </button>
+                            }
+                        </div>
                     </div>
                 }
 
@@ -206,7 +235,6 @@ else
                             {
                                 <div class="ability-row">
                                     <span class="ability-name">@rule.Name:</span>
-
                                     <span class="ability-desc">@FormatText(rule.Description)</span>
                                 </div>
                             }
@@ -234,8 +262,353 @@ else
     </div>
 }
 
+@if (SelectedStratagem != null)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-warning text-light">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning">@SelectedStratagem.Name</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="badge bg-secondary">@SelectedStratagem.Type</span>
+                        <span class="badge bg-danger">@SelectedStratagem.Cost CP</span>
+                    </div>
+                    <p><strong>WHEN:</strong> @SelectedStratagem.Turn</p>
+                    <p><strong>PHASE:</strong> @SelectedStratagem.Phase</p>
+                    <hr class="border-secondary" />
+                    <div class="small">
+                        @((MarkupString)FormatText(SelectedStratagem.Description))
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Side { get; set; }
+    private RosterRoot? rosterData;
+    private double CurrentPoints => rosterData?.Roster?.Costs?.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
+    private double LimitPoints => rosterData?.Roster?.CostLimits?.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
+    private string DetachmentName = "";
+    private Rule? DetachmentRule;
+
+    private List<StratagemModelWithDetachment> AllStratagemsDetailed = new();
+    private Dictionary<string, List<string>> UnitStratagemMap = new();
+    private bool isLoadingStrats = true;
+    private StratagemModel? SelectedStratagem;
+
+    public class StratagemModelWithDetachment : StratagemModel
+    {
+        public string Detachment { get; set; } = "";
+    }
+
+    // 1. Setup Scroll Listener
+    protected override async Task OnInitializedAsync()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(Side)) Side = "p1";
+        var fileName = Side == "p2" ? "enemy.json" : "roster.json";
+        var filePath = Path.Combine(Env.WebRootPath, fileName);
+
+        rosterData = null;
+        DetachmentName = "";
+        DetachmentRule = null;
+
+        try
+        {
+            if (File.Exists(filePath))
+            {
+                var jsonString = await File.ReadAllTextAsync(filePath);
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                rosterData = JsonSerializer.Deserialize<RosterRoot>(jsonString, options);
+                FindDetachmentRules();
+                await LoadStratagemDatabase();
+            }
+        }
+        catch { }
+    }
+
+    // 2. Scroll Logic
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        await ScrollToFragment();
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ScrollToFragment();
+        }
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+
+    private async Task ScrollToFragment()
+    {
+        var uri = new Uri(Nav.Uri);
+        if (uri.Fragment.Length > 1)
+        {
+            var elementId = uri.Fragment.Substring(1);
+            try
+            {
+                await Task.Delay(100);
+                await JS.InvokeVoidAsync("scrollToElementId", elementId);
+            }
+            catch { }
+        }
+    }
+
+    private async Task LoadStratagemDatabase()
+    {
+        var filePath = Path.Combine(Env.WebRootPath, "data", "Stratagems.json");
+        if (!File.Exists(filePath)) { isLoadingStrats = false; return; }
+
+        try
+        {
+            var jsonString = await File.ReadAllTextAsync(filePath);
+            using var doc = JsonDocument.Parse(jsonString);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("data", out var data))
+            {
+                AllStratagemsDetailed.Clear();
+                if (data.TryGetProperty("stratagems", out var stratsArray))
+                {
+                    foreach (var s in stratsArray.EnumerateArray())
+                    {
+                        var strat = new StratagemModelWithDetachment
+                        {
+                            Name = GetProp(s, "name"),
+                            Cost = GetProp(s, "cp_cost"),
+                            Type = GetProp(s, "type"),
+                            Turn = GetProp(s, "turn"),
+                            Phase = GetProp(s, "phase"),
+                            Description = GetProp(s, "description"),
+                            FactionId = GetProp(s, "faction_id"),
+                            Detachment = GetProp(s, "detachment")
+                        };
+                        AllStratagemsDetailed.Add(strat);
+                    }
+                }
+
+                UnitStratagemMap.Clear();
+                if (data.TryGetProperty("units", out var unitsArray))
+                {
+                    foreach (var u in unitsArray.EnumerateArray())
+                    {
+                        var uName = GetProp(u, "name");
+                        var sList = GetProp(u, "stratagems");
+                        if (!string.IsNullOrEmpty(uName) && !string.IsNullOrEmpty(sList))
+                        {
+                            var stratNames = sList.Split('|').Select(x => x.Trim()).ToList();
+                            UnitStratagemMap[uName.ToLower()] = stratNames;
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex) { Console.WriteLine(ex.Message); }
+        isLoadingStrats = false;
+    }
+
+    private List<string> GetStratagemsForUnit(string unitName)
+    {
+        if (string.IsNullOrEmpty(unitName)) return new List<string>();
+
+        List<string> possibleStrats;
+        if (!UnitStratagemMap.TryGetValue(unitName.ToLower(), out possibleStrats))
+        {
+            var key = UnitStratagemMap.Keys.FirstOrDefault(k => k.Contains(unitName.ToLower()) || unitName.ToLower().Contains(k));
+            possibleStrats = key != null ? UnitStratagemMap[key] : new List<string>();
+        }
+
+        if (!possibleStrats.Any()) return new List<string>();
+
+        var filteredList = new List<string>();
+        foreach (var stratName in possibleStrats)
+        {
+            var stratObj = AllStratagemsDetailed.FirstOrDefault(s => s.Name.Equals(stratName, StringComparison.OrdinalIgnoreCase));
+            if (stratObj != null)
+            {
+                // NO CORE
+                if (string.IsNullOrEmpty(stratObj.FactionId)) continue;
+
+                // DETACHMENT MATCH
+                bool matchesDetachment = string.IsNullOrEmpty(stratObj.Detachment) ||
+                                         DetachmentName.Contains(stratObj.Detachment, StringComparison.OrdinalIgnoreCase) ||
+                                         stratObj.Detachment.Contains(DetachmentName, StringComparison.OrdinalIgnoreCase);
+
+                if (matchesDetachment) filteredList.Add(stratName);
+            }
+        }
+        return filteredList;
+    }
+
+    private int GetStratSortOrder(StratagemModelWithDetachment strat)
+    {
+        if (string.IsNullOrEmpty(strat.Turn)) return 3;
+        var t = strat.Turn.ToLower();
+        if (t.Contains("your turn") || t.Contains("your shooting") || t.Contains("your charge")) return 1;
+        if (t.Contains("opponent's") || t.Contains("opponent’s")) return 2;
+        return 3;
+    }
+
+    private string GetStratButtonClass(StratagemModel strat)
+    {
+        if (string.IsNullOrEmpty(strat.Turn)) return "strat-green";
+        var t = strat.Turn.ToLower();
+        if (t.Contains("your turn") || t.Contains("your shooting") || t.Contains("your charge")) return "strat-blue";
+        if (t.Contains("opponent's") || t.Contains("opponent’s")) return "strat-red";
+        return "strat-green";
+    }
+
+    private void ShowStratagem(string stratName) => SelectedStratagem = AllStratagemsDetailed.FirstOrDefault(s => s.Name.Equals(stratName, StringComparison.OrdinalIgnoreCase));
+    private void CloseModal() => SelectedStratagem = null;
+    private string GetProp(JsonElement el, string prop) => el.TryGetProperty(prop, out var p) ? p.GetString() ?? "" : "";
+
+    
+    private void FindDetachmentRules()
+    {
+        if (rosterData?.Roster?.Forces?.FirstOrDefault() == null) return;
+        var force = rosterData.Roster.Forces.First();
+        var detachmentSelection = force.Selections?.FirstOrDefault(s => s.Name == "Detachment");
+        if (detachmentSelection?.Selections != null)
+        {
+            var chosen = detachmentSelection.Selections.FirstOrDefault();
+            if (chosen != null)
+            {
+                DetachmentName = chosen.Name; DetachmentRule = chosen.Rules?.FirstOrDefault();
+            }
+        }
+    
+    }
+
+    private IEnumerable<Selection> GetUnits() { if (rosterData?.Roster?.Forces?.FirstOrDefault() == null) return Enumerable.Empty<Selection>(); return rosterData.Roster.Forces.First().Selections?.Where(s => s.Name != "Configuration" && s.Name != "Battle Size" && s.Name != "Detachment" && s.Name != "Show/Hide Options").ToList() ?? new List<Selection>(); }
+    private string GetId(Selection unit) => unit.Name?.Replace(" ", "-").Replace("'", "").Replace("’", "") ?? "unknown";
+    private double GetPointCost(Selection unit) => unit.Costs?.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
+    private string GetChar(Profile p, string statName) => p.Characteristics?.FirstOrDefault(c => c.Name == statName)?.Value ?? "-";
+    private List<Profile> GetAllProfilesRecursive(Selection current, string typeName) { var found = new List<Profile>(); if (current == null) return found; if (current.Profiles != null) found.AddRange(current.Profiles.Where(p => p.TypeName == typeName)); if (current.Selections != null) foreach (var child in current.Selections) found.AddRange(GetAllProfilesRecursive(child, typeName)); return found; }
+    private List<Profile> GetWeapons(Selection unit, string type) => GetAllProfilesRecursive(unit, type).DistinctBy(w => w.Name).ToList();
+    private Profile? GetProfileByType(Selection unit, string type) => GetAllProfilesRecursive(unit, type).FirstOrDefault();
+    private List<Rule> GetAbilities(Selection unit) { var list = new List<Rule>(); var abilityProfiles = GetAllProfilesRecursive(unit, "Abilities"); foreach (var p in abilityProfiles) { var desc = p.Characteristics?.FirstOrDefault(c => c.Name == "Description")?.Value ?? ""; list.Add(new Rule { Name = p.Name, Description = desc }); } GetRulesRecursive(unit, list); return list.DistinctBy(r => r.Name).OrderBy(r => r.Name).ToList(); }
+    private void GetRulesRecursive(Selection current, List<Rule> collected) { if (current == null) return; if (current.Rules != null) collected.AddRange(current.Rules); if (current.Selections != null) foreach (var child in current.Selections) GetRulesRecursive(child, collected); }
+    private List<string> GetKeywords(Selection unit) => unit.Categories?.Where(c => c.Name != "Configuration" && c.Name != "Uncategorized").Select(c => c.Name).ToList() ?? new List<string>();
+    private MarkupString FormatText(string text) { if (string.IsNullOrEmpty(text)) return new MarkupString(""); text = text.Replace("^^", ""); text = Regex.Replace(text, @"\*\*(.+?)\*\*", "<strong>$1</strong>"); text = text.Replace("\n", "<br/>"); return new MarkupString(text); }
+}
+
+<script>
+    window.scrollToElementId = (elementId) => {
+        var element = document.getElementById(elementId);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+</script>
+
 <style>
-    /* --- LAYOUT CONTAINER --- */
+    /* --- STRATAGEM BAR LAYOUT --- */
+    .stratagem-bar {
+        background: #1a1a1a;
+        padding: 8px 15px;
+        border-bottom: 1px solid #444;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .strat-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: #888;
+        font-weight: bold;
+    }
+
+    .strat-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+
+    /* BADGE STYLING */
+    .strat-badge {
+        border: 1px solid rgba(255,255,255,0.2);
+        color: white;
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        border-radius: 4px;
+        cursor: pointer;
+        text-transform: uppercase;
+        font-weight: bold;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+        .strat-badge:hover {
+            filter: brightness(1.2);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+    /* COLOR VARIANTS */
+    .strat-blue {
+        background-color: #2980b9;
+        border-color: #3498db;
+    }
+
+    .strat-red {
+        background-color: #c0392b;
+        border-color: #e74c3c;
+    }
+
+    .strat-green {
+        background-color: #27ae60;
+        border-color: #2ecc71;
+    }
+
+    .cp-badge {
+        background: rgba(0,0,0,0.3);
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-size: 0.7rem;
+        font-family: monospace;
+    }
+
+    /* Modal */
+    .modal-backdrop.show {
+        opacity: 0.7;
+    }
+
+    .border-warning {
+        border-color: #d35400 !important;
+    }
+
+    .text-warning {
+        color: #d35400 !important;
+    }
+
+    .modal-title {
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    /* --- EXISTING STYLES --- */
     .header-container {
         display: flex;
         justify-content: space-between;
@@ -275,7 +648,6 @@ else
         padding-bottom: 100px;
     }
 
-    /* --- THE DATASHEET CARD --- */
     .datasheet {
         background-color: #242424;
         border: 1px solid #444;
@@ -288,7 +660,6 @@ else
         overflow: hidden;
     }
 
-    /* 1. HEADER */
     .datasheet-header {
         background-color: #d35400;
         color: white;
@@ -327,7 +698,6 @@ else
         opacity: 0.8;
     }
 
-    /* 2. STATS STRIP */
     .stats-strip {
         display: flex;
         background-color: #333;
@@ -358,7 +728,6 @@ else
         color: #fff;
     }
 
-    /* 3. BODY & WEAPONS */
     .datasheet-body {
         padding: 15px;
     }
@@ -411,7 +780,6 @@ else
         font-style: italic;
     }
 
-    /* 4. ABILITIES */
     .abilities-box {
         padding: 10px 0;
         font-size: 0.9rem;
@@ -438,7 +806,6 @@ else
         color: #ccc;
     }
 
-    /* 5. FOOTER */
     .datasheet-footer {
         background-color: #1a1a1a;
         color: #888;
@@ -468,172 +835,3 @@ else
         color: #aaa;
     }
 </style>
-
-
-@code {
-    [Parameter]
-    public string? Side { get; set; }
-
-    private RosterRoot? rosterData;
-    private double CurrentPoints => rosterData?.Roster?.Costs?.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
-    private double LimitPoints => rosterData?.Roster?.CostLimits?.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
-    private string DetachmentName = "";
-    private Rule? DetachmentRule;
-
-    // 1. SUBSCRIBE TO NAVIGATION EVENTS
-    protected override async Task OnInitializedAsync()
-    {
-        Nav.LocationChanged += OnLocationChanged;
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        if (string.IsNullOrEmpty(Side)) Side = "p1";
-
-        var fileName = Side == "p2" ? "enemy.json" : "roster.json";
-        var filePath = Path.Combine(Env.WebRootPath, fileName);
-
-        rosterData = null;
-        DetachmentName = "";
-        DetachmentRule = null;
-
-        try
-        {
-            if (File.Exists(filePath))
-            {
-                var jsonString = await File.ReadAllTextAsync(filePath);
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                rosterData = JsonSerializer.Deserialize<RosterRoot>(jsonString, options);
-                FindDetachmentRules();
-            }
-        }
-        catch { }
-    }
-
-    // 2. THIS HANDLES CLICKING LINKS (Must be 'async void', NOT 'override')
-    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-    {
-        await ScrollToFragment();
-        StateHasChanged(); // Force the page to refresh
-    }
-
-    // 3. THIS HANDLES INITIAL LOAD
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await ScrollToFragment();
-        }
-    }
-
-    // 4. CLEANUP (Required to stop memory leaks)
-    public void Dispose()
-    {
-        Nav.LocationChanged -= OnLocationChanged;
-    }
-
-    private async Task ScrollToFragment()
-    {
-        var uri = new Uri(Nav.Uri);
-        if (uri.Fragment.Length > 1)
-        {
-            var elementId = uri.Fragment.Substring(1); // Remove the '#'
-            await Task.Delay(100); // Give DOM time to render
-            try
-            {
-                await JS.InvokeVoidAsync("scrollToElementId", elementId);
-            }
-            catch { }
-        }
-    }
-
-    // --- YOUR EXISTING HELPERS (Keep these exactly as they are) ---
-
-    private void FindDetachmentRules()
-    {
-        if (rosterData?.Roster?.Forces?.FirstOrDefault() == null) return;
-        var force = rosterData.Roster.Forces.First();
-
-        // 1. Find the "Detachment" category
-        var detachmentSelection = force.Selections?.FirstOrDefault(s => s.Name == "Detachment");
-
-        // 2. Find the specific choice (e.g., "Mont'ka" or "Gladius Task Force")
-        if (detachmentSelection?.Selections != null)
-        {
-            var chosen = detachmentSelection.Selections.FirstOrDefault();
-            if (chosen != null)
-            {
-                DetachmentName = chosen.Name;
-                DetachmentRule = chosen.Rules?.FirstOrDefault();
-            }
-        }
-    }
-
-    private IEnumerable<Selection> GetUnits()
-    {
-        // 1. Safety Check: Is data loaded?
-        if (rosterData?.Roster?.Forces?.FirstOrDefault() == null)
-            return Enumerable.Empty<Selection>();
-
-        // 2. Get the main force
-        var force = rosterData.Roster.Forces.First();
-
-        // 3. Return only real units (Filter out metadata)
-        return force.Selections?
-            .Where(s => s.Name != "Configuration" &&
-                        s.Name != "Battle Size" &&
-                        s.Name != "Detachment" &&
-                        s.Name != "Show/Hide Options")
-            .ToList() ?? new List<Selection>();
-    }
-
-    private string GetId(Selection unit) => unit.Name?.Replace(" ", "-").Replace("'", "").Replace("’", "") ?? "unknown";
-    private double GetPointCost(Selection unit) => unit.Costs?.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
-    private string GetChar(Profile p, string statName) => p.Characteristics?.FirstOrDefault(c => c.Name == statName)?.Value ?? "-";
-
-    private List<Profile> GetAllProfilesRecursive(Selection current, string typeName)
-    {
-        var found = new List<Profile>();
-        if (current == null) return found;
-        if (current.Profiles != null) found.AddRange(current.Profiles.Where(p => p.TypeName == typeName));
-        if (current.Selections != null) foreach (var child in current.Selections) found.AddRange(GetAllProfilesRecursive(child, typeName));
-        return found;
-    }
-
-    private List<Profile> GetWeapons(Selection unit, string type) => GetAllProfilesRecursive(unit, type).DistinctBy(w => w.Name).ToList();
-    private Profile? GetProfileByType(Selection unit, string type) => GetAllProfilesRecursive(unit, type).FirstOrDefault();
-
-    private List<Rule> GetAbilities(Selection unit)
-    {
-        var list = new List<Rule>();
-        var abilityProfiles = GetAllProfilesRecursive(unit, "Abilities");
-        foreach (var p in abilityProfiles)
-        {
-            var desc = p.Characteristics?.FirstOrDefault(c => c.Name == "Description")?.Value ?? "";
-            list.Add(new Rule { Name = p.Name, Description = desc });
-        }
-        GetRulesRecursive(unit, list);
-        return list.DistinctBy(r => r.Name).OrderBy(r => r.Name).ToList();
-    }
-
-    private void GetRulesRecursive(Selection current, List<Rule> collected)
-    {
-        if (current == null) return;
-        if (current.Rules != null) collected.AddRange(current.Rules);
-        if (current.Selections != null) foreach (var child in current.Selections) GetRulesRecursive(child, collected);
-    }
-
-    private List<string> GetKeywords(Selection unit)
-    {
-        return unit.Categories?.Where(c => c.Name != "Configuration" && c.Name != "Uncategorized").Select(c => c.Name).ToList() ?? new List<string>();
-    }
-
-    private MarkupString FormatText(string text)
-    {
-        if (string.IsNullOrEmpty(text)) return new MarkupString("");
-        text = text.Replace("^^", "");
-        text = Regex.Replace(text, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
-        text = text.Replace("\n", "<br/>");
-        return new MarkupString(text);
-    }
-}
