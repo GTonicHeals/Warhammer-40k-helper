@@ -476,11 +476,6 @@ else
         return "strat-green";
     }
 
-    private void ShowStratagem(string stratName) => SelectedStratagem = AllStratagemsDetailed.FirstOrDefault(s => s.Name.Equals(stratName, StringComparison.OrdinalIgnoreCase));
-    private void CloseModal() => SelectedStratagem = null;
-    private string GetProp(JsonElement el, string prop) => el.TryGetProperty(prop, out var p) ? p.GetString() ?? "" : "";
-
-    
     private void FindDetachmentRules()
     {
         if (rosterData?.Roster?.Forces?.FirstOrDefault() == null) return;
@@ -494,9 +489,12 @@ else
                 DetachmentName = chosen.Name; DetachmentRule = chosen.Rules?.FirstOrDefault();
             }
         }
-    
+
     }
 
+    private void ShowStratagem(string stratName) => SelectedStratagem = AllStratagemsDetailed.FirstOrDefault(s => s.Name.Equals(stratName, StringComparison.OrdinalIgnoreCase));
+    private void CloseModal() => SelectedStratagem = null;
+    private string GetProp(JsonElement el, string prop) => el.TryGetProperty(prop, out var p) ? p.GetString() ?? "" : "";
     private IEnumerable<Selection> GetUnits() { if (rosterData?.Roster?.Forces?.FirstOrDefault() == null) return Enumerable.Empty<Selection>(); return rosterData.Roster.Forces.First().Selections?.Where(s => s.Name != "Configuration" && s.Name != "Battle Size" && s.Name != "Detachment" && s.Name != "Show/Hide Options").ToList() ?? new List<Selection>(); }
     private string GetId(Selection unit) => unit.Name?.Replace(" ", "-").Replace("'", "").Replace("’", "") ?? "unknown";
     private double GetPointCost(Selection unit) => unit.Costs?.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
