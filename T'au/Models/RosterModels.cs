@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace WarHammerRoster.Models
+namespace Warhammer.Models
 {
     public class RosterRoot
     {

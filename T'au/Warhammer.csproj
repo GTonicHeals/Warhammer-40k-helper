@@ -4,7 +4,7 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<RootNamespace>T_au</RootNamespace>
+		<RootNamespace>Warhammer</RootNamespace>
 
 		<AssemblyName>Tau_Project</AssemblyName>
 
