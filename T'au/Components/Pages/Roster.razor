@@ -9,43 +9,7 @@
 @inject IJSRuntime JS
 @implements IDisposable
 
-@if (Side == "p2")
-{
-    <style>
-        /* P2 Theme Colors (Blue Headers/Borders) */
-        .datasheet-header {
-            background-color: #2e86c1 !important;
-            border-bottom-color: #1b4f72 !important;
-        }
 
-        .detachment-box {
-            border-color: #2e86c1 !important;
-            border-left-color: #2e86c1 !important;
-        }
-
-        h5.text-warning {
-            color: #5dade2 !important;
-        }
-
-        .detachment-badge span.text-warning {
-            color: #5dade2 !important;
-        }
-
-        .role-icon {
-            color: white !important;
-        }
-
-        .weapon-keywords {
-            color: #5dade2 !important;
-        }
-
-        .ability-name {
-            color: #5dade2 !important;
-        }
-
-        /* FIX: Removed the .strat-badge override so Red/Green/Blue logic works! */
-    </style>
-}
 
 <div class="header-container">
     <div class="header-left">
@@ -307,7 +271,7 @@ else
         public string Detachment { get; set; } = "";
     }
 
-    // 1. Setup Scroll Listener
+    // Setup Scroll Listener
     protected override async Task OnInitializedAsync()
     {
         Nav.LocationChanged += OnLocationChanged;
@@ -337,7 +301,7 @@ else
         catch { }
     }
 
-    // 2. Scroll Logic
+    // Scroll Logic
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         await ScrollToFragment();
@@ -492,6 +456,7 @@ else
 
     }
 
+    // Utilities
     private void ShowStratagem(string stratName) => SelectedStratagem = AllStratagemsDetailed.FirstOrDefault(s => s.Name.Equals(stratName, StringComparison.OrdinalIgnoreCase));
     private void CloseModal() => SelectedStratagem = null;
     private string GetProp(JsonElement el, string prop) => el.TryGetProperty(prop, out var p) ? p.GetString() ?? "" : "";
@@ -505,7 +470,15 @@ else
     private List<Rule> GetAbilities(Selection unit) { var list = new List<Rule>(); var abilityProfiles = GetAllProfilesRecursive(unit, "Abilities"); foreach (var p in abilityProfiles) { var desc = p.Characteristics?.FirstOrDefault(c => c.Name == "Description")?.Value ?? ""; list.Add(new Rule { Name = p.Name, Description = desc }); } GetRulesRecursive(unit, list); return list.DistinctBy(r => r.Name).OrderBy(r => r.Name).ToList(); }
     private void GetRulesRecursive(Selection current, List<Rule> collected) { if (current == null) return; if (current.Rules != null) collected.AddRange(current.Rules); if (current.Selections != null) foreach (var child in current.Selections) GetRulesRecursive(child, collected); }
     private List<string> GetKeywords(Selection unit) => unit.Categories?.Where(c => c.Name != "Configuration" && c.Name != "Uncategorized").Select(c => c.Name).ToList() ?? new List<string>();
-    private MarkupString FormatText(string text) { if (string.IsNullOrEmpty(text)) return new MarkupString(""); text = text.Replace("^^", ""); text = Regex.Replace(text, @"\*\*(.+?)\*\*", "<strong>$1</strong>"); text = text.Replace("\n", "<br/>"); return new MarkupString(text); }
+
+    private MarkupString FormatText(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return new MarkupString("");
+        text = text.Replace("^^", "");
+        text = Regex.Replace(text, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+        text = text.Replace("\n", "<br/>"); return new MarkupString(text);
+    }
 }
 
 <script>
@@ -517,8 +490,43 @@ else
     }
 </script>
 
+@if (Side == "p2")
+{
+    <style>
+        .datasheet-header {
+            background-color: #2e86c1 !important;
+            border-bottom-color: #1b4f72 !important;
+        }
+
+        .detachment-box {
+            border-color: #2e86c1 !important;
+            border-left-color: #2e86c1 !important;
+        }
+
+        h5.text-warning {
+            color: #5dade2 !important;
+        }
+
+        .detachment-badge span.text-warning {
+            color: #5dade2 !important;
+        }
+
+        .role-icon {
+            color: white !important;
+        }
+
+        .weapon-keywords {
+            color: #5dade2 !important;
+        }
+
+        .ability-name {
+            color: #5dade2 !important;
+        }
+
+    </style>
+}
+
 <style>
-    /* --- STRATAGEM BAR LAYOUT --- */
     .stratagem-bar {
         background: #1a1a1a;
         padding: 8px 15px;
@@ -542,7 +550,6 @@ else
         gap: 5px;
     }
 
-    /* BADGE STYLING */
     .strat-badge {
         border: 1px solid rgba(255,255,255,0.2);
         color: white;
@@ -564,7 +571,6 @@ else
             box-shadow: 0 2px 5px rgba(0,0,0,0.5);
         }
 
-    /* COLOR VARIANTS */
     .strat-blue {
         background-color: #2980b9;
         border-color: #3498db;
@@ -588,7 +594,6 @@ else
         font-family: monospace;
     }
 
-    /* Modal */
     .modal-backdrop.show {
         opacity: 0.7;
     }
@@ -606,7 +611,6 @@ else
         text-transform: uppercase;
     }
 
-    /* --- EXISTING STYLES --- */
     .header-container {
         display: flex;
         justify-content: space-between;

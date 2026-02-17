@@ -323,8 +323,6 @@
         public KeywordDef(string n, string d) { Name = n; Definition = d; }
     }
 
-    // --- STATE LOGIC ---
-
     protected override async Task OnInitializedAsync()
     {
         Nav.LocationChanged += OnLocationChanged;
@@ -359,7 +357,7 @@
     {
         await JS.InvokeVoidAsync("quickRefState.scrollToId", id);
     }
-    // --- CALCULATOR LOGIC ---
+
     private int Strength = 4;
     private int Toughness = 4;
 

@@ -3,10 +3,8 @@ using System.Collections.Generic;
 
 public class ObjectiveService
 {
-    // We store two separate states: one for Player 1, one for Player 2
     public PlayerState P1State { get; set; } = new PlayerState();
     public PlayerState P2State { get; set; } = new PlayerState();
-
     public PlayerState GetState(string side)
     {
         return side == "p2" ? P2State : P1State;
@@ -18,10 +16,7 @@ public class PlayerState
     public List<Objective> Deck { get; set; } = new();
     public List<Objective> ActiveMissions { get; set; } = new();
     public List<Objective> ScoredMissions { get; set; } = new();
-
-    // Check if initialized so we don't reset every time
     public bool IsInitialized => Deck.Count > 0 || ActiveMissions.Count > 0 || ScoredMissions.Count > 0;
-
     public void Reset()
     {
         ActiveMissions.Clear();

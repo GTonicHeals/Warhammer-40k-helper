@@ -1,14 +1,39 @@
 ﻿@page "/"
 
-<PageTitle>T'au Command</PageTitle>
+<PageTitle>Army Command</PageTitle>
 
 <div class="text-center mt-5">
-    <h1>For the Greater Good</h1>
-    <p class="lead">Welcome, Shas'O. Your cadre is ready for inspection.</p>
-
+    <h1>Tactical Disposition</h1>
+    <p class="lead">
+        @selectedQuote.Split('—')[0] <br />
+        <small><em>— @selectedQuote.Split('—')[1]</em></small>
+    </p>
     <div class="mt-4">
         <a href="roster" class="btn btn-lg btn-primary" style="background-color: #d35400; border-color: #e67e22;">
             View Army Roster
         </a>
     </div>
 </div>
+
+@code {
+    private string selectedQuote = "";
+
+    private readonly string[] quotes = new[]
+ {
+    "\"In the grim darkness of the far future, there is only war.\" — Rick Priestley",
+    "\"Innocence proves nothing.\" — The Inquisition",
+    "\"Knowledge is power, guard it well.\" — Inquisitorial Lore",
+    "\"Victory needs no explanation, defeat allows none.\" — Imperial Maxim",
+    "\"Only in death does duty end.\" — Imperial Creed",
+    "\"Blessed is the mind too small for doubt.\" — Rick Priestley",
+    "\"Hope is the first step on the road to disappointment.\" — Isador Akios",
+    "\"An open mind is like a fortress with its gates unbarred and unguarded.\" — The Inquisition"
+};
+
+    protected override void OnInitialized()
+    {
+        // Pick a random quote when the page loads
+        var random = new Random();
+        selectedQuote = quotes[random.Next(quotes.Length)];
+    }
+}

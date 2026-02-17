@@ -44,10 +44,10 @@ namespace Warhammer.Models
         public List<Profile> Profiles { get; set; } = new();
 
         [JsonPropertyName("rules")]
-        public List<Rule> Rules { get; set; } = new(); // <--- ADDED
+        public List<Rule> Rules { get; set; } = new(); 
 
         [JsonPropertyName("categories")]
-        public List<Category> Categories { get; set; } = new(); // <--- ADDED
+        public List<Category> Categories { get; set; } = new(); 
 
         [JsonPropertyName("costs")]
         public List<Cost> Costs { get; set; } = new();
@@ -83,8 +83,7 @@ namespace Warhammer.Models
         public double Value { get; set; }
     }
 
-    // --- NEW CLASSES ---
-    public class Rule
+     public class Rule
     {
         [JsonPropertyName("name")]
         public string Name { get; set; }

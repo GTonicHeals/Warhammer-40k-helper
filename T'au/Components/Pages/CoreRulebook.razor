@@ -137,7 +137,6 @@
             {
                 if (reader.NodeType != XmlNodeType.Element) continue;
 
-                // 1. IS IT A <rule>?
                 if (reader.LocalName == "rule")
                 {
                     if (reader.GetAttribute("hidden") == "true") continue;
@@ -159,23 +158,21 @@
                         });
                     }
                 }
-                // 2. IS IT A <profile>?
                 else if (reader.LocalName == "profile")
                 {
                     if (reader.GetAttribute("hidden") == "true") continue;
 
                     var typeName = reader.GetAttribute("typeName");
 
-                    // === EXPANDED PLAY REFERENCE FILTER ===
                     if (typeName != "Abilities" &&
                         typeName != "Rule" &&
                         typeName != "Crusade Relic" &&
                         typeName != "Crusade Battle Trait" &&
                         typeName != "Crusade Battle Scar" &&
                         typeName != "Weapon Ability" &&
-                        typeName != "Stratagem" &&    // Added!
-                        typeName != "Mission Rule" && // Added!
-                        typeName != "Terrain")        // Added!
+                        typeName != "Stratagem" &&    
+                        typeName != "Mission Rule" && 
+                        typeName != "Terrain")        
                         continue;
 
                     var el = (XElement)XNode.ReadFrom(reader);
