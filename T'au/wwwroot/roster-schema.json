@@ -1,0 +1,290 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "title": "JSON Schema for my JSON file format",
+
+  "type": "object",
+  "properties": {
+    "roster": {
+      "type": "object",
+      "properties": {
+        "costs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "typeId": {
+                "type": "string"
+              },
+              "value": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "typeId",
+              "value"
+            ]
+          }
+        },
+        "costLimits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "typeId": {
+                "type": "string"
+              },
+              "value": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "typeId",
+              "value"
+            ]
+          }
+        },
+        "forces": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rules": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "description": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "hidden": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "description",
+                    "id",
+                    "name",
+                    "hidden"
+                  ]
+                }
+              },
+              "selections": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "selections": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "entryId": {
+                            "type": "string"
+                          },
+                          "entryGroupId": {
+                            "type": "string"
+                          },
+                          "number": {
+                            "type": "number"
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "from": {
+                            "type": "string"
+                          },
+                          "group": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "entryId",
+                          "entryGroupId",
+                          "number",
+                          "type",
+                          "from",
+                          "group"
+                        ]
+                      }
+                    },
+                    "categories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "entryId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "primary": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "entryId",
+                          "name",
+                          "primary"
+                        ]
+                      }
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "entryId": {
+                      "type": "string"
+                    },
+                    "number": {
+                      "type": "number"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "selections",
+                    "categories",
+                    "id",
+                    "name",
+                    "entryId",
+                    "number",
+                    "type",
+                    "from"
+                  ]
+                }
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "primary": {
+                      "type": "boolean"
+                    },
+                    "entryId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "id",
+                    "primary",
+                    "entryId"
+                  ]
+                }
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "entryId": {
+                "type": "string"
+              },
+              "catalogueId": {
+                "type": "string"
+              },
+              "catalogueRevision": {
+                "type": "number"
+              },
+              "catalogueName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "rules",
+              "selections",
+              "categories",
+              "id",
+              "name",
+              "entryId",
+              "catalogueId",
+              "catalogueRevision",
+              "catalogueName"
+            ]
+          }
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "battleScribeVersion": {
+          "type": "number"
+        },
+        "generatedBy": {
+          "type": "string"
+        },
+        "gameSystemId": {
+          "type": "string"
+        },
+        "gameSystemName": {
+          "type": "string"
+        },
+        "gameSystemRevision": {
+          "type": "number"
+        },
+        "xmlns": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "costs",
+        "costLimits",
+        "forces",
+        "id",
+        "name",
+        "battleScribeVersion",
+        "generatedBy",
+        "gameSystemId",
+        "gameSystemName",
+        "gameSystemRevision",
+        "xmlns"
+      ]
+    }
+  },
+  "required": [
+    "roster"
+  ]
+}
