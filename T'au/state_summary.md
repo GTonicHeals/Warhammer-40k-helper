@@ -15,7 +15,7 @@ A Blazor Web Application (Interactive Server Mode, .NET 8) designed to act as a 
 ### A. Roster Viewer (`Roster.razor`)
 * **Dual Routing:** Accepts a routing parameter (`/roster/{Side?}`) to load either `roster.json` (Player 1) or `enemy.json` (Player 2).
 * **Dynamic Theming:** * Player 1 uses an Orange/Dark styling.
-  * Player 2 (`Side == "p2"`) overrides CSS to use a Blue/Dark styling.
+  * Player 2 (`Side == "p2"`) overrides CSS to use a Blue/Dark styling.212121
 * **Datasheet Parsing:** Recursively extracts Profiles, Characteristics, Weapons (Ranged/Melee), Abilities, and Keywords from the BattleScribe JSON schema.
 * **Smart Stratagem Integration:** * Parses a local `Stratagems.json` file.
   * Links units to stratagems using a string-split mapping logic.

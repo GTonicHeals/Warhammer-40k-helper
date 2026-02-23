@@ -91,7 +91,14 @@
                     <div class="step-content">
                         <strong>Select Targets</strong>
                         <p>Must be <strong>Visible</strong> and within <strong>Range</strong>.</p>
-                        <p><em>Lone Operative:</em> Can't be targeted >12".</p>
+
+                        <div class="mechanic-box" style="margin-bottom: 10px; border-left-color: #27ae60;">
+                            <strong>Big Guns Never Tire</strong><br />
+                            <small>
+                                <strong>MONSTERS</strong> and <strong>VEHICLES</strong> can shoot, and be shot at, even while within Engagement Range of enemy units.
+                                However, an attack made under these conditions (either by or against them) suffers a <strong>-1 penalty to the Hit roll</strong>.
+                            </small>
+                        </div>
                     </div>
                 </div>
                 <div class="step-row">
@@ -272,8 +279,10 @@
     // --- KEYWORDS DATA ---
     private List<KeywordDef> AllKeywords = new List<KeywordDef>
     {
+        new KeywordDef("Aircraft", "Model moves and behaves using specific Aircraft rules (cannot be charged by non-Fly, etc.)."),
         new KeywordDef("Anti-Keyword, X+", "CRITICAL WOUNDS the named unit type on X."),
         new KeywordDef("Assault", "Can Advance and Shoot."),
+        new KeywordDef("Aura", "Ability affects multiple units within a specified range."),
         new KeywordDef("Blast", "Add 1 attack per 5 models in target unit. No melee."),
         new KeywordDef("Conversion X", "Hit of 4+ is Critical if target > X\" away."),
         new KeywordDef("Critical Hits", "Unmodified Hit roll of 6. Always hits."),
@@ -290,13 +299,16 @@
         new KeywordDef("Grenades", "Keyword for Stratagem usage."),
         new KeywordDef("Hazardous", "After shooting, roll D6. On 1, model destroyed (or 3MW)."),
         new KeywordDef("Heavy", "+1 to Hit if unit remained stationary."),
+        new KeywordDef("Hover", "Model loses Aircraft keyword and measures distances normally, starting the game on the board."),
         new KeywordDef("Ignores Cover", "Target gets no cover save bonus."),
         new KeywordDef("Indirect Fire", "Can shoot without line of sight. -1 Hit, Target gets Cover."),
         new KeywordDef("Infiltrators", "Deploy outside zone, >9\" from enemy."),
+        new KeywordDef("Invulnerable Save", "An armor save that cannot be modified by the attack's Armor Penetration (AP)."),
         new KeywordDef("Lance", "+1 to Wound on Charge."),
         new KeywordDef("Leader", "Attaches to bodyguard unit."),
         new KeywordDef("Lethal Hits", "Critical Hits automatically Wound."),
         new KeywordDef("Lone Operative", "Can't be shot >12\" away."),
+        new KeywordDef("Markerlight", "When acting as an Observer, the Guided unit's attacks Ignore Cover."),
         new KeywordDef("Melta X", "+X Damage at half range."),
         new KeywordDef("Objective Control (OC)", "Used to hold objectives."),
         new KeywordDef("One Shot", "Can only fire once per game."),
@@ -308,6 +320,7 @@
         new KeywordDef("Stealth", "-1 to be Hit by ranged attacks."),
         new KeywordDef("Sustained Hits X", "Critical Hits generate X extra hits."),
         new KeywordDef("Torrent", "Auto-hits."),
+        new KeywordDef("Towering", "Can see and be seen over terrain features; ignores obscuring rules of Ruins."),
         new KeywordDef("Twin-Linked", "Re-roll Wound rolls.")
     };
 
