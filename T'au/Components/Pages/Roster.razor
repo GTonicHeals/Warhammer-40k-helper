@@ -61,19 +61,29 @@ else
                 </div>
 
                 @{
-                    var stats = GetProfileByType(unit, "Unit");
+                    var unitProfiles = GetAllProfilesRecursive(unit, "Unit").DistinctBy(p => p.Name).ToList();
                 }
-                @if (stats != null && stats.Characteristics != null)
+                @if (unitProfiles.Any())
                 {
-                    <div class="stats-strip">
-                        @foreach (var stat in stats.Characteristics)
+                    @foreach (var profile in unitProfiles)
+                    {
+                        @if (unitProfiles.Count > 1)
                         {
-                            <div class="stat-cell">
-                                <span class="stat-label">@stat.Name</span>
-                                <span class="stat-value">@stat.Value</span>
-                            </div>
+                            <div class="profile-name">@profile.Name</div>
                         }
-                    </div>
+                        <div class="stats-strip">
+                            @if (profile.Characteristics != null)
+                            {
+                                @foreach (var stat in profile.Characteristics)
+                                {
+                                    <div class="stat-cell">
+                                        <span class="stat-label">@stat.Name</span>
+                                        <span class="stat-value">@stat.Value</span>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
                 }
 
                 @{
@@ -493,6 +503,10 @@ else
 @if (Side == "p2")
 {
     <style>
+        .profile-name {
+            color: #5dade2 !important;
+        }
+
         .datasheet-header {
             background-color: #2e86c1 !important;
             border-bottom-color: #1b4f72 !important;
@@ -678,6 +692,16 @@ else
         text-transform: uppercase;
         font-weight: 800;
         letter-spacing: 1px;
+    }
+
+    .profile-name {
+        background-color: #2a2a2a;
+        color: #d35400;
+        padding: 4px 15px;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        font-weight: bold;
+        border-bottom: 1px solid #444;
     }
 
     .points-box {
