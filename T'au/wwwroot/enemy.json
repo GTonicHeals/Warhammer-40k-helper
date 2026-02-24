@@ -1,10 +1,10 @@
-{
+﻿{
   "roster": {
     "costs": [
       {
         "name": "pts",
         "typeId": "51b2-306e-1021-d207",
-        "value": 1115
+        "value": 1085
       }
     ],
     "costLimits": [
@@ -28,7 +28,7 @@
           {
             "selections": [
               {
-                "id": "bu8riys",
+                "id": "b7sdyhm",
                 "name": "Incursion (1000 Point limit)",
                 "entryId": "7380-3e40-6ed6-b7cc::d62d-db22-4893-4bc0",
                 "entryGroupId": "7380-3e40-6ed6-b7cc::b960-4789-a3a6-59cb",
@@ -46,7 +46,7 @@
                 "primary": true
               }
             ],
-            "id": "tb8hnhj",
+            "id": "upze8ng",
             "name": "Battle Size",
             "entryId": "7380-3e40-6ed6-b7cc::564e-fbc6-5266-3ea4",
             "number": 1,
@@ -64,7 +64,7 @@
                     "hidden": false
                   }
                 ],
-                "id": "bxxsp9m",
+                "id": "v8fzzd",
                 "name": "Ironstorm Spearhead",
                 "entryId": "e9ed-6763-ea0d-39fe::b79-add5-1d1e-f700::aa86-1617-4029-fcd7",
                 "entryGroupId": "e9ed-6763-ea0d-39fe::b79-add5-1d1e-f700::821b-9477-6c47-eab5",
@@ -82,7 +82,7 @@
                 "primary": true
               }
             ],
-            "id": "sx7fwdn",
+            "id": "ukjsry",
             "name": "Detachment",
             "entryId": "e9ed-6763-ea0d-39fe::82cb-ba1-1aae-3b1d",
             "number": 1,
@@ -100,7 +100,7 @@
                     "primary": false
                   }
                 ],
-                "id": "thb5r14",
+                "id": "usih2bh",
                 "name": "Agents of the Imperium are visible",
                 "entryId": "9e96-1101-afff-63b7::e08b-2448-5606-fefb",
                 "number": 1,
@@ -116,7 +116,7 @@
                     "primary": false
                   }
                 ],
-                "id": "th1fao7",
+                "id": "usn0bh5a",
                 "name": "Imperial Knights are visible",
                 "entryId": "24ae-928e-4edf-9e68::e82c-6f8c-2b97-a287",
                 "number": 1,
@@ -132,7 +132,7 @@
                     "primary": false
                   }
                 ],
-                "id": "tgzs9cs",
+                "id": "urhsio",
                 "name": "Legends are visible",
                 "entryId": "882-5a00-1760-a2be::892f-57ca-d650-7199::9ed-cbf4-bfe5-90bf",
                 "number": 1,
@@ -140,7 +140,7 @@
                 "from": "entry"
               },
               {
-                "id": "thlptul",
+                "id": "usi88ua",
                 "name": "Titans are visible",
                 "entryId": "7117-d2ee-6c97-a4ea::f26b-79db-80e0-3a3b",
                 "number": 1,
@@ -148,7 +148,7 @@
                 "from": "entry"
               },
               {
-                "id": "tg1gs3f",
+                "id": "urzi3y",
                 "name": "Unaligned Forces are visible",
                 "entryId": "882-5a00-1760-a2be::985-e753-2e94-859::2973-ea51-7f8d-5403",
                 "number": 1,
@@ -156,7 +156,7 @@
                 "from": "entry"
               },
               {
-                "id": "thwy8ms",
+                "id": "ur1a4s",
                 "name": "Unaligned Fortifications are visible",
                 "entryId": "882-5a00-1760-a2be::4d37-22c-a45c-64f8::e916-2cf4-a49d-b8c4",
                 "number": 1,
@@ -172,7 +172,7 @@
                 "primary": true
               }
             ],
-            "id": "tfyymvd",
+            "id": "urg9pej",
             "name": "Show/Hide Options",
             "entryId": "882-5a00-1760-a2be::e8ef-836a-a9d1-901d",
             "number": 1,
@@ -284,40 +284,6 @@
             ],
             "selections": [
               {
-                "profiles": [
-                  {
-                    "characteristics": [
-                      {
-                        "$text": "ADEPTUS ASTARTES model only. In your Command phase, select one ADEPTUS ASTARTES VEHICLE within 6\" of the bearer. Until the start of your next Command phase, that VEHICLE is eligible to shoot even if it Fell Back or Advanced this turn.",
-                        "name": "Description",
-                        "typeId": "9b8f-694b-e5e-b573"
-                      }
-                    ],
-                    "id": "d4fe-9138-66d1-3a49",
-                    "name": "Master of the Machine War",
-                    "hidden": false,
-                    "typeId": "9cc3-6d83-4dd3-9b64",
-                    "typeName": "Abilities",
-                    "from": "entry"
-                  }
-                ],
-                "costs": [
-                  {
-                    "name": "pts",
-                    "typeId": "51b2-306e-1021-d207",
-                    "value": 20
-                  }
-                ],
-                "id": "andzyh",
-                "name": "Master of the Machine War",
-                "entryId": "a74c-27a6-a054-e13c::8bda-6702-97af-350e::4670-2df-930f-e708",
-                "entryGroupId": "a74c-27a6-a054-e13c::8bda-6702-97af-350e::21b-fffe-4336-f398",
-                "number": 1,
-                "type": "upgrade",
-                "from": "group",
-                "group": "Enhancements::Ironstorm Spearhead Enhancements"
-              },
-              {
                 "rules": [
                   {
                     "description": "Weapons with **[PISTOL]** in their profile are known as Pistols. If a unit contains any models equipped with Pistols, that unit is eligible to shoot in its controlling player’s Shooting phase even while it is within Engagement Range of one or more enemy units. When such a unit is selected to shoot, it can only resolve attacks using its Pistols and can only target one of the enemy units it is within Engagement Range of. In such circumstances, a Pistol can target an enemy unit even if other friendly units are within Engagement Range of the same enemy unit. \n\nIf a model is equipped with one or more Pistols, unless it is a **^^Monster^^** or **^^Vehicle^^** model, it can either shoot with its Pistols or with all of its other ranged weapons. Declare whether such a model will shoot with its Pistols or its other ranged weapons before selecting targets.",
@@ -382,7 +348,7 @@
                     "primary": false
                   }
                 ],
-                "id": "90z5c8d",
+                "id": "8yi7tnf",
                 "name": "Absolver Bolt Pistol",
                 "entryId": "a74c-27a6-a054-e13c::7c7b-e0a5-f7ce-a060::a490-361-c9c4-afeb",
                 "entryGroupId": "a74c-27a6-a054-e13c::b8bf-49fc-63d7-3421",
@@ -447,7 +413,7 @@
                     "primary": false
                   }
                 ],
-                "id": "91ydcxm",
+                "id": "8ylcwai",
                 "name": "Close combat weapon",
                 "entryId": "a74c-27a6-a054-e13c::3ec2-e772-f282-f257::db5b-fe94-e50c-4f4b",
                 "entryGroupId": "a74c-27a6-a054-e13c::b8bf-49fc-63d7-3421",
@@ -521,7 +487,7 @@
                     "primary": false
                   }
                 ],
-                "id": "90jj3at",
+                "id": "8xmjc7u",
                 "name": "Reductor Pistol",
                 "entryId": "a74c-27a6-a054-e13c::284a-1df6-ca31-16e7",
                 "entryGroupId": "a74c-27a6-a054-e13c::b8bf-49fc-63d7-3421",
@@ -582,7 +548,7 @@
                 "primary": false
               }
             ],
-            "id": "8xl9t6r",
+            "id": "8qyx2uk",
             "name": "Apothecary",
             "entryId": "a74c-27a6-a054-e13c::8a9d-11f-fad-bd0f",
             "number": 1,
@@ -717,46 +683,12 @@
                     "primary": false
                   }
                 ],
-                "id": "jpmqcy",
+                "id": "337naum",
                 "name": "Warlord",
                 "entryId": "91e3-a419-8c58-98f5::a89c-b01e-ffab-8ebb::caa-f869-3cbd-b48e",
                 "number": 1,
                 "type": "upgrade",
                 "from": "entry"
-              },
-              {
-                "profiles": [
-                  {
-                    "characteristics": [
-                      {
-                        "$text": "Adeptus Astartes model only. The bearer has the Feel No Pain 4+ ability.",
-                        "name": "Description",
-                        "typeId": "9b8f-694b-e5e-b573"
-                      }
-                    ],
-                    "id": "4fe9-5628-2a71-56f1",
-                    "name": "The Flesh is Weak",
-                    "hidden": false,
-                    "typeId": "9cc3-6d83-4dd3-9b64",
-                    "typeName": "Abilities",
-                    "from": "entry"
-                  }
-                ],
-                "costs": [
-                  {
-                    "name": "pts",
-                    "typeId": "51b2-306e-1021-d207",
-                    "value": 10
-                  }
-                ],
-                "id": "jlzuc9k",
-                "name": "The Flesh is Weak",
-                "entryId": "91e3-a419-8c58-98f5::c055-7d2-bf2-51bc::64bf-bc5c-2a45-54f0",
-                "entryGroupId": "91e3-a419-8c58-98f5::c055-7d2-bf2-51bc::21b-fffe-4336-f398",
-                "number": 1,
-                "type": "upgrade",
-                "from": "group",
-                "group": "Enhancements::Ironstorm Spearhead Enhancements"
               },
               {
                 "selections": [
@@ -837,7 +769,7 @@
                         "primary": false
                       }
                     ],
-                    "id": "jrnupaq",
+                    "id": "l5wmowm",
                     "name": "Bolt pistol",
                     "entryId": "91e3-a419-8c58-98f5::87a5-6849-3981-d57e::b273-b85e-4018-a0cd",
                     "number": 1,
@@ -900,7 +832,7 @@
                         "primary": false
                       }
                     ],
-                    "id": "jrbmvwm",
+                    "id": "l5vws38",
                     "name": "Master-crafted Bolter",
                     "entryId": "91e3-a419-8c58-98f5::d3c2-6cd8-5ac7-87f6::c3bc-26b4-6fa0-bd39",
                     "number": 1,
@@ -917,7 +849,7 @@
                             "typeId": "914c-b413-91e3-a132"
                           },
                           {
-                            "$text": "5",
+                            "$text": "6",
                             "name": "A",
                             "typeId": "2337-daa1-6682-b110"
                           },
@@ -927,7 +859,7 @@
                             "typeId": "95d1-95f-45b4-11d6"
                           },
                           {
-                            "$text": "8",
+                            "$text": "5",
                             "name": "S",
                             "typeId": "ab33-d393-96ce-ccba"
                           },
@@ -947,8 +879,8 @@
                             "typeId": "893f-9000-ccf7-648e"
                           }
                         ],
-                        "id": "0f7e-39a9-fc61-122a",
-                        "name": "Power Fist",
+                        "id": "7bf3-e01c-dce7-60fd",
+                        "name": "Master-crafted Power Weapon",
                         "hidden": false,
                         "typeId": "8a40-4aaa-c780-9046",
                         "typeName": "Melee Weapons",
@@ -961,11 +893,17 @@
                         "name": "Melee Weapon",
                         "entryId": "ccdd-3987-11ed-90cd",
                         "primary": false
+                      },
+                      {
+                        "id": "72a2-ff76-451c-9d12",
+                        "name": "Power Weapon",
+                        "entryId": "72a2-ff76-451c-9d12",
+                        "primary": false
                       }
                     ],
-                    "id": "jrjoib8",
-                    "name": "Power Fist",
-                    "entryId": "91e3-a419-8c58-98f5::667f-2fe-d8c8-c6f7::99de-5985-8cb8-f571",
+                    "id": "360vlpq",
+                    "name": "Master-crafted Power Weapon",
+                    "entryId": "91e3-a419-8c58-98f5::e77-5303-12ad-cbde::ebda-08ed-994a-b579",
                     "entryGroupId": "91e3-a419-8c58-98f5::1591-a4ae-50fb-3c21",
                     "number": 1,
                     "type": "upgrade",
@@ -973,7 +911,7 @@
                     "group": "Melee Weapon"
                   }
                 ],
-                "id": "jj1pnnm",
+                "id": "l2lckj",
                 "name": "Bolt Pistol, Master-crafted Bolter, Melee Weapon",
                 "entryId": "91e3-a419-8c58-98f5::c6aa-b3a5-4ff3-e0d3",
                 "entryGroupId": "91e3-a419-8c58-98f5::ccdb-b984-df14-9b54",
@@ -1034,7 +972,7 @@
                 "primary": false
               }
             ],
-            "id": "ji7zrks",
+            "id": "l0h60e",
             "name": "Captain",
             "entryId": "91e3-a419-8c58-98f5::6c10-5b51-5bc0-8d2c",
             "number": 1,
@@ -1209,7 +1147,7 @@
                         "primary": false
                       }
                     ],
-                    "id": "t4dbmq3f",
+                    "id": "a7pu61t",
                     "name": "Master-crafted Power Weapon",
                     "entryId": "9770-3a56-619e-f390::f08e-ff00-e54a-3efb::ebda-08ed-994a-b579",
                     "number": 1,
@@ -1288,7 +1226,7 @@
                         "primary": false
                       }
                     ],
-                    "id": "t48os1v",
+                    "id": "a6b8io",
                     "name": "Neo-volkite Pistol",
                     "entryId": "9770-3a56-619e-f390::5749-aa56-80cb-9ac0",
                     "number": 1,
@@ -1313,7 +1251,7 @@
                         "from": "entry"
                       }
                     ],
-                    "id": "t4wjzq",
+                    "id": "a7m5so",
                     "name": "Storm Shield",
                     "entryId": "9770-3a56-619e-f390::bb4a-8d17-2abd-b303",
                     "number": 1,
@@ -1321,7 +1259,7 @@
                     "from": "entry"
                   }
                 ],
-                "id": "v93mwvg",
+                "id": "3lipy39",
                 "name": "Neo-volkite pistol, Master-crafted Power Sword & Storm Shield",
                 "entryId": "9770-3a56-619e-f390::a1f2-12d9-5a4c-a524",
                 "entryGroupId": "9770-3a56-619e-f390::1752-282a-4c3d-d4a5",
@@ -1382,7 +1320,7 @@
                 "primary": false
               }
             ],
-            "id": "v5h3a2z",
+            "id": "2j5bl2a",
             "name": "Lieutenant",
             "entryId": "9770-3a56-619e-f390::ce15-e87e-7cff-b129",
             "number": 1,
@@ -1567,7 +1505,7 @@
                         "primary": false
                       }
                     ],
-                    "id": "vua8ix",
+                    "id": "pj75pal",
                     "name": "Bolt pistol",
                     "entryId": "8a1e-45c9-7719-b8c3::cc94-34b5-4fab-f266::18b0-8c2-173f-5",
                     "number": 1,
@@ -1622,7 +1560,7 @@
                         "from": "entry"
                       }
                     ],
-                    "id": "vuat4h6",
+                    "id": "pjp1mp",
                     "name": "Bolt Rifle",
                     "entryId": "8a1e-45c9-7719-b8c3::67f5-4121-ff19-9540",
                     "number": 1,
@@ -1677,7 +1615,7 @@
                         "from": "entry"
                       }
                     ],
-                    "id": "vv9dcad",
+                    "id": "pkid9or",
                     "name": "Close combat weapon",
                     "entryId": "8a1e-45c9-7719-b8c3::fea4-9467-edac-bd2a::3f91-0cab-f770-21d9",
                     "number": 1,
@@ -1693,7 +1631,7 @@
                     "primary": false
                   }
                 ],
-                "id": "vpw28wg",
+                "id": "pilw8up",
                 "name": "Ancient",
                 "entryId": "8a1e-45c9-7719-b8c3::f26a-2b25-1582-ae68",
                 "entryGroupId": "8a1e-45c9-7719-b8c3::8d79-c180-6b64-fcd5",
@@ -1823,7 +1761,7 @@
                         "primary": false
                       }
                     ],
-                    "id": "w34n7wc",
+                    "id": "pl3fosl",
                     "name": "Bolt pistol",
                     "entryId": "8a1e-45c9-7719-b8c3::27d-1b00-1f3d-63d3::18b0-8c2-173f-5",
                     "number": 1,
@@ -1887,7 +1825,7 @@
                         "from": "entry"
                       }
                     ],
-                    "id": "w24njap",
+                    "id": "ple040k",
                     "name": "Master-crafted Power Weapon",
                     "entryId": "8a1e-45c9-7719-b8c3::b46a-67f2-32cc-fda1",
                     "number": 1,
@@ -1895,7 +1833,7 @@
                     "from": "entry"
                   }
                 ],
-                "id": "vqzeak",
+                "id": "pi5wvnk",
                 "name": "Company Champion",
                 "entryId": "8a1e-45c9-7719-b8c3::b365-b786-8fe6-1293",
                 "entryGroupId": "8a1e-45c9-7719-b8c3::8d79-c180-6b64-fcd5",
@@ -2025,7 +1963,7 @@
                         "primary": false
                       }
                     ],
-                    "id": "w97w29",
+                    "id": "pmzsdgk",
                     "name": "Bolt pistol",
                     "entryId": "8a1e-45c9-7719-b8c3::6544-72c6-e92d-aa9::18b0-8c2-173f-5",
                     "number": 1,
@@ -2080,7 +2018,7 @@
                         "from": "entry"
                       }
                     ],
-                    "id": "wadyydj",
+                    "id": "pmg5xe",
                     "name": "Close combat weapon",
                     "entryId": "8a1e-45c9-7719-b8c3::bb9e-ad8f-b6c8-5140::3f91-0cab-f770-21d9",
                     "number": 1,
@@ -2151,7 +2089,7 @@
                         "from": "entry"
                       }
                     ],
-                    "id": "w8h7on",
+                    "id": "pm1m5hb",
                     "name": "Master-crafted Bolt Rifle",
                     "entryId": "8a1e-45c9-7719-b8c3::4c78-3296-b3dd-a01a",
                     "number": 1,
@@ -2159,7 +2097,7 @@
                     "from": "entry"
                   }
                 ],
-                "id": "vqakb28",
+                "id": "piad0e",
                 "name": "Company Veteran w/ Bolt Rifle",
                 "entryId": "8a1e-45c9-7719-b8c3::311e-7cc5-94e7-128f",
                 "entryGroupId": "8a1e-45c9-7719-b8c3::8d79-c180-6b64-fcd5",
@@ -2289,7 +2227,7 @@
                         "primary": false
                       }
                     ],
-                    "id": "wgqsfk",
+                    "id": "pn2odc",
                     "name": "Bolt pistol",
                     "entryId": "8a1e-45c9-7719-b8c3::b186-7687-2dfb-30b6::18b0-8c2-173f-5",
                     "number": 1,
@@ -2344,7 +2282,7 @@
                         "from": "entry"
                       }
                     ],
-                    "id": "wh809xf",
+                    "id": "poi6c3",
                     "name": "Close combat weapon",
                     "entryId": "8a1e-45c9-7719-b8c3::ded9-e7c3-003e-4cd6::3f91-0cab-f770-21d9",
                     "number": 1,
@@ -2415,7 +2353,7 @@
                         "from": "entry"
                       }
                     ],
-                    "id": "wgys6c",
+                    "id": "pnoay3h",
                     "name": "Master-crafted Heavy Bolter",
                     "entryId": "8a1e-45c9-7719-b8c3::27c3-9e15-fc4b-6060",
                     "number": 1,
@@ -2423,7 +2361,7 @@
                     "from": "entry"
                   }
                 ],
-                "id": "vrkdy1",
+                "id": "piqjphk",
                 "name": "Company Veteran w/ Heavy Bolter",
                 "entryId": "8a1e-45c9-7719-b8c3::b972-1787-fd71-9d11",
                 "entryGroupId": "8a1e-45c9-7719-b8c3::8d79-c180-6b64-fcd5",
@@ -2478,7 +2416,7 @@
                 "primary": false
               }
             ],
-            "id": "vlp17ca",
+            "id": "ph2rum5",
             "name": "Company Heroes",
             "entryId": "8a1e-45c9-7719-b8c3::2f2e-d99b-b235-163a",
             "number": 1,
@@ -2633,7 +2571,7 @@
                         "primary": false
                       }
                     ],
-                    "id": "z1g9zk",
+                    "id": "lk277v6",
                     "name": "Bolt pistol",
                     "entryId": "4c8-e877-566b-a1ee::1477-adae-b502-dd22::18b0-8c2-173f-5",
                     "number": 4,
@@ -2696,7 +2634,7 @@
                         "primary": false
                       }
                     ],
-                    "id": "z0eobpv",
+                    "id": "lknpdu",
                     "name": "Close combat weapon",
                     "entryId": "4c8-e877-566b-a1ee::b371-4025-ee17-f3d0::6c7d-af5b-482-6fbe",
                     "number": 4,
@@ -2819,7 +2757,7 @@
                         "from": "entry"
                       }
                     ],
-                    "id": "z0pjki9",
+                    "id": "lkso38t",
                     "name": "Plasma Incinerator",
                     "entryId": "4c8-e877-566b-a1ee::bb24-ed3f-7468-4f61",
                     "number": 4,
@@ -2827,7 +2765,7 @@
                     "from": "entry"
                   }
                 ],
-                "id": "yy1nzz4",
+                "id": "lj5pail",
                 "name": "Hellblaster",
                 "entryId": "4c8-e877-566b-a1ee::1e78-8fcd-1fa7-ec47",
                 "entryGroupId": "4c8-e877-566b-a1ee::622e-57d8-e77f-3e36",
@@ -2936,7 +2874,7 @@
                         "primary": false
                       }
                     ],
-                    "id": "z4930nt",
+                    "id": "llauz3",
                     "name": "Close combat weapon",
                     "entryId": "4c8-e877-566b-a1ee::67ab-26a0-66b8-5b73::6c7d-af5b-482-6fbe",
                     "number": 1,
@@ -3059,7 +2997,7 @@
                         "from": "entry"
                       }
                     ],
-                    "id": "z46wa7",
+                    "id": "ll0dj2t",
                     "name": "Plasma Incinerator",
                     "entryId": "4c8-e877-566b-a1ee::9119-f6ca-9836-c7ca::bb24-ed3f-7468-4f61",
                     "number": 1,
@@ -3068,6 +3006,13 @@
                   },
                   {
                     "rules": [
+                      {
+                        "description": "Weapons with **[HAZARDOUS]** in their profile are known as Hazardous weapons. Each time a unit is selected to shoot or fight, after that unit has resolved all of its attacks, for each Hazardous weapon that targets were selected for when resolving those attacks, that unit must take one Hazardous test. To do so, roll one D6: on a 1, that test is failed. For each failed test you must resolve the following sequence (resolve each failed test one at a time): \n\n■ If possible, select one model in that unit that has lost one or more wounds and is equipped with one or more Hazardous weapons. \n■ Otherwise, if possible, select one model in that unit (excluding **^^Character^^** models) equipped with one or more Hazardous weapons. \n■ Otherwise, select one **^^Character^^** model in that unit equipped with one or more Hazardous weapons. \n\nIf a model was selected, that unit suffers 3 mortal wounds and when allocating those mortal wounds, they must be allocated to the selected model. \n\nIf a unit from a player’s army is selected as the target of the Fire Overwatch Stratagem in their opponent’s Charge phase, any mortal wounds inflicted by Hazardous tests are allocated after the charging unit has ended its Charge move.",
+                        "id": "8367-374c-f87-c627",
+                        "name": "Hazardous",
+                        "hidden": false,
+                        "page": 28
+                      },
                       {
                         "description": "Weapons with **[PISTOL]** in their profile are known as Pistols. If a unit contains any models equipped with Pistols, that unit is eligible to shoot in its controlling player’s Shooting phase even while it is within Engagement Range of one or more enemy units. When such a unit is selected to shoot, it can only resolve attacks using its Pistols and can only target one of the enemy units it is within Engagement Range of. In such circumstances, a Pistol can target an enemy unit even if other friendly units are within Engagement Range of the same enemy unit. \n\nIf a model is equipped with one or more Pistols, unless it is a **^^Monster^^** or **^^Vehicle^^** model, it can either shoot with its Pistols or with all of its other ranged weapons. Declare whether such a model will shoot with its Pistols or its other ranged weapons before selecting targets.",
                         "id": "8bf7-8812-923d-29e4",
@@ -3095,12 +3040,57 @@
                             "typeId": "94d-8a98-cf90-183e"
                           },
                           {
-                            "$text": "4",
+                            "$text": "8",
                             "name": "S",
                             "typeId": "2229-f494-25db-c5d3"
                           },
                           {
-                            "$text": "0",
+                            "$text": "-3",
+                            "name": "AP",
+                            "typeId": "9ead-8a10-520-de15"
+                          },
+                          {
+                            "$text": "2",
+                            "name": "D",
+                            "typeId": "a354-c1c8-a745-f9e3"
+                          },
+                          {
+                            "$text": "Hazardous, Pistol",
+                            "name": "Keywords",
+                            "typeId": "7f1b-8591-2fcf-d01c"
+                          }
+                        ],
+                        "id": "4a80-2594-8839-c0bf",
+                        "name": "➤ Plasma Pistol - Supercharge",
+                        "hidden": false,
+                        "typeId": "f77d-b953-8fa4-b762",
+                        "typeName": "Ranged Weapons",
+                        "from": "entry"
+                      },
+                      {
+                        "characteristics": [
+                          {
+                            "$text": "12\"",
+                            "name": "Range",
+                            "typeId": "9896-9419-16a1-92fc"
+                          },
+                          {
+                            "$text": "1",
+                            "name": "A",
+                            "typeId": "3bb-c35f-f54-fb08"
+                          },
+                          {
+                            "$text": "3+",
+                            "name": "BS",
+                            "typeId": "94d-8a98-cf90-183e"
+                          },
+                          {
+                            "$text": "7",
+                            "name": "S",
+                            "typeId": "2229-f494-25db-c5d3"
+                          },
+                          {
+                            "$text": "-2",
                             "name": "AP",
                             "typeId": "9ead-8a10-520-de15"
                           },
@@ -3115,8 +3105,8 @@
                             "typeId": "7f1b-8591-2fcf-d01c"
                           }
                         ],
-                        "id": "d093-797a-4c76-eea3",
-                        "name": "Bolt pistol",
+                        "id": "5edb-fb23-55e8-8415",
+                        "name": "➤ Plasma Pistol - Standard",
                         "hidden": false,
                         "typeId": "f77d-b953-8fa4-b762",
                         "typeName": "Ranged Weapons",
@@ -3131,21 +3121,15 @@
                         "primary": false
                       },
                       {
-                        "id": "1c08-e7e4-55b9-8e30",
-                        "name": "Bolt Weapon",
-                        "entryId": "1c08-e7e4-55b9-8e30",
-                        "primary": false
-                      },
-                      {
                         "id": "1db0-c6b5-19db-8d0c",
                         "name": "Pistol Weapon",
                         "entryId": "1db0-c6b5-19db-8d0c",
                         "primary": false
                       }
                     ],
-                    "id": "z3fuycr",
-                    "name": "Bolt pistol",
-                    "entryId": "4c8-e877-566b-a1ee::64d9-976-6c0a-d06f::18b0-8c2-173f-5",
+                    "id": "r6w70dx",
+                    "name": "Plasma Pistol",
+                    "entryId": "4c8-e877-566b-a1ee::5241-3404-a0f7-3d05::25c2-104f-fa0c-809e",
                     "entryGroupId": "4c8-e877-566b-a1ee::adf2-4bf1-bc97-2b18",
                     "number": 1,
                     "type": "upgrade",
@@ -3153,7 +3137,7 @@
                     "group": "Pistol Option"
                   }
                 ],
-                "id": "yyp8z2",
+                "id": "lj1wkpl",
                 "name": "Hellblaster Sergeant",
                 "entryId": "4c8-e877-566b-a1ee::615a-3536-201a-64e4",
                 "entryGroupId": "4c8-e877-566b-a1ee::622e-57d8-e77f-3e36",
@@ -3208,7 +3192,7 @@
                 "primary": false
               }
             ],
-            "id": "yw3yx25",
+            "id": "lis40k",
             "name": "Hellblaster Squad",
             "entryId": "4c8-e877-566b-a1ee::7102-b3a4-9bfc-1b84",
             "number": 1,
@@ -3342,7 +3326,7 @@
                         "primary": false
                       }
                     ],
-                    "id": "jw0a7bp",
+                    "id": "8p0j3ke",
                     "name": "Close combat weapon",
                     "entryId": "bc4e-8331-8179-255b::ee77-c9ba-05cd-a769::db5b-fe94-e50c-4f4b",
                     "number": 1,
@@ -3427,7 +3411,7 @@
                         "primary": false
                       }
                     ],
-                    "id": "jvpwtll",
+                    "id": "8pq8xhr",
                     "name": "Sternguard Bolt Pistol",
                     "entryId": "bc4e-8331-8179-255b::eece-4d41-4cd6-7185::4f36-2df5-903a-5541",
                     "number": 1,
@@ -3444,7 +3428,7 @@
                             "typeId": "914c-b413-91e3-a132"
                           },
                           {
-                            "$text": "6",
+                            "$text": "5",
                             "name": "A",
                             "typeId": "2337-daa1-6682-b110"
                           },
@@ -3454,12 +3438,12 @@
                             "typeId": "95d1-95f-45b4-11d6"
                           },
                           {
-                            "$text": "4",
+                            "$text": "5",
                             "name": "S",
                             "typeId": "ab33-d393-96ce-ccba"
                           },
                           {
-                            "$text": "-1",
+                            "$text": "-2",
                             "name": "AP",
                             "typeId": "41a0-1301-112a-e2f2"
                           },
@@ -3474,17 +3458,31 @@
                             "typeId": "893f-9000-ccf7-648e"
                           }
                         ],
-                        "id": "cf23-a8b2-a9d3-df",
-                        "name": "Astartes Chainsword",
+                        "id": "358b-8872-11ef-8159",
+                        "name": "Power Weapon",
                         "hidden": false,
                         "typeId": "8a40-4aaa-c780-9046",
                         "typeName": "Melee Weapons",
                         "from": "entry"
                       }
                     ],
-                    "id": "judjvse",
-                    "name": "Astartes Chainsword",
-                    "entryId": "bc4e-8331-8179-255b::464b-51e7-0c71-6895::f241-f2ab-c2bd-cf0e",
+                    "categories": [
+                      {
+                        "id": "72a2-ff76-451c-9d12",
+                        "name": "Power Weapon",
+                        "entryId": "72a2-ff76-451c-9d12",
+                        "primary": false
+                      },
+                      {
+                        "id": "ccdd-3987-11ed-90cd",
+                        "name": "Melee Weapon",
+                        "entryId": "ccdd-3987-11ed-90cd",
+                        "primary": false
+                      }
+                    ],
+                    "id": "r9hr43w",
+                    "name": "Power Weapon",
+                    "entryId": "bc4e-8331-8179-255b::21d7-f533-94bc-be6d::e1b5-a74f-b2ec-c7ed",
                     "entryGroupId": "bc4e-8331-8179-255b::6cfb-5b5e-5441-a1af",
                     "number": 1,
                     "type": "upgrade",
@@ -3569,7 +3567,7 @@
                         "from": "entry"
                       }
                     ],
-                    "id": "js6qxku",
+                    "id": "5myvsl9",
                     "name": "Sternguard Bolt Rifle",
                     "entryId": "bc4e-8331-8179-255b::39c3-1657-46c8-5d87::874a-4375-dbc3-b412",
                     "entryGroupId": "bc4e-8331-8179-255b::5ff5-aadc-6bc4-b2d8",
@@ -3579,7 +3577,7 @@
                     "group": "Weapon Option"
                   }
                 ],
-                "id": "jn3mp4a",
+                "id": "8on9ba9",
                 "name": "Sternguard Veteran Sergeant",
                 "entryId": "bc4e-8331-8179-255b::97cd-6365-ce27-d73f",
                 "entryGroupId": "bc4e-8331-8179-255b::edfc-d6af-480a-d5fc",
@@ -3623,7 +3621,7 @@
                         "typeId": "bef7-942a-1a23-59f8"
                       }
                     ],
-                    "id": "869f-21c3-df3a-8d23",
+                    "id": "efb3-5725-0912-fa2c",
                     "name": "Sternguard Veteran Squad",
                     "hidden": false,
                     "typeId": "c547-1836-d8a-ff4f",
@@ -3688,10 +3686,96 @@
                         "primary": false
                       }
                     ],
-                    "id": "k6rztkr",
+                    "id": "vkt8x9u",
                     "name": "Close combat weapon",
-                    "entryId": "bc4e-8331-8179-255b::ffc4-4456-a097-c83d::db5b-fe94-e50c-4f4b",
-                    "number": 4,
+                    "entryId": "bc4e-8331-8179-255b::2d38-ef32-9e51-b7ae::db5b-fe94-e50c-4f4b",
+                    "number": 3,
+                    "type": "upgrade",
+                    "from": "entry"
+                  },
+                  {
+                    "rules": [
+                      {
+                        "description": "Weapons with **[ANTI-KEYWORD X+]** in their profile are known as Anti weapons. Each time an attack is made with such a weapon against a target with the keyword after the word ‘Anti-’, an unmodified Wound roll of ‘x+’ scores a Critical Wound.",
+                        "id": "4111-82e3-9444-e942",
+                        "name": "Anti-",
+                        "hidden": false,
+                        "page": 28
+                      },
+                      {
+                        "description": "Weapons with **[DEVASTATING WOUNDS]** in their profile are known as Devastating Wounds weapons. Each time an attack is made with such a weapon, if that attack scores a Critical Wound, no saving throw of any kind can be made against that attack (including invulnerable saving throws). Such attacks are only allocated to models after all other attacks made by the attacking unit have been allocated and resolved. After that attack is allocated and after any modifiers are applied, it inflicts a number of mortal wounds on the target equal to the Damage characteristic of that attack, instead of inflicting damage normally.",
+                        "id": "be1e-ac8e-1e2c-3528",
+                        "name": "Devastating Wounds",
+                        "hidden": false,
+                        "page": 28
+                      },
+                      {
+                        "description": "Weapons with **[RAPID FIRE X]** in their profile are known as Rapid Fire weapons. Each time such a weapon targets a unit within half that weapon’s range, the Attacks characteristic of that weapon is increased by the amount denoted by ‘x’.",
+                        "id": "c5c8-8b58-b8b6-7786",
+                        "name": "Rapid Fire",
+                        "hidden": false,
+                        "page": 25
+                      }
+                    ],
+                    "profiles": [
+                      {
+                        "characteristics": [
+                          {
+                            "$text": "24\"",
+                            "name": "Range",
+                            "typeId": "9896-9419-16a1-92fc"
+                          },
+                          {
+                            "$text": "1",
+                            "name": "A",
+                            "typeId": "3bb-c35f-f54-fb08"
+                          },
+                          {
+                            "$text": "4+",
+                            "name": "BS",
+                            "typeId": "94d-8a98-cf90-183e"
+                          },
+                          {
+                            "$text": "4",
+                            "name": "S",
+                            "typeId": "2229-f494-25db-c5d3"
+                          },
+                          {
+                            "$text": "0",
+                            "name": "AP",
+                            "typeId": "9ead-8a10-520-de15"
+                          },
+                          {
+                            "$text": "1",
+                            "name": "D",
+                            "typeId": "a354-c1c8-a745-f9e3"
+                          },
+                          {
+                            "$text": "Anti-Infantry 4+, Devastating Wounds, Rapid Fire 1",
+                            "name": "Keywords",
+                            "typeId": "7f1b-8591-2fcf-d01c"
+                          }
+                        ],
+                        "id": "23be-25e0-7210-cb7f",
+                        "name": "Combi-weapon",
+                        "hidden": false,
+                        "typeId": "f77d-b953-8fa4-b762",
+                        "typeName": "Ranged Weapons",
+                        "from": "entry"
+                      }
+                    ],
+                    "categories": [
+                      {
+                        "id": "eeda-8544-a2f3-3fab",
+                        "name": "Ranged Weapon",
+                        "entryId": "eeda-8544-a2f3-3fab",
+                        "primary": false
+                      }
+                    ],
+                    "id": "vkw8irm",
+                    "name": "Combi-weapon",
+                    "entryId": "bc4e-8331-8179-255b::7bea-4fc7-4dca-176a::2c13-8cdd-f66b-bcae",
+                    "number": 3,
                     "type": "upgrade",
                     "from": "entry"
                   },
@@ -3773,22 +3857,132 @@
                         "primary": false
                       }
                     ],
-                    "id": "k651a2p",
+                    "id": "vksrbch",
                     "name": "Sternguard Bolt Pistol",
-                    "entryId": "bc4e-8331-8179-255b::4c0f-b31f-0154-b391::4f36-2df5-903a-5541",
-                    "number": 4,
+                    "entryId": "bc4e-8331-8179-255b::f517-99c5-49a5-429::4f36-2df5-903a-5541",
+                    "number": 3,
+                    "type": "upgrade",
+                    "from": "entry"
+                  }
+                ],
+                "id": "vj2o5qa",
+                "name": "Sternguard Veteran w/ Combi-weapon",
+                "entryId": "bc4e-8331-8179-255b::e2b3-464a-a329-99ec",
+                "entryGroupId": "bc4e-8331-8179-255b::edfc-d6af-480a-d5fc",
+                "number": 3,
+                "type": "model",
+                "from": "group",
+                "group": "Sternguard Veterans"
+              },
+              {
+                "profiles": [
+                  {
+                    "characteristics": [
+                      {
+                        "$text": "6\"",
+                        "name": "M",
+                        "typeId": "e703-ecb6-5ce7-aec1"
+                      },
+                      {
+                        "$text": "4",
+                        "name": "T",
+                        "typeId": "d29d-cf75-fc2d-34a4"
+                      },
+                      {
+                        "$text": "3+",
+                        "name": "SV",
+                        "typeId": "450-a17e-9d5e-29da"
+                      },
+                      {
+                        "$text": "2",
+                        "name": "W",
+                        "typeId": "750a-a2ec-90d3-21fe"
+                      },
+                      {
+                        "$text": "6+",
+                        "name": "LD",
+                        "typeId": "58d2-b879-49c7-43bc"
+                      },
+                      {
+                        "$text": "1",
+                        "name": "OC",
+                        "typeId": "bef7-942a-1a23-59f8"
+                      }
+                    ],
+                    "id": "32f3-55d-8089-6c75",
+                    "name": "Sternguard Veteran Squad",
+                    "hidden": false,
+                    "typeId": "c547-1836-d8a-ff4f",
+                    "typeName": "Unit",
+                    "from": "entry"
+                  }
+                ],
+                "selections": [
+                  {
+                    "profiles": [
+                      {
+                        "characteristics": [
+                          {
+                            "$text": "Melee",
+                            "name": "Range",
+                            "typeId": "914c-b413-91e3-a132"
+                          },
+                          {
+                            "$text": "4",
+                            "name": "A",
+                            "typeId": "2337-daa1-6682-b110"
+                          },
+                          {
+                            "$text": "3+",
+                            "name": "WS",
+                            "typeId": "95d1-95f-45b4-11d6"
+                          },
+                          {
+                            "$text": "4",
+                            "name": "S",
+                            "typeId": "ab33-d393-96ce-ccba"
+                          },
+                          {
+                            "$text": "0",
+                            "name": "AP",
+                            "typeId": "41a0-1301-112a-e2f2"
+                          },
+                          {
+                            "$text": "1",
+                            "name": "D",
+                            "typeId": "3254-9fe6-d824-513e"
+                          },
+                          {
+                            "$text": "-",
+                            "name": "Keywords",
+                            "typeId": "893f-9000-ccf7-648e"
+                          }
+                        ],
+                        "id": "7e7a-203c-a2ac-163f",
+                        "name": "Close combat weapon",
+                        "hidden": false,
+                        "typeId": "8a40-4aaa-c780-9046",
+                        "typeName": "Melee Weapons",
+                        "from": "entry"
+                      }
+                    ],
+                    "categories": [
+                      {
+                        "id": "ccdd-3987-11ed-90cd",
+                        "name": "Melee Weapon",
+                        "entryId": "ccdd-3987-11ed-90cd",
+                        "primary": false
+                      }
+                    ],
+                    "id": "wyp16vc",
+                    "name": "Close combat weapon",
+                    "entryId": "bc4e-8331-8179-255b::9f53-e5ad-731f-a7e1::db5b-fe94-e50c-4f4b",
+                    "number": 1,
                     "type": "upgrade",
                     "from": "entry"
                   },
                   {
                     "rules": [
-                      {
-                        "description": "Weapons with **[ASSAULT]** in their profile are known as Assault weapons. If a unit that Advanced this turn contains any models equipped with Assault weapons, it is still eligible to shoot in this turn’s Shooting phase. When such a unit is selected to shoot, you can only resolve attacks using Assault weapons its models are equipped with.",
-                        "id": "fc8a-8c24-bae9-cc1c",
-                        "name": "Assault",
-                        "hidden": false,
-                        "page": 25
-                      },
                       {
                         "description": "Weapons with **[DEVASTATING WOUNDS]** in their profile are known as Devastating Wounds weapons. Each time an attack is made with such a weapon, if that attack scores a Critical Wound, no saving throw of any kind can be made against that attack (including invulnerable saving throws). Such attacks are only allocated to models after all other attacks made by the attacking unit have been allocated and resolved. After that attack is allocated and after any modifiers are applied, it inflicts a number of mortal wounds on the target equal to the Damage characteristic of that attack, instead of inflicting damage normally.",
                         "id": "be1e-ac8e-1e2c-3528",
@@ -3797,30 +3991,23 @@
                         "page": 28
                       },
                       {
-                        "description": "Weapons with **[RAPID FIRE X]** in their profile are known as Rapid Fire weapons. Each time such a weapon targets a unit within half that weapon’s range, the Attacks characteristic of that weapon is increased by the amount denoted by ‘x’.",
-                        "id": "c5c8-8b58-b8b6-7786",
-                        "name": "Rapid Fire",
+                        "description": "Weapons with **[PISTOL]** in their profile are known as Pistols. If a unit contains any models equipped with Pistols, that unit is eligible to shoot in its controlling player’s Shooting phase even while it is within Engagement Range of one or more enemy units. When such a unit is selected to shoot, it can only resolve attacks using its Pistols and can only target one of the enemy units it is within Engagement Range of. In such circumstances, a Pistol can target an enemy unit even if other friendly units are within Engagement Range of the same enemy unit. \n\nIf a model is equipped with one or more Pistols, unless it is a **^^Monster^^** or **^^Vehicle^^** model, it can either shoot with its Pistols or with all of its other ranged weapons. Declare whether such a model will shoot with its Pistols or its other ranged weapons before selecting targets.",
+                        "id": "8bf7-8812-923d-29e4",
+                        "name": "Pistol",
                         "hidden": false,
                         "page": 25
-                      },
-                      {
-                        "description": "Weapons with **[HEAVY]** in their profile are known as Heavy weapons. Each time an attack is made with such a weapon, if the attacking model’s unit Remained Stationary this turn, add 1 to that attack’s Hit roll.",
-                        "id": "1202-10a8-78e9-4c67",
-                        "name": "Heavy",
-                        "hidden": false,
-                        "page": 26
                       }
                     ],
                     "profiles": [
                       {
                         "characteristics": [
                           {
-                            "$text": "24\"",
+                            "$text": "12\"",
                             "name": "Range",
                             "typeId": "9896-9419-16a1-92fc"
                           },
                           {
-                            "$text": "2",
+                            "$text": "1",
                             "name": "A",
                             "typeId": "3bb-c35f-f54-fb08"
                           },
@@ -3835,6 +4022,91 @@
                             "typeId": "2229-f494-25db-c5d3"
                           },
                           {
+                            "$text": "0",
+                            "name": "AP",
+                            "typeId": "9ead-8a10-520-de15"
+                          },
+                          {
+                            "$text": "1",
+                            "name": "D",
+                            "typeId": "a354-c1c8-a745-f9e3"
+                          },
+                          {
+                            "$text": "Devastating Wounds, Pistol",
+                            "name": "Keywords",
+                            "typeId": "7f1b-8591-2fcf-d01c"
+                          }
+                        ],
+                        "id": "89ed-d67-d36e-8acf",
+                        "name": "Sternguard Bolt Pistol",
+                        "hidden": false,
+                        "typeId": "f77d-b953-8fa4-b762",
+                        "typeName": "Ranged Weapons",
+                        "from": "entry"
+                      }
+                    ],
+                    "categories": [
+                      {
+                        "id": "1c08-e7e4-55b9-8e30",
+                        "name": "Bolt Weapon",
+                        "entryId": "1c08-e7e4-55b9-8e30",
+                        "primary": false
+                      },
+                      {
+                        "id": "1db0-c6b5-19db-8d0c",
+                        "name": "Pistol Weapon",
+                        "entryId": "1db0-c6b5-19db-8d0c",
+                        "primary": false
+                      }
+                    ],
+                    "id": "wxg28vm",
+                    "name": "Sternguard Bolt Pistol",
+                    "entryId": "bc4e-8331-8179-255b::5fa1-7d11-730-b2b::4f36-2df5-903a-5541",
+                    "number": 1,
+                    "type": "upgrade",
+                    "from": "entry"
+                  },
+                  {
+                    "rules": [
+                      {
+                        "description": "Weapons with **[IGNORES COVER]** in their profile are known as Ignores Cover weapons. Each time an attack is made with such a weapon, the target cannot have the Benefit of Cover against that attack.",
+                        "id": "4640-43e7-30b-215a",
+                        "name": "Ignores Cover",
+                        "hidden": false,
+                        "page": 25
+                      },
+                      {
+                        "description": "Weapons with **[TORRENT]** in their profile are known as Torrent weapons. Each time an attack is made with such a weapon, that attack automatically hits the target.",
+                        "id": "5edf-d619-23e0-9b56",
+                        "name": "Torrent",
+                        "hidden": false,
+                        "page": 25
+                      }
+                    ],
+                    "profiles": [
+                      {
+                        "characteristics": [
+                          {
+                            "$text": "12\"",
+                            "name": "Range",
+                            "typeId": "9896-9419-16a1-92fc"
+                          },
+                          {
+                            "$text": "D6+1",
+                            "name": "A",
+                            "typeId": "3bb-c35f-f54-fb08"
+                          },
+                          {
+                            "$text": "N/A",
+                            "name": "BS",
+                            "typeId": "94d-8a98-cf90-183e"
+                          },
+                          {
+                            "$text": "6",
+                            "name": "S",
+                            "typeId": "2229-f494-25db-c5d3"
+                          },
+                          {
                             "$text": "-1",
                             "name": "AP",
                             "typeId": "9ead-8a10-520-de15"
@@ -3845,32 +4117,48 @@
                             "typeId": "a354-c1c8-a745-f9e3"
                           },
                           {
-                            "$text": "Assault, Devastating Wounds, Heavy, Rapid Fire 1",
+                            "$text": "Ignores Cover, Torrent",
                             "name": "Keywords",
                             "typeId": "7f1b-8591-2fcf-d01c"
                           }
                         ],
-                        "id": "9147-c4eb-b09d-05b5",
-                        "name": "Sternguard Bolt Rifle",
+                        "id": "4284-6f4b-59b8-2e50",
+                        "name": "Pyrecannon",
                         "hidden": false,
                         "typeId": "f77d-b953-8fa4-b762",
                         "typeName": "Ranged Weapons",
                         "from": "entry"
                       }
                     ],
-                    "id": "k65i4za",
-                    "name": "Sternguard Bolt Rifle",
-                    "entryId": "bc4e-8331-8179-255b::9917-2231-fa2e-7446::874a-4375-dbc3-b412",
-                    "number": 4,
+                    "categories": [
+                      {
+                        "id": "eeda-8544-a2f3-3fab",
+                        "name": "Ranged Weapon",
+                        "entryId": "eeda-8544-a2f3-3fab",
+                        "primary": false
+                      },
+                      {
+                        "id": "064a-0470-60eb-e3ef",
+                        "name": "Torrent Weapon",
+                        "entryId": "064a-0470-60eb-e3ef",
+                        "primary": false
+                      }
+                    ],
+                    "id": "wxd7evf",
+                    "name": "Pyrecannon",
+                    "entryId": "bc4e-8331-8179-255b::93e2-aa65-5303-5ea9::a5e9-6435-6e86-d339",
+                    "entryGroupId": "bc4e-8331-8179-255b::aa4b-2171-7fc3-b3a2",
+                    "number": 1,
                     "type": "upgrade",
-                    "from": "entry"
+                    "from": "group",
+                    "group": "Weapon Option"
                   }
                 ],
-                "id": "k518ks9",
-                "name": "Sternguard Veteran w/ Bolt Rifle",
-                "entryId": "bc4e-8331-8179-255b::5700-4122-349a-e5da",
+                "id": "wpize3",
+                "name": "Sternguard Veteran w/ Special Weapon",
+                "entryId": "bc4e-8331-8179-255b::afda-2132-147f-d0f1",
                 "entryGroupId": "bc4e-8331-8179-255b::edfc-d6af-480a-d5fc",
-                "number": 4,
+                "number": 1,
                 "type": "model",
                 "from": "group",
                 "group": "Sternguard Veterans"
@@ -3921,7 +4209,7 @@
                 "primary": false
               }
             ],
-            "id": "jjwyyha",
+            "id": "8n5i4xb",
             "name": "Sternguard Veteran Squad",
             "entryId": "bc4e-8331-8179-255b::907f-11-c4d1-ec21",
             "number": 1,
@@ -4065,7 +4353,7 @@
                     "from": "entry"
                   }
                 ],
-                "id": "dqfqxr",
+                "id": "8qh5qj",
                 "name": "Armoured Feet",
                 "entryId": "fa66-cda4-10fa-4c69::3069-5719-a1f9-49d3",
                 "entryGroupId": "fa66-cda4-10fa-4c69::51dd-0ab4-fd1a-3eb0",
@@ -4122,7 +4410,7 @@
                     "from": "entry"
                   }
                 ],
-                "id": "dqf0idc",
+                "id": "8qcexv",
                 "name": "Ballistus Lascannon",
                 "entryId": "fa66-cda4-10fa-4c69::3357-cef-ff46-c410",
                 "entryGroupId": "fa66-cda4-10fa-4c69::51dd-0ab4-fd1a-3eb0",
@@ -4233,7 +4521,7 @@
                     "from": "entry"
                   }
                 ],
-                "id": "dreog6",
+                "id": "8qvmm2f",
                 "name": "Ballistus Missile Launcher",
                 "entryId": "fa66-cda4-10fa-4c69::f24d-42a1-5821-2fd4",
                 "entryGroupId": "fa66-cda4-10fa-4c69::51dd-0ab4-fd1a-3eb0",
@@ -4306,7 +4594,7 @@
                     "from": "entry"
                   }
                 ],
-                "id": "drmby48",
+                "id": "8qzlwy",
                 "name": "Twin Storm Bolter",
                 "entryId": "fa66-cda4-10fa-4c69::1822-9299-fd13-dd3::1063-59-2a38-61fd",
                 "entryGroupId": "fa66-cda4-10fa-4c69::51dd-0ab4-fd1a-3eb0",
@@ -4361,7 +4649,7 @@
                 "primary": false
               }
             ],
-            "id": "dpdof0x",
+            "id": "8naf1i",
             "name": "Ballistus Dreadnought",
             "entryId": "fa66-cda4-10fa-4c69::5dc7-aa6c-7053-cede",
             "number": 1,
@@ -4505,9 +4793,149 @@
                     "from": "entry"
                   }
                 ],
-                "id": "iytthh",
+                "id": "r3s5mof",
                 "name": "Armoured Hull",
                 "entryId": "774e-1b48-d9b4-84b8::a778-9cb8-f643-91f4::a879-624d-42ab-2b43",
+                "entryGroupId": "774e-1b48-d9b4-84b8::c1b9-bdec-ff57-9b87",
+                "number": 1,
+                "type": "upgrade",
+                "from": "group",
+                "group": "Wargear"
+              },
+              {
+                "rules": [
+                  {
+                    "description": "Weapons with **[ANTI-KEYWORD X+]** in their profile are known as Anti weapons. Each time an attack is made with such a weapon against a target with the keyword after the word ‘Anti-’, an unmodified Wound roll of ‘x+’ scores a Critical Wound.",
+                    "id": "4111-82e3-9444-e942",
+                    "name": "Anti-",
+                    "hidden": false,
+                    "page": 28
+                  }
+                ],
+                "profiles": [
+                  {
+                    "characteristics": [
+                      {
+                        "$text": "24\"",
+                        "name": "Range",
+                        "typeId": "9896-9419-16a1-92fc"
+                      },
+                      {
+                        "$text": "D3",
+                        "name": "A",
+                        "typeId": "3bb-c35f-f54-fb08"
+                      },
+                      {
+                        "$text": "3+",
+                        "name": "BS",
+                        "typeId": "94d-8a98-cf90-183e"
+                      },
+                      {
+                        "$text": "8",
+                        "name": "S",
+                        "typeId": "2229-f494-25db-c5d3"
+                      },
+                      {
+                        "$text": "-1",
+                        "name": "AP",
+                        "typeId": "9ead-8a10-520-de15"
+                      },
+                      {
+                        "$text": "2",
+                        "name": "D",
+                        "typeId": "a354-c1c8-a745-f9e3"
+                      },
+                      {
+                        "$text": "Anti-fly 2+",
+                        "name": "Keywords",
+                        "typeId": "7f1b-8591-2fcf-d01c"
+                      }
+                    ],
+                    "id": "c387-f167-8913-822c",
+                    "name": "Icarus Rocket Pod",
+                    "hidden": false,
+                    "typeId": "f77d-b953-8fa4-b762",
+                    "typeName": "Ranged Weapons",
+                    "from": "entry"
+                  }
+                ],
+                "categories": [
+                  {
+                    "id": "e993-e086-6de1-12af",
+                    "name": "Attacks Dx Weapon",
+                    "entryId": "e993-e086-6de1-12af",
+                    "primary": false
+                  }
+                ],
+                "id": "5zjow3k",
+                "name": "Icarus Rocket Pod",
+                "entryId": "774e-1b48-d9b4-84b8::7bb5-1bc4-78e9-e398::5afc-2af9-3bb7-d28f",
+                "entryGroupId": "774e-1b48-d9b4-84b8::c1b9-bdec-ff57-9b87",
+                "number": 1,
+                "type": "upgrade",
+                "from": "group",
+                "group": "Wargear"
+              },
+              {
+                "rules": [
+                  {
+                    "description": "Weapons with **[RAPID FIRE X]** in their profile are known as Rapid Fire weapons. Each time such a weapon targets a unit within half that weapon’s range, the Attacks characteristic of that weapon is increased by the amount denoted by ‘x’.",
+                    "id": "c5c8-8b58-b8b6-7786",
+                    "name": "Rapid Fire",
+                    "hidden": false,
+                    "page": 25
+                  }
+                ],
+                "profiles": [
+                  {
+                    "characteristics": [
+                      {
+                        "$text": "36\"",
+                        "name": "Range",
+                        "typeId": "9896-9419-16a1-92fc"
+                      },
+                      {
+                        "$text": "3",
+                        "name": "A",
+                        "typeId": "3bb-c35f-f54-fb08"
+                      },
+                      {
+                        "$text": "3+",
+                        "name": "BS",
+                        "typeId": "94d-8a98-cf90-183e"
+                      },
+                      {
+                        "$text": "4",
+                        "name": "S",
+                        "typeId": "2229-f494-25db-c5d3"
+                      },
+                      {
+                        "$text": "0",
+                        "name": "AP",
+                        "typeId": "9ead-8a10-520-de15"
+                      },
+                      {
+                        "$text": "1",
+                        "name": "D",
+                        "typeId": "a354-c1c8-a745-f9e3"
+                      },
+                      {
+                        "$text": "Rapid Fire 3",
+                        "name": "Keywords",
+                        "typeId": "7f1b-8591-2fcf-d01c"
+                      }
+                    ],
+                    "id": "9111-913e-ec42-e830",
+                    "name": "Ironhail Heavy Stubber",
+                    "hidden": false,
+                    "typeId": "f77d-b953-8fa4-b762",
+                    "typeName": "Ranged Weapons",
+                    "from": "entry"
+                  }
+                ],
+                "id": "5zplwfb",
+                "name": "Ironhail Heavy Stubber",
+                "entryId": "774e-1b48-d9b4-84b8::d8d0-9ed4-c772-8c58::1c66-4903-10ca-2a27",
                 "entryGroupId": "774e-1b48-d9b4-84b8::c1b9-bdec-ff57-9b87",
                 "number": 1,
                 "type": "upgrade",
@@ -4571,7 +4999,7 @@
                     "from": "entry"
                   }
                 ],
-                "id": "iw4bdtf",
+                "id": "r3lxcsr",
                 "name": "Lancer Laser Destroyer",
                 "entryId": "774e-1b48-d9b4-84b8::2561-1f4b-4a08-3529",
                 "entryGroupId": "774e-1b48-d9b4-84b8::c1b9-bdec-ff57-9b87",
@@ -4585,23 +5013,23 @@
                   {
                     "rules": [
                       {
-                        "description": "Weapons with **[BLAST]** in their profile are known as Blast weapons, and they make a random number of attacks. Each time you determine how many attacks are made with a Blast weapon, add 1 to the result for every five models that were in the target unit when you selected it as the target (rounding down). Blast weapons can never be used to make attacks against a unit that is within Engagement Range of one or more units from the attacking model’s army (including its own unit).",
-                        "id": "6c1f-1cf7-ff25-c99e",
-                        "name": "Blast",
+                        "description": "Weapons with **[RAPID FIRE X]** in their profile are known as Rapid Fire weapons. Each time such a weapon targets a unit within half that weapon’s range, the Attacks characteristic of that weapon is increased by the amount denoted by ‘x’.",
+                        "id": "c5c8-8b58-b8b6-7786",
+                        "name": "Rapid Fire",
                         "hidden": false,
-                        "page": 26
+                        "page": 25
                       }
                     ],
                     "profiles": [
                       {
                         "characteristics": [
                           {
-                            "$text": "18\"",
+                            "$text": "24\"",
                             "name": "Range",
                             "typeId": "9896-9419-16a1-92fc"
                           },
                           {
-                            "$text": "D6",
+                            "$text": "2",
                             "name": "A",
                             "typeId": "3bb-c35f-f54-fb08"
                           },
@@ -4626,13 +5054,13 @@
                             "typeId": "a354-c1c8-a745-f9e3"
                           },
                           {
-                            "$text": "Blast",
+                            "$text": "Rapid Fire 2",
                             "name": "Keywords",
                             "typeId": "7f1b-8591-2fcf-d01c"
                           }
                         ],
-                        "id": "b2-9e09-20e1-6b64",
-                        "name": "Fragstorm grenade launcher",
+                        "id": "83a0-da0c-752f-b4b3",
+                        "name": "Storm Bolter",
                         "hidden": false,
                         "typeId": "f77d-b953-8fa4-b762",
                         "typeName": "Ranged Weapons",
@@ -4641,23 +5069,29 @@
                     ],
                     "categories": [
                       {
-                        "id": "e993-e086-6de1-12af",
-                        "name": "Attacks Dx Weapon",
-                        "entryId": "e993-e086-6de1-12af",
+                        "id": "eeda-8544-a2f3-3fab",
+                        "name": "Ranged Weapon",
+                        "entryId": "eeda-8544-a2f3-3fab",
+                        "primary": false
+                      },
+                      {
+                        "id": "1c08-e7e4-55b9-8e30",
+                        "name": "Bolt Weapon",
+                        "entryId": "1c08-e7e4-55b9-8e30",
                         "primary": false
                       }
                     ],
-                    "id": "j74a6rlo",
-                    "name": "Fragstorm grenade launcher",
-                    "entryId": "774e-1b48-d9b4-84b8::edd9-d36e-cddc-bc8a::2557-ebbd-6ea5-3785",
+                    "id": "5022kg7",
+                    "name": "Storm Bolter",
+                    "entryId": "774e-1b48-d9b4-84b8::524-4773-a3de-75c9::eb61-5cd0-5242-74cc",
                     "number": 2,
                     "type": "upgrade",
                     "from": "entry"
                   }
                 ],
-                "id": "ix3ibtg",
-                "name": "Two fragstorm grenade launchers",
-                "entryId": "774e-1b48-d9b4-84b8::32dd-9b22-13aa-56c1",
+                "id": "5zfqg3",
+                "name": "Two storm bolters",
+                "entryId": "774e-1b48-d9b4-84b8::4675-c17f-6516-e5b3",
                 "entryGroupId": "774e-1b48-d9b4-84b8::87a0-936a-57d3-5408",
                 "number": 1,
                 "type": "upgrade",
@@ -4704,7 +5138,7 @@
                 "primary": false
               }
             ],
-            "id": "itoegfch",
+            "id": "r17d0vh",
             "name": "Gladiator Lancer",
             "entryId": "774e-1b48-d9b4-84b8::7814-107b-a498-96f6",
             "number": 1,
@@ -4801,6 +5235,80 @@
             ],
             "selections": [
               {
+                "rules": [
+                  {
+                    "description": "Weapons with **[ANTI-KEYWORD X+]** in their profile are known as Anti weapons. Each time an attack is made with such a weapon against a target with the keyword after the word ‘Anti-’, an unmodified Wound roll of ‘x+’ scores a Critical Wound.",
+                    "id": "4111-82e3-9444-e942",
+                    "name": "Anti-",
+                    "hidden": false,
+                    "page": 28
+                  }
+                ],
+                "profiles": [
+                  {
+                    "characteristics": [
+                      {
+                        "$text": "24\"",
+                        "name": "Range",
+                        "typeId": "9896-9419-16a1-92fc"
+                      },
+                      {
+                        "$text": "D3",
+                        "name": "A",
+                        "typeId": "3bb-c35f-f54-fb08"
+                      },
+                      {
+                        "$text": "3+",
+                        "name": "BS",
+                        "typeId": "94d-8a98-cf90-183e"
+                      },
+                      {
+                        "$text": "8",
+                        "name": "S",
+                        "typeId": "2229-f494-25db-c5d3"
+                      },
+                      {
+                        "$text": "-1",
+                        "name": "AP",
+                        "typeId": "9ead-8a10-520-de15"
+                      },
+                      {
+                        "$text": "2",
+                        "name": "D",
+                        "typeId": "a354-c1c8-a745-f9e3"
+                      },
+                      {
+                        "$text": "Anti-fly 2+",
+                        "name": "Keywords",
+                        "typeId": "7f1b-8591-2fcf-d01c"
+                      }
+                    ],
+                    "id": "c387-f167-8913-822c",
+                    "name": "Icarus Rocket Pod",
+                    "hidden": false,
+                    "typeId": "f77d-b953-8fa4-b762",
+                    "typeName": "Ranged Weapons",
+                    "from": "entry"
+                  }
+                ],
+                "categories": [
+                  {
+                    "id": "e993-e086-6de1-12af",
+                    "name": "Attacks Dx Weapon",
+                    "entryId": "e993-e086-6de1-12af",
+                    "primary": false
+                  }
+                ],
+                "id": "rer4qv",
+                "name": "Icarus Rocket Pod",
+                "entryId": "fcb6-80ca-22a-4771::c4bf-5c50-5453-ce56::5afc-2af9-3bb7-d28f",
+                "entryGroupId": "fcb6-80ca-22a-4771::4fa9-d65f-bf56-ef64",
+                "number": 1,
+                "type": "upgrade",
+                "from": "group",
+                "group": "Wargear"
+              },
+              {
                 "profiles": [
                   {
                     "characteristics": [
@@ -4848,7 +5356,7 @@
                     "from": "entry"
                   }
                 ],
-                "id": "n348a8b",
+                "id": "6knww4g",
                 "name": "Redemptor Fist",
                 "entryId": "fcb6-80ca-22a-4771::9b0e-daf8-e5a-5bce",
                 "entryGroupId": "fcb6-80ca-22a-4771::4fa9-d65f-bf56-ef64",
@@ -4860,23 +5368,30 @@
               {
                 "rules": [
                   {
-                    "description": "Weapons with **[DEVASTATING WOUNDS]** in their profile are known as Devastating Wounds weapons. Each time an attack is made with such a weapon, if that attack scores a Critical Wound, no saving throw of any kind can be made against that attack (including invulnerable saving throws). Such attacks are only allocated to models after all other attacks made by the attacking unit have been allocated and resolved. After that attack is allocated and after any modifiers are applied, it inflicts a number of mortal wounds on the target equal to the Damage characteristic of that attack, instead of inflicting damage normally.",
-                    "id": "be1e-ac8e-1e2c-3528",
-                    "name": "Devastating Wounds",
+                    "description": "Weapons with **[HAZARDOUS]** in their profile are known as Hazardous weapons. Each time a unit is selected to shoot or fight, after that unit has resolved all of its attacks, for each Hazardous weapon that targets were selected for when resolving those attacks, that unit must take one Hazardous test. To do so, roll one D6: on a 1, that test is failed. For each failed test you must resolve the following sequence (resolve each failed test one at a time): \n\n■ If possible, select one model in that unit that has lost one or more wounds and is equipped with one or more Hazardous weapons. \n■ Otherwise, if possible, select one model in that unit (excluding **^^Character^^** models) equipped with one or more Hazardous weapons. \n■ Otherwise, select one **^^Character^^** model in that unit equipped with one or more Hazardous weapons. \n\nIf a model was selected, that unit suffers 3 mortal wounds and when allocating those mortal wounds, they must be allocated to the selected model. \n\nIf a unit from a player’s army is selected as the target of the Fire Overwatch Stratagem in their opponent’s Charge phase, any mortal wounds inflicted by Hazardous tests are allocated after the charging unit has ended its Charge move.",
+                    "id": "8367-374c-f87-c627",
+                    "name": "Hazardous",
                     "hidden": false,
                     "page": 28
+                  },
+                  {
+                    "description": "Weapons with **[BLAST]** in their profile are known as Blast weapons, and they make a random number of attacks. Each time you determine how many attacks are made with a Blast weapon, add 1 to the result for every five models that were in the target unit when you selected it as the target (rounding down). Blast weapons can never be used to make attacks against a unit that is within Engagement Range of one or more units from the attacking model’s army (including its own unit).",
+                    "id": "6c1f-1cf7-ff25-c99e",
+                    "name": "Blast",
+                    "hidden": false,
+                    "page": 26
                   }
                 ],
                 "profiles": [
                   {
                     "characteristics": [
                       {
-                        "$text": "24\"",
+                        "$text": "36\"",
                         "name": "Range",
                         "typeId": "9896-9419-16a1-92fc"
                       },
                       {
-                        "$text": "12",
+                        "$text": "D6+1",
                         "name": "A",
                         "typeId": "3bb-c35f-f54-fb08"
                       },
@@ -4886,37 +5401,82 @@
                         "typeId": "94d-8a98-cf90-183e"
                       },
                       {
-                        "$text": "6",
+                        "$text": "8",
                         "name": "S",
                         "typeId": "2229-f494-25db-c5d3"
                       },
                       {
-                        "$text": "0",
+                        "$text": "-3",
                         "name": "AP",
                         "typeId": "9ead-8a10-520-de15"
                       },
                       {
-                        "$text": "1",
+                        "$text": "2",
                         "name": "D",
                         "typeId": "a354-c1c8-a745-f9e3"
                       },
                       {
-                        "$text": "Devastating Wounds",
+                        "$text": "Blast",
                         "name": "Keywords",
                         "typeId": "7f1b-8591-2fcf-d01c"
                       }
                     ],
-                    "id": "9a6f-e83b-69b1-8dbf",
-                    "name": "Heavy Onslaught Gatling Cannon",
+                    "id": "e54-149a-9924-afe",
+                    "name": "➤ Macro Plasma Incinerator - Standard",
+                    "hidden": false,
+                    "typeId": "f77d-b953-8fa4-b762",
+                    "typeName": "Ranged Weapons",
+                    "from": "entry"
+                  },
+                  {
+                    "characteristics": [
+                      {
+                        "$text": "36\"",
+                        "name": "Range",
+                        "typeId": "9896-9419-16a1-92fc"
+                      },
+                      {
+                        "$text": "D6+1",
+                        "name": "A",
+                        "typeId": "3bb-c35f-f54-fb08"
+                      },
+                      {
+                        "$text": "3+",
+                        "name": "BS",
+                        "typeId": "94d-8a98-cf90-183e"
+                      },
+                      {
+                        "$text": "9",
+                        "name": "S",
+                        "typeId": "2229-f494-25db-c5d3"
+                      },
+                      {
+                        "$text": "-4",
+                        "name": "AP",
+                        "typeId": "9ead-8a10-520-de15"
+                      },
+                      {
+                        "$text": "3",
+                        "name": "D",
+                        "typeId": "a354-c1c8-a745-f9e3"
+                      },
+                      {
+                        "$text": "Blast, Hazardous",
+                        "name": "Keywords",
+                        "typeId": "7f1b-8591-2fcf-d01c"
+                      }
+                    ],
+                    "id": "256a-8119-50f8-259",
+                    "name": "➤ Macro Plasma Incinerator - Supercharge",
                     "hidden": false,
                     "typeId": "f77d-b953-8fa4-b762",
                     "typeName": "Ranged Weapons",
                     "from": "entry"
                   }
                 ],
-                "id": "n3oryj",
-                "name": "Heavy Onslaught Gatling Cannon",
-                "entryId": "fcb6-80ca-22a-4771::f7aa-fe84-de2f-70e4::39fe-deb4-dde-2c1a",
+                "id": "relz9k",
+                "name": "Macro Plasma Incinerator",
+                "entryId": "fcb6-80ca-22a-4771::57e8-b2fc-84ee-afa5::5da3-cd78-fdee-6d47",
                 "entryGroupId": "fcb6-80ca-22a-4771::6e3e-2ed4-be54-218b",
                 "number": 1,
                 "type": "upgrade",
@@ -5001,7 +5561,7 @@
                     "primary": false
                   }
                 ],
-                "id": "n3eet7h",
+                "id": "6kajdvt",
                 "name": "Heavy Flamer",
                 "entryId": "fcb6-80ca-22a-4771::6c33-c5c-bef1-3bc9::b3e6-f7a7-8357-2055",
                 "entryGroupId": "fcb6-80ca-22a-4771::d49a-8e4b-aa93-d8be",
@@ -5082,7 +5642,7 @@
                     "primary": false
                   }
                 ],
-                "id": "n42zyh",
+                "id": "6kk0ipo",
                 "name": "Twin Fragstorm Grenade Launcher",
                 "entryId": "fcb6-80ca-22a-4771::f0ac-c831-aaaa-a840",
                 "entryGroupId": "fcb6-80ca-22a-4771::7e68-ae54-ca48-6cbe",
@@ -5137,7 +5697,7 @@
                 "primary": false
               }
             ],
-            "id": "n247wbn",
+            "id": "6jaampa",
             "name": "Redemptor Dreadnought",
             "entryId": "fcb6-80ca-22a-4771::1d94-b3c8-9205-827e",
             "number": 1,
@@ -5288,7 +5848,7 @@
                     "from": "entry"
                   }
                 ],
-                "id": "rnkgb9",
+                "id": "gk8wsad",
                 "name": "Armoured Hull",
                 "entryId": "3fe5-fdf6-5abc-c60f::cf78-d78a-b81f-1c4a::a879-624d-42ab-2b43",
                 "entryGroupId": "3fe5-fdf6-5abc-c60f::cbe2-7302-9573-7f47",
@@ -5300,18 +5860,11 @@
               {
                 "rules": [
                   {
-                    "description": "Weapons with **[SUSTAINED HITS X]** in their profile are known as Sustained Hits weapons. Each time an attack is made with such a weapon, if a Critical Hit is rolled, that attack scores a number of additional hits on the target as denoted by ‘x’",
-                    "id": "1897-c22c-9597-12b1",
-                    "name": "Sustained Hits",
+                    "description": "Weapons with **[RAPID FIRE X]** in their profile are known as Rapid Fire weapons. Each time such a weapon targets a unit within half that weapon’s range, the Attacks characteristic of that weapon is increased by the amount denoted by ‘x’.",
+                    "id": "c5c8-8b58-b8b6-7786",
+                    "name": "Rapid Fire",
                     "hidden": false,
-                    "page": 28
-                  },
-                  {
-                    "description": "Weapons with **[ANTI-KEYWORD X+]** in their profile are known as Anti weapons. Each time an attack is made with such a weapon against a target with the keyword after the word ‘Anti-’, an unmodified Wound roll of ‘x+’ scores a Critical Wound.",
-                    "id": "4111-82e3-9444-e942",
-                    "name": "Anti-",
-                    "hidden": false,
-                    "page": 28
+                    "page": 25
                   }
                 ],
                 "profiles": [
@@ -5323,7 +5876,7 @@
                         "typeId": "9896-9419-16a1-92fc"
                       },
                       {
-                        "$text": "8",
+                        "$text": "3",
                         "name": "A",
                         "typeId": "3bb-c35f-f54-fb08"
                       },
@@ -5348,22 +5901,49 @@
                         "typeId": "a354-c1c8-a745-f9e3"
                       },
                       {
-                        "$text": "Anti-Fly 4+, Sustained Hits 1",
+                        "$text": "Rapid Fire 3",
                         "name": "Keywords",
                         "typeId": "7f1b-8591-2fcf-d01c"
                       }
                     ],
-                    "id": "c584-4082-2c05-a4ba",
-                    "name": "Ironhail Skytalon Array",
+                    "id": "9111-913e-ec42-e830",
+                    "name": "Ironhail Heavy Stubber",
                     "hidden": false,
                     "typeId": "f77d-b953-8fa4-b762",
                     "typeName": "Ranged Weapons",
                     "from": "entry"
                   }
                 ],
-                "id": "rla9kvk",
-                "name": "Ironhail Skytalon Array",
-                "entryId": "3fe5-fdf6-5abc-c60f::fbf-df4e-2337-4a47",
+                "id": "gknprf",
+                "name": "Ironhail Heavy Stubber",
+                "entryId": "3fe5-fdf6-5abc-c60f::d5f2-205-3608-5849::1c66-4903-10ca-2a27",
+                "entryGroupId": "3fe5-fdf6-5abc-c60f::cbe2-7302-9573-7f47",
+                "number": 1,
+                "type": "upgrade",
+                "from": "group",
+                "group": "Wargear"
+              },
+              {
+                "profiles": [
+                  {
+                    "characteristics": [
+                      {
+                        "$text": "While a friendly Adeptus Astartes unit is within 6\" of the bearer, each time you target that unit with a Stratagem, roll one D6: on a 5+, you gain 1CP",
+                        "name": "Description",
+                        "typeId": "9b8f-694b-e5e-b573"
+                      }
+                    ],
+                    "id": "47e6-e0ee-5ed3-2b93",
+                    "name": "Orbital Comms Array [Aura]",
+                    "hidden": false,
+                    "typeId": "9cc3-6d83-4dd3-9b64",
+                    "typeName": "Abilities",
+                    "from": "entry"
+                  }
+                ],
+                "id": "gjeblt",
+                "name": "Orbital Comms Array",
+                "entryId": "3fe5-fdf6-5abc-c60f::e3e3-2c0-8bcd-cf73",
                 "entryGroupId": "3fe5-fdf6-5abc-c60f::7cb1-cc03-7afd-60a3",
                 "number": 1,
                 "type": "upgrade",
@@ -5437,7 +6017,7 @@
                         "primary": false
                       }
                     ],
-                    "id": "rx6a5u",
+                    "id": "go4ide",
                     "name": "Fragstorm grenade launcher",
                     "entryId": "3fe5-fdf6-5abc-c60f::821f-5459-6d29-eafd::2557-ebbd-6ea5-3785",
                     "number": 2,
@@ -5445,7 +6025,7 @@
                     "from": "entry"
                   }
                 ],
-                "id": "rn9nwx7",
+                "id": "gkhjsme",
                 "name": "2 Fragstorm Grenade Launchers",
                 "entryId": "3fe5-fdf6-5abc-c60f::350f-6499-fe30-0e98",
                 "entryGroupId": "3fe5-fdf6-5abc-c60f::edd-ef25-4c7f-69d8",
@@ -5500,7 +6080,7 @@
                 "primary": false
               }
             ],
-            "id": "rg2ces",
+            "id": "ghhlo4",
             "name": "Impulsor",
             "entryId": "3fe5-fdf6-5abc-c60f::bfb1-7512-e1a3-9fa2",
             "number": 1,
@@ -5511,122 +6091,122 @@
         "categories": [
           {
             "name": "Uncategorized",
-            "id": "8b5jf7",
+            "id": "wg9zpn",
             "primary": false,
             "entryId": "(No Category)"
           },
           {
             "name": "Configuration",
-            "id": "ksvv7h",
+            "id": "r9qrta",
             "primary": false,
             "entryId": "4ac9-fd30-1e3d-b249"
           },
           {
             "name": "Epic Hero",
-            "id": "8cawce",
+            "id": "wh3ypni",
             "primary": false,
             "entryId": "4f3a-f0f7-6647-348d"
           },
           {
             "name": "Character",
-            "id": "8cvmo85",
+            "id": "9wa5pw",
             "primary": false,
             "entryId": "9cfd-1c32-585f-7d5c"
           },
           {
             "name": "Battleline",
-            "id": "8c15ehz",
+            "id": "wh9gwgo",
             "primary": false,
             "entryId": "e338-111e-d0c6-b687"
           },
           {
             "name": "Infantry",
-            "id": "8ccko68",
+            "id": "9xx32o",
             "primary": false,
             "entryId": "cf47-a0d7-7207-29dc"
           },
           {
             "name": "Swarm",
-            "id": "8do8ug",
+            "id": "wi9b6ko",
             "primary": false,
             "entryId": "b00b-5bae-444f-964e"
           },
           {
             "name": "Mounted",
-            "id": "8dym9vm",
+            "id": "wig0qu",
             "primary": false,
             "entryId": "14a0-40c9-2748-ae6e"
           },
           {
             "name": "Beast",
-            "id": "8dckm6w",
+            "id": "wi7bilg",
             "primary": false,
             "entryId": "4c3e-9310-a516-3590"
           },
           {
             "name": "Monster",
-            "id": "8dxdj2i",
+            "id": "wkvzz7t",
             "primary": false,
             "entryId": "9693-cf84-fe69-37a9"
           },
           {
             "name": "Vehicle",
-            "id": "8dwcxyc",
+            "id": "9xwim5s",
             "primary": false,
             "entryId": "dbd4-63-af05-998"
           },
           {
             "name": "Drone",
-            "id": "8dkiuqp",
+            "id": "wkpaup9",
             "primary": false,
             "entryId": "2471-e2e0-3f55-d6cb"
           },
           {
             "name": "Dedicated Transport",
-            "id": "8ddmzk",
+            "id": "sca1c1",
             "primary": false,
             "entryId": "ba07-411c-2832-1f79"
           },
           {
             "name": "Fortification",
-            "id": "8e9x2pq",
+            "id": "wki1itq",
             "primary": false,
             "entryId": "19d7-9c74-2140-5851"
           },
           {
             "name": "Unit",
-            "id": "8emjhj",
+            "id": "wldnwya",
             "primary": false,
             "entryId": "1160-70ae-a862-b1a8"
           },
           {
             "name": "Allied Units",
-            "id": "8emq70m",
+            "id": "wlfik3",
             "primary": false,
             "entryId": "887b-ab87-92a2-20f5"
           },
           {
             "name": "Illegal Units",
-            "id": "8e7nog7",
+            "id": "wljvvw",
             "primary": false,
             "entryId": "(Illegal Units)"
           }
         ],
-        "id": "kfp6pau",
+        "id": "r8gz45f",
         "name": "Army Roster",
         "entryId": "bb9d-299a-ed60-2d8a",
-        "catalogueId": "4029-9237-e8db-af55",
-        "catalogueRevision": 45,
-        "catalogueName": "Imperium - Adeptus Astartes - Ultramarines"
+        "catalogueId": "e0af-67df-9d63-8fb7",
+        "catalogueRevision": 185,
+        "catalogueName": "Imperium - Adeptus Astartes - Space Marines"
       }
     ],
-    "id": "jx5h0pb",
-    "name": "yo",
+    "id": "r7rlqhi",
+    "name": "Space Marine",
     "battleScribeVersion": 2.03,
     "generatedBy": "https://newrecruit.eu",
     "gameSystemId": "sys-352e-adc2-7639-d6a9",
     "gameSystemName": "Warhammer 40,000 10th Edition",
-    "gameSystemRevision": 87,
+    "gameSystemRevision": 90,
     "xmlns": "http://www.battlescribe.net/schema/rosterSchema"
   }
 }
