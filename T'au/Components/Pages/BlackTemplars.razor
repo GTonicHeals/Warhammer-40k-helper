@@ -1,0 +1,402 @@
+﻿@page "/btrules"
+@rendermode InteractiveServer
+
+<div class="rules-container">
+    <h1 class="page-title text-center">Black Templars Rules Reference</h1>
+
+    <div class="d-flex justify-content-center mb-4">
+        <div class="btn-group" role="group" aria-label="Detachment Selector">
+            <button type="button"
+                    class="btn @(selectedDetachment == "Righteous Crusaders" ? "btn-bt-active" : "btn-bt-inactive")"
+                    @onclick='() => SetDetachment("Righteous Crusaders")'>
+                Righteous Crusaders
+            </button>
+            <button type="button"
+                    class="btn @(selectedDetachment == "Wrathful Procession" ? "btn-bt-active" : "btn-bt-inactive")"
+                    @onclick='() => SetDetachment("Wrathful Procession")'>
+                Wrathful Procession
+            </button>
+        </div>
+    </div>
+
+    @if (selectedDetachment == "Righteous Crusaders")
+    {
+        <div class="rule-card detachment-rule mb-4">
+            <div class="rule-header">
+                <i class="bi bi-shield-shaded me-2"></i> DETACHMENT RULE: Templar Vows
+            </div>
+            <div class="rule-body">
+                <p>
+                    At the end of the Read Mission Objectives step, select one of the following Templar Vows to be active for <strong>Adeptus Astartes</strong> units from your army until the end of the battle.
+                </p>
+
+                <div class="vow-grid">
+                    <div class="vow-item">
+                        <strong>Suffer Not the Unclean to Live</strong>
+                        <span>Melee weapons equipped by models in this unit have the <strong>[LETHAL HITS]</strong> ability.</span>
+                    </div>
+                    <div class="vow-item">
+                        <strong>Uphold the Honour of the Emperor</strong>
+                        <span>Models in this unit have a <strong>6+ Invulnerable Save</strong> and the <strong>Feel No Pain 5+</strong> ability.</span>
+                    </div>
+                    <div class="vow-item">
+                        <strong>Abhor the Witch, Destroy the Witch</strong>
+                        <span>Models have a <strong>4+ Invulnerable Save</strong> against Psychic Attacks. Melee weapons have <strong>[ANTI-PSYKER 4+]</strong>.</span>
+                    </div>
+                    <div class="vow-item">
+                        <strong>Accept Any Challenge, No Matter the Odds</strong>
+                        <span>Melee weapons equipped by models in this unit have the <strong>[SUSTAINED HITS 1]</strong> ability.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="section-heading">Stratagems (Righteous Crusaders)</h3>
+        <div class="stratagem-grid">
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Armour of Contempt</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic - Opponent's Shooting/Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Adeptus Astartes unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, worsen the AP characteristic of attacks made against this unit by 1.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Crusader's Wrath</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic - Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Adeptus Astartes unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, improve the AP characteristic of melee weapons by 1. If the <em>Accept Any Challenge</em> vow is active, also add 1 to the Strength characteristic.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Fervent Acclamation</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy - Command Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Adeptus Astartes unit.<br />
+                    <strong>Effect:</strong> Select one Templar Vow that is not currently active. Until the start of your next Command phase, that unit gains the benefits of that vow in addition to the active one.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Vicious Riposte</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Epic Deed - Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Adeptus Astartes unit that was just attacked.<br />
+                    <strong>Effect:</strong> Each time a model in this unit is destroyed, if it has not fought this phase, roll a D6. On a 4+, do not remove it. It fights after the attacking unit finishes, then is removed.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Devout Push</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy - Opponent's Fall Back / Your Charge</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Adeptus Astartes unit.<br />
+                    <strong>Effect:</strong> If an enemy falls back, your unit can make a Normal Move up to D6" (must end closer to that enemy). Alternatively, you can use this in your Charge Phase to Consolidate up to 6" instead of 3".
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Light of the Emperor's Grace</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy - Command Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Adeptus Astartes unit.<br />
+                    <strong>Effect:</strong> Until the start of your next Command phase, ignore any or all modifiers to the characteristics of models in that unit and to any rolls made for it (excluding Save rolls).
+                </div>
+            </div>
+        </div>
+    }
+    else if (selectedDetachment == "Wrathful Procession")
+    {
+        <div class="rule-card detachment-rule mb-4">
+            <div class="rule-header">
+                <i class="bi bi-fire me-2"></i> DETACHMENT RULE: Zealous Litanies
+            </div>
+            <div class="rule-body">
+                <p>
+                    At the start of the battle round, you can select one of the following Zealous Litanies. Until the end of the battle round, it is active for all <strong>Adeptus Astartes Infantry</strong> and <strong>Adeptus Astartes Mounted</strong> units from your army.
+                </p>
+
+                <div class="vow-grid">
+                    <div class="vow-item">
+                        <strong>Chorus of Relentless Hate</strong>
+                        <span>Each time a model in this unit makes a melee attack, if this unit made a Charge move this turn, add 1 to the Wound roll.</span>
+                    </div>
+                    <div class="vow-item">
+                        <strong>Rite of Perfervid Wrath</strong>
+                        <span>Add 1 to the Attacks characteristic of melee weapons equipped by models in this unit.</span>
+                    </div>
+                    <div class="vow-item">
+                        <strong>Litany of Divine Protection</strong>
+                        <span>Models in this unit have the <strong>Feel No Pain 5+</strong> ability against mortal wounds.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="section-heading">Stratagems (Wrathful Procession)</h3>
+        <div class="stratagem-grid">
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Armour of Contempt</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic - Opponent's Shooting/Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Adeptus Astartes unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, worsen the AP characteristic of attacks made against this unit by 1.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Unrelenting Fervour</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy - Movement Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Adeptus Astartes unit from your army that is eligible to Fall Back.<br />
+                    <strong>Effect:</strong> Your unit can Fall Back and still be eligible to shoot and charge this turn.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Righteous Purge</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic - Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Adeptus Astartes unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, melee weapons equipped by models in your unit have the <strong>[LANCE]</strong> ability.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Frenzied Retaliation</span>
+                    <span class="cp-cost">1/2CP</span>
+                </div>
+                <div class="strat-type">Epic Deed - Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Adeptus Astartes unit that was just attacked.<br />
+                    <strong>Effect:</strong> Fight on death. Roll a D6 for each destroyed model; on a 4+ it can fight before being removed. If the unit is a Character, costs 2CP; otherwise costs 1CP.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Relentless Pursuit</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy - Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Adeptus Astartes unit.<br />
+                    <strong>Effect:</strong> When your unit Consolidates, it can move up to 6" instead of 3", provided it ends the move closer to the closest enemy unit or within Engagement Range.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Shield of Faith</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Wargear - Opponent's Shooting Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Adeptus Astartes unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, models in your unit have a <strong>5+ Invulnerable Save</strong> against ranged attacks.
+                </div>
+            </div>
+
+        </div>
+    }
+</div>
+
+@code {
+    private string selectedDetachment = "Righteous Crusaders";
+
+    private void SetDetachment(string detachmentName)
+    {
+        selectedDetachment = detachmentName;
+    }
+}
+
+<style>
+    .rules-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding-bottom: 50px;
+        color: #e0e0e0;
+    }
+
+    .page-title {
+        color: #fff;
+        border-bottom: 3px solid #c0392b;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        text-transform: uppercase;
+        font-weight: 900;
+        letter-spacing: 1px;
+    }
+
+    /* Buttons */
+    .btn-bt-active {
+        background-color: #c0392b;
+        color: white;
+        border: 1px solid #c0392b;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .btn-bt-inactive {
+        background-color: #111;
+        color: #888;
+        border: 1px solid #444;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.2s;
+    }
+
+        .btn-bt-inactive:hover {
+            background-color: #222;
+            color: #fff;
+            border-color: #c0392b;
+        }
+
+    .section-heading {
+        color: #c0392b;
+        text-transform: uppercase;
+        font-weight: bold;
+        letter-spacing: 1px;
+        margin-bottom: 15px;
+    }
+
+    .rule-card {
+        background: #111;
+        border: 1px solid #333;
+        border-radius: 4px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+    }
+
+    .rule-header {
+        padding: 10px 15px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .rule-body {
+        padding: 15px;
+        background: #1a1a1a;
+    }
+
+    .detachment-rule .rule-header {
+        background: #c0392b;
+        color: white;
+    }
+
+    /* Vow Grid styling */
+    .vow-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .vow-item {
+        background: #242424;
+        border-left: 4px solid #c0392b;
+        padding: 10px 15px;
+        display: flex;
+        flex-direction: column;
+    }
+
+        .vow-item strong {
+            color: #fff;
+            margin-bottom: 5px;
+            font-size: 0.95rem;
+        }
+
+        .vow-item span {
+            font-size: 0.85rem;
+            color: #bbb;
+        }
+
+    /* Stratagem Layout */
+    .stratagem-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+
+    .strat-card {
+        background: #1a1a1a;
+        border: 1px solid #444;
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .strat-top {
+        background: #000;
+        padding: 8px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #c0392b;
+    }
+
+    .strat-name {
+        font-weight: bold;
+        color: #fff;
+        text-transform: uppercase;
+    }
+
+    .cp-cost {
+        background: #c0392b;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-weight: bold;
+        font-size: 0.8rem;
+    }
+
+    .strat-type {
+        background: #222;
+        color: #888;
+        font-size: 0.75rem;
+        padding: 4px 12px;
+        font-style: italic;
+        border-bottom: 1px solid #333;
+    }
+
+    .strat-text {
+        padding: 12px;
+        font-size: 0.9rem;
+        color: #ccc;
+        line-height: 1.4;
+    }
+</style>
