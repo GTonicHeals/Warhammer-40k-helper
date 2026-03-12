@@ -1,0 +1,303 @@
+﻿@page "/scenarios"
+@rendermode InteractiveServer
+
+<div class="rules-container">
+    <div class="header-section text-center mb-4">
+        <h1 class="page-title text-warning">Mission Generator</h1>
+        <p class="text-muted">Configure your Primary Mission, Mission Rule, Deployment, Terrain, and Map Layout.</p>
+
+        <button class="btn btn-outline-warning mt-2" @onclick="RandomizeMission">
+            <i class="bi bi-dice-5"></i> Randomize Scenario
+        </button>
+    </div>
+
+    <div class="row g-3 mb-4 row-cols-1 row-cols-md-5">
+        <div class="col">
+            <label class="form-label text-warning fw-bold">Map Layout</label>
+            <select class="form-select bg-dark text-white border-secondary" @bind="SelectedMapLayout">
+                <option value="Incursion">Incursion</option>
+                <option value="Strike Force">Strike Force</option>
+                <option value="Asymmetric War">Asymmetric War</option>
+            </select>
+        </div>
+        <div class="col">
+            <label class="form-label text-warning fw-bold">Primary Mission</label>
+            <select class="form-select bg-dark text-white border-secondary" @bind="SelectedPrimaryId">
+                @foreach (var pm in PrimaryMissions)
+                {
+                    <option value="@pm.Id">@pm.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col">
+            <label class="form-label text-warning fw-bold">Mission Rule</label>
+            <select class="form-select bg-dark text-white border-secondary" @bind="SelectedRuleId">
+                @foreach (var mr in MissionRules)
+                {
+                    <option value="@mr.Id">@mr.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col">
+            <label class="form-label text-warning fw-bold">Deployment</label>
+            <select class="form-select bg-dark text-white border-secondary" @bind="SelectedDeploymentId">
+                @foreach (var dep in ActiveDeployments)
+                {
+                    <option value="@dep.Id">@dep.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col">
+            <label class="form-label text-warning fw-bold">Terrain Layout</label>
+            <select class="form-select bg-dark text-white border-secondary" @bind="SelectedTerrainId">
+                @foreach (var tl in TerrainLayouts)
+                {
+                    <option value="@tl.Id">@tl.Name</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <div class="scenario-display">
+
+        @if (CurrentDeployment != null)
+        {
+            <div class="scenario-card deployment-card">
+                <div class="card-header-custom bg-secondary">
+                    <i class="bi bi-map me-2"></i> Deployment: @CurrentDeployment.Name
+                </div>
+                <div class="card-body-custom">
+                    <p>@CurrentDeployment.Description</p>
+
+                    <div class="text-center mt-3">
+                        <img src="image/maps/@SelectedMapLayout/@GetMapImageFileName(SelectedMapLayout, CurrentDeployment.Name)"
+                             alt="@CurrentDeployment.Name Map"
+                             class="img-fluid border border-secondary rounded"
+                             style="max-height: 350px;"
+                             onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'text-muted border border-secondary p-4 rounded bg-black\'><i class=\'bi bi-image me-2\'></i><em>Map image not found at this path.</em></div>';" />
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (CurrentTerrain != null)
+        {
+            <div class="scenario-card terrain-card">
+                <div class="card-header-custom bg-success">
+                    <i class="bi bi-tree-fill me-2"></i> Terrain: @CurrentTerrain.Name
+                </div>
+                <div class="card-body-custom text-center">
+                    <img src="image/maps/Terrain Layout/@CurrentTerrain.ImageFileName"
+                         alt="@CurrentTerrain.Name Map"
+                         class="img-fluid border border-secondary rounded"
+                         style="max-height: 350px;"
+                         onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'text-muted border border-secondary p-4 rounded bg-black\'><i class=\'bi bi-image me-2\'></i><em>Terrain image not found at this path.</em></div>';" />
+                </div>
+            </div>
+        }
+
+        @if (CurrentRule != null)
+        {
+            <div class="scenario-card rule-card">
+                <div class="card-header-custom bg-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i> Mission Rule: @CurrentRule.Name
+                </div>
+                <div class="card-body-custom">
+                    <p>@((MarkupString)FormatText(CurrentRule.Description))</p>
+                </div>
+            </div>
+        }
+
+        @if (CurrentPrimary != null)
+        {
+            <div class="scenario-card primary-card">
+                <div class="card-header-custom bg-primary">
+                    <i class="bi bi-star-fill me-2"></i> Primary Mission: @CurrentPrimary.Name
+                </div>
+                <div class="card-body-custom">
+                    <p>@((MarkupString)FormatText(CurrentPrimary.Description))</p>
+                </div>
+            </div>
+        }
+
+    </div>
+</div>
+
+@code {
+    private string _selectedMapLayout = "Incursion";
+
+    private string SelectedMapLayout
+    {
+        get => _selectedMapLayout;
+        set
+        {
+            if (_selectedMapLayout != value)
+            {
+                bool wasAsymmetric = _selectedMapLayout == "Asymmetric War";
+                bool isAsymmetric = value == "Asymmetric War";
+
+                _selectedMapLayout = value;
+
+                if (wasAsymmetric != isAsymmetric)
+                {
+                    SelectedDeploymentId = ActiveDeployments.First().Id;
+                }
+            }
+        }
+    }
+
+    private string SelectedPrimaryId { get; set; } = "pm1";
+    private string SelectedRuleId { get; set; } = "mr1";
+    private string SelectedDeploymentId { get; set; } = "std_dep1";
+    private string SelectedTerrainId { get; set; } = "tl1";
+
+    private List<ScenarioElement> ActiveDeployments => SelectedMapLayout == "Asymmetric War" ? AsymmetricDeployments : StandardDeployments;
+
+    private ScenarioElement? CurrentPrimary => PrimaryMissions.FirstOrDefault(x => x.Id == SelectedPrimaryId);
+    private ScenarioElement? CurrentRule => MissionRules.FirstOrDefault(x => x.Id == SelectedRuleId);
+    private ScenarioElement? CurrentDeployment => ActiveDeployments.FirstOrDefault(x => x.Id == SelectedDeploymentId);
+    private ScenarioElement? CurrentTerrain => TerrainLayouts.FirstOrDefault(x => x.Id == SelectedTerrainId);
+
+    private void RandomizeMission()
+    {
+        var rnd = new Random();
+        SelectedPrimaryId = PrimaryMissions[rnd.Next(PrimaryMissions.Count)].Id;
+        SelectedRuleId = MissionRules[rnd.Next(MissionRules.Count)].Id;
+        SelectedDeploymentId = ActiveDeployments[rnd.Next(ActiveDeployments.Count)].Id;
+        SelectedTerrainId = TerrainLayouts[rnd.Next(TerrainLayouts.Count)].Id;
+    }
+
+    private string FormatText(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+        var formatted = text.Replace("\n", "<br/>");
+        return System.Text.RegularExpressions.Regex.Replace(formatted, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+    }
+
+    // Dynamic Filename Generator for Deployments
+    private string GetMapImageFileName(string layout, string deploymentName)
+    {
+        if (string.IsNullOrEmpty(deploymentName)) return "";
+
+        string layoutAbbr = layout switch
+        {
+            "Incursion" => "Inc",
+            "Strike Force" => "SF",
+            "Asymmetric War" => "Ass",
+            _ => "Inc"
+        };
+
+        var textInfo = System.Globalization.CultureInfo.InvariantCulture.TextInfo;
+        string pascalName = textInfo.ToTitleCase(deploymentName.ToLower()).Replace(" ", "");
+
+        return $"CA6_{layoutAbbr}_{pascalName}.png";
+    }
+
+    public class ScenarioElement
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string ImageFileName { get; set; } = ""; // Used exclusively for Terrain
+    }
+
+    // --- DATA ---
+
+    private List<ScenarioElement> TerrainLayouts = new()
+    {
+        new ScenarioElement { Id = "tl1", Name = "Layout 1", ImageFileName = "CA_TerrainLayout1.png" },
+        new ScenarioElement { Id = "tl2", Name = "Layout 2", ImageFileName = "CA_TerrainLayout2.png" },
+        new ScenarioElement { Id = "tl3", Name = "Layout 3", ImageFileName = "CA_TerrainLayout3.png" },
+        new ScenarioElement { Id = "tl4", Name = "Layout 4", ImageFileName = "CA_TerrainLayout4.png" },
+        new ScenarioElement { Id = "tl5", Name = "Layout 5", ImageFileName = "CA_TerrainLayout5.png" },
+        new ScenarioElement { Id = "tl6", Name = "Layout 6", ImageFileName = "CA_TerrainLayout6.png" },
+        new ScenarioElement { Id = "tl7", Name = "Layout 7", ImageFileName = "CA_TerrainLayout7.png" },
+        new ScenarioElement { Id = "tl8", Name = "Layout 8", ImageFileName = "CA_TerrainLayout8.png" }
+    };
+
+    private List<ScenarioElement> StandardDeployments = new()
+    {
+        new ScenarioElement { Id = "std_dep1", Name = "Dawn of War", Description = "Deployment zones are situated along the long edges of the battlefield." },
+        new ScenarioElement { Id = "std_dep2", Name = "Crucible of Battle", Description = "Deployment zones are placed diagonally opposite each other." },
+        new ScenarioElement { Id = "std_dep3", Name = "Search and Destroy", Description = "The battlefield is divided into quarters. Deployment zones are in diagonally opposite quarters." },
+        new ScenarioElement { Id = "std_dep4", Name = "Sweeping Engagement", Description = "Deployment zones are situated along the long edges, but are angled." },
+        new ScenarioElement { Id = "std_dep5", Name = "Hammer and Anvil", Description = "Deployment zones are situated along the short edges of the battlefield." },
+        new ScenarioElement { Id = "std_dep6", Name = "Tipping Point", Description = "Deployment zones are staggered, offering asymmetrical aggressive deployment options across the center." }
+    };
+
+    private List<ScenarioElement> AsymmetricDeployments = new()
+    {
+        new ScenarioElement { Id = "ass_dep1", Name = "Breakout", Description = "The Attacker surrounds the Defender, who must attempt to break through the lines." },
+        new ScenarioElement { Id = "ass_dep2", Name = "Defensive Line", Description = "The Defender occupies a fortified front while the Attacker pushes forward." },
+        new ScenarioElement { Id = "ass_dep3", Name = "Last Stand", Description = "The Defender is cornered in a deep deployment zone against overwhelming odds." },
+        new ScenarioElement { Id = "ass_dep4", Name = "Pincer Attack", Description = "The Attacker deploys on two opposite flanks, threatening the Defender from multiple sides." },
+        new ScenarioElement { Id = "ass_dep5", Name = "Tip Of The Spear", Description = "The Attacker forms a wedge formation driving deep into the Defender's territory." }
+    };
+
+    private List<ScenarioElement> PrimaryMissions = new()
+    {
+        new ScenarioElement { Id = "pm1", Name = "Take and Hold", Description = "In the Command phase, starting from the second battle round, players score **5VP** for controlling one objective marker, **5VP** for controlling two or more objective markers, and **5VP** for controlling more objective markers than their opponent.\n\nMaximum 15VP per turn." },
+        new ScenarioElement { Id = "pm2", Name = "Scorched Earth", Description = "Starting from the second battle round, players score **5VP** for each objective marker they control (up to 10VP per turn).\n\nIn addition, a unit can perform an Action to Burn an objective marker they control. If successful, the objective is removed from the battlefield and the player scores **5VP** (or 10VP if it was in the enemy deployment zone)." },
+        new ScenarioElement { Id = "pm3", Name = "Purge the Foe", Description = "In the Command phase, starting from the second battle round, players score **4VP** for controlling one or more objectives, and **4VP** for controlling more objectives than their opponent.\n\nAt the end of the battle round, score **4VP** if you destroyed at least one enemy unit, and **4VP** if you destroyed more enemy units than your opponent did this round." },
+        new ScenarioElement { Id = "pm4", Name = "Sites of Power", Description = "Objectives in No Man's Land are Sites of Power.\n\nIn the Command phase, starting from the second battle round, players score points based on how many Sites of Power they control that have a **CHARACTER** model from their army within range." }
+    };
+
+    private List<ScenarioElement> MissionRules = new()
+    {
+        new ScenarioElement { Id = "mr1", Name = "Chilling Rain", Description = "In this mission, there is no additional mission rule. The standard core rules apply normally." },
+        new ScenarioElement { Id = "mr2", Name = "Hidden Supplies", Description = "In this mission, players must set up one additional objective marker in No Man's Land. Set this objective up exactly in the center of the battlefield." },
+        new ScenarioElement { Id = "mr3", Name = "Chosen Battlefield", Description = "Objective markers in No Man's Land can be moved. Before the first turn begins, starting with the Defender, players alternate moving one objective marker in No Man's Land up to 6\"." },
+        new ScenarioElement { Id = "mr4", Name = "Sweep and Clear", Description = "If a player controls an objective marker at the end of their Command phase, it remains under their control even if they have no models within range of it, unless an enemy unit takes control of it." }
+    };
+}
+
+<style>
+    .rules-container {
+        max-width: 1000px; /* Slightly wider to accommodate 5 columns */
+        margin: 0 auto;
+        padding-bottom: 50px;
+        color: #e0e0e0;
+    }
+
+    .page-title {
+        border-bottom: 2px solid #d35400;
+        padding-bottom: 10px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .scenario-display {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .scenario-card {
+        background: #1a1a1a;
+        border: 1px solid #444;
+        border-radius: 6px;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    }
+
+    .card-header-custom {
+        padding: 12px 15px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: white;
+    }
+
+    .card-body-custom {
+        padding: 20px;
+        font-size: 0.95rem;
+        color: #ccc;
+        line-height: 1.5;
+    }
+
+    .form-select:focus {
+        border-color: #d35400;
+        box-shadow: 0 0 0 0.25rem rgba(211, 84, 0, 0.25);
+    }
+</style>
