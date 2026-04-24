@@ -1,7 +1,18 @@
 ﻿@using System.Text.Json
 @using Warhammer.Models
 @using System.IO
+@using System.Text.RegularExpressions
 @inject IWebHostEnvironment Env
+@inject NavigationManager NavManager
+@implements IDisposable
+
+<style>
+    /* Dynamically overrides the sidebar background based on the current page */
+    .sidebar {
+        background: linear-gradient(180deg, #2b2b2b 0%, @ActiveGradientColor 100%) !important;
+        transition: background 0.5s ease;
+    }
+</style>
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -46,82 +57,112 @@
             </NavLink>
         </div>
 
-        <div class="nav-item px-3 mt-3 mb-1">
-            <span class="text-uppercase fw-bold text-white-50 small ps-3">Tactical Objectives</span>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="objectives/p1">
-                <span class="bi bi-person-badge" aria-hidden="true"></span> P1 Objectives
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="objectives/p2">
-                <span class="bi bi-person-badge-fill" aria-hidden="true" style="color: #5dade2;"></span> P2 Objectives
-            </NavLink>
-        </div>
-
-
-        @if (p1Units != null)
+        @if (Players.Any())
         {
             <div class="nav-item px-3 mt-3 mb-1">
-                <span class="text-uppercase fw-bold text-warning small ps-3" style="letter-spacing: 1px;">Player 1</span>
+                <span class="text-uppercase fw-bold text-white-50 small ps-3">Tactical Objectives</span>
             </div>
-
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="roster/p1">
-                    <span class="bi bi-list-nested" aria-hidden="true"></span> Full Roster
-                </NavLink>
-            </div>
-
-            @foreach (var unit in p1Units)
+            
+            @foreach (var player in Players)
             {
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link py-0" href="@($"roster/p1#{GetId(unit)}")">
-                        <span class="bi bi-chevron-right small me-2 text-warning" aria-hidden="true"></span>
-                        <span style="font-size: 0.9em;">@unit.Name</span>
+                    <NavLink class="nav-link" href="@($"objectives/{player.Id}")">
+                        <span class="bi bi-person-badge" aria-hidden="true" style="color: @player.Color;"></span> @player.Label
                     </NavLink>
                 </div>
             }
-        }
 
-        @if (p2Units != null && p2Units.Any())
-        {
-            <div class="p2-section">
+            @foreach (var player in Players)
+            {
+                <div class="player-section mt-3">
+                    <div class="nav-item px-3 mb-1">
+                        <span class="text-uppercase fw-bold small ps-3" style="letter-spacing: 1px; color: @player.Color;">@player.Label</span>
+                    </div>
 
-                <div class="nav-item px-3 mt-3 mb-1">
-                    <span class="text-uppercase fw-bold small ps-3" style="letter-spacing: 1px; color: #5dade2;">Player 2</span>
-                </div>
-
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="roster/p2">
-                        <span class="bi bi-list-nested" aria-hidden="true" style="color: #5dade2;"></span> Full Roster
-                    </NavLink>
-                </div>
-
-                @foreach (var unit in p2Units)
-                {
                     <div class="nav-item px-3">
-                        <NavLink class="nav-link py-0" href="@($"roster/p2#{GetId(unit)}")">
-                            <span class="bi bi-crosshair small me-2" aria-hidden="true" style="color: #5dade2;"></span>
-                            <span style="font-size: 0.9em;">@unit.Name</span>
+                        <NavLink class="nav-link" href="@($"roster/{player.Id}")">
+                            <span class="bi bi-list-nested" aria-hidden="true" style="color: @player.Color;"></span> Full Roster
                         </NavLink>
                     </div>
-                }
 
-            </div>
+                    @foreach (var unit in player.Units)
+                    {
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link py-0" href="@($"roster/{player.Id}#{GetId(unit)}")">
+                                <span class="bi bi-chevron-right small me-2" aria-hidden="true" style="color: @player.Color;"></span>
+                                <span style="font-size: 0.9em;">@unit.Name</span>
+                            </NavLink>
+                        </div>
+                    }
+                </div>
+            }
         }
-
     </nav>
 </div>
 
 @code {
-    private List<Selection>? p1Units;
-    private List<Selection>? p2Units;
+    public class PlayerMenuData
+    {
+        public string Id { get; set; } = "";
+        public string Label { get; set; } = "";
+        public string Color { get; set; } = "";
+        public List<Selection> Units { get; set; } = new();
+    }
+
+    private List<PlayerMenuData> Players = new();
+    
+    private string ActivePlayerId = "p1";
+    private string ActiveGradientColor => GetGradientColor(ActivePlayerId);
 
     protected override async Task OnInitializedAsync()
     {
-        p1Units = await LoadUnitsFromFile("roster.json");
-        p2Units = await LoadUnitsFromFile("enemy.json");
+        NavManager.LocationChanged += OnLocationChanged;
+        UpdateActivePlayer(NavManager.Uri);
+
+        int playerIndex = 1;
+        while (true)
+        {
+            string playerId = $"p{playerIndex}";
+            string fileName = $"{playerId}.json";
+            
+            var units = await LoadUnitsFromFile(fileName);
+            
+            if (units == null || !units.Any()) break;
+
+            Players.Add(new PlayerMenuData
+            {
+                Id = playerId,
+                Label = $"Player {playerIndex}",
+                Color = GetPlayerColor(playerId),
+                Units = units
+            });
+
+            playerIndex++;
+        }
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        UpdateActivePlayer(e.Location);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateActivePlayer(string uri)
+    {
+        var match = Regex.Match(uri, @"/(roster|objectives)/(p\d+)");
+        if (match.Success)
+        {
+            ActivePlayerId = match.Groups[2].Value;
+        }
+        else
+        {
+            ActivePlayerId = "p1";
+        }
+    }
+
+    public void Dispose()
+    {
+        NavManager.LocationChanged -= OnLocationChanged;
     }
 
     private async Task<List<Selection>?> LoadUnitsFromFile(string fileName)
@@ -149,5 +190,25 @@
         return null;
     }
 
-    private string GetId(Selection unit) => unit.Name.Replace(" ", "-").Replace("'", "").Replace("’", "");
+    private string GetId(Selection unit) => unit.Name?.Replace(" ", "-").Replace("'", "").Replace("’", "") ?? "unknown";
+
+    private string GetPlayerColor(string side) => side switch
+    {
+        "p2" => "#5dade2",
+        "p3" => "#2ecc71",
+        "p4" => "#a855f7",
+        "p5" => "#e74c3c",
+        "p6" => "#f39c12",
+        _ => "#ffc107"
+    };
+
+    private string GetGradientColor(string side) => side switch
+    {
+        "p2" => "#154360",
+        "p3" => "#145a32",
+        "p4" => "#4a235a",
+        "p5" => "#641e16",
+        "p6" => "#7e5109",
+        _ => "darkred"
+    };
 }

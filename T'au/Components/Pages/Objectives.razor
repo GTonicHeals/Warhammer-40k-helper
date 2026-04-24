@@ -4,20 +4,20 @@
 
 <div class="header-container">
     <div class="header-left">
-        <h3>@(Side == "p2" ? "Player 2 Objectives" : "Player 1 Objectives")</h3>
+        <h3 style="color: @GetPlayerColor();">@GetPlayerLabel()</h3>
     </div>
-    <div class="cp-badge" style="color: @(Side == "p2" ? "#5dade2" : "#d35400")">
+    <div class="cp-badge" style="color: @GetPlayerColor();">
         Cards in Deck: @CurrentState.Deck.Count
     </div>
 </div>
 
 <div class="controls mb-4">
-    @if (@CurrentState.Deck.Count > 0)
+    @if (CurrentState.Deck.Count > 0)
     {
         @if (CurrentState.ActiveMissions.Count < 2)
         {
             <button class="btn btn-lg w-100 mb-2"
-                    style="border-color: @(Side == "p2" ? "#5dade2" : "#d35400"); color: @(Side == "p2" ? "#5dade2" : "#d35400");"
+                    style="border-color: @GetPlayerColor(); color: @GetPlayerColor();"
                     @onclick="DrawCard">
                 <i class="bi bi-stack me-2"></i>Draw Objective
             </button>
@@ -35,7 +35,7 @@
         @if (CurrentState.ActiveMissions.Count < 2)
         {
             <button class="btn btn-lg w-100 mb-2"
-                    style="border-color: @(Side == "p2" ? "#5dade2" : "#d35400"); color: @(Side == "p2" ? "#5dade2" : "#d35400");"
+                    style="border-color: @GetPlayerColor(); color: @GetPlayerColor();"
                     @onclick="DrawCard">
                 <i class="bi bi-stack me-2"></i>Draw Objective
             </button>
@@ -45,7 +45,6 @@
             <i class="bi bi-arrow-counterclockwise me-2"></i>Reset Deck
         </button>
     }
-
 </div>
 
 <div class="mission-grid">
@@ -61,14 +60,14 @@
     {
         @foreach (var mission in CurrentState.ActiveMissions)
         {
-            <div class="mission-card @(Side == "p2" ? "p2-card" : "p1-card")">
-                <div class="mission-header">
+            <div class="mission-card">
+                <div class="mission-header" style="background-color: @GetPlayerColor();">
                     <span class="mission-title">@mission.Name</span>
                     <span class="mission-type">@mission.Type</span>
                 </div>
                 <div class="mission-body">
                     <p>@mission.Description</p>
-                    <div class="vp-box">
+                    <div class="vp-box" style="color: @GetPlayerColor();">
                         <strong>Reward:</strong> @mission.Reward
                     </div>
                 </div>
@@ -140,6 +139,25 @@
     {
         CurrentState.Reset();
     }
+
+    // --- Dynamic Rendering Helpers ---
+
+    private string GetPlayerLabel()
+    {
+        if (string.IsNullOrEmpty(Side) || Side == "p1") return "Player 1 Objectives";
+        if (int.TryParse(Side.TrimStart('p', 'P'), out var n)) return $"Player {n} Objectives";
+        return $"{Side} Objectives";
+    }
+
+    private string GetPlayerColor() => (Side?.ToLower() ?? "p1") switch
+    {
+        "p2" => "#5dade2",
+        "p3" => "#2ecc71",
+        "p4" => "#a855f7",
+        "p5" => "#e74c3c",
+        "p6" => "#f39c12",
+        _ => "#d35400" // Fallback for P1 or unknown values
+    };
 }
 
 <style>
@@ -218,23 +236,5 @@
         background: #ccc;
         display: flex;
         justify-content: space-between;
-    }
-
-    /* PLAYER 1 (ORANGE) */
-    .p1-card .mission-header {
-        background: #d35400;
-    }
-
-    .p1-card .vp-box {
-        color: #d35400;
-    }
-
-    /* PLAYER 2 (BLUE) */
-    .p2-card .mission-header {
-        background: #2e86c1;
-    }
-
-    .p2-card .vp-box {
-        color: #2e86c1;
     }
 </style>

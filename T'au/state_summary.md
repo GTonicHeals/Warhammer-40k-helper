@@ -13,7 +13,7 @@ A Blazor Web Application (Interactive Server Mode, .NET 8) designed to act as a 
 ## 3. Core Components & Features
 
 ### A. Roster Viewer (`Roster.razor`)
-* **Dual Routing:** Accepts a routing parameter (`/roster/{Side?}`) to load either `roster.json` (Player 1) or `enemy.json` (Player 2).
+* **Dual Routing:** Accepts a routing parameter (`/roster/{Side?}`) to load either `p1.json` (Player 1) or `p2.json` (Player 2).
 * **Dynamic Theming:** * Player 1 uses an Orange/Dark styling.
   * Player 2 (`Side == "p2"`) overrides CSS to use a Blue/Dark styling.212121
 * **Datasheet Parsing:** Recursively extracts Profiles, Characteristics, Weapons (Ranged/Melee), Abilities, and Keywords from the BattleScribe JSON schema.
@@ -41,7 +41,7 @@ A Blazor Web Application (Interactive Server Mode, .NET 8) designed to act as a 
 
 ## 4. Data Architecture
 
-### A. Roster Data (`roster.json` / `enemy.json`)
+### A. Roster Data (`p1.json` / `p2.json`)
 Follows the standard BattleScribe JSON export schema:
 * `roster.costs`: For calculating total points.
 * `roster.forces[0].selections`: The primary array of units.
@@ -59,4 +59,4 @@ A custom JSON structure containing two main arrays:
 ## 6. Future Roadmap
 1. **Global Search:** Add a search bar to `Roster.razor` to quickly find specific weapons, abilities, or units across the entire army.
 2. **MathHammer Tool:** Build a probability calculator to determine expected damage output based on Attacks, BS/WS, S vs T, AP, and Damage characteristics.
-3. **Dynamic File Uploads:** Transition from reading static files (`roster.json`) from `wwwroot` to an `InputFile` component, allowing users to upload their own `.json` or `.rosz` files directly via the browser.
+3. **Dynamic File Uploads:** Transition from reading static files (`p1.json`) from `wwwroot` to an `InputFile` component, allowing users to upload their own `.json` or `.rosz` files directly via the browser.
