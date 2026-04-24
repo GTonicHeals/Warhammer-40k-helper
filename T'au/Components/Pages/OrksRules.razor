@@ -1,0 +1,474 @@
+@page "/orkrules"
+@rendermode InteractiveServer
+
+<div class="rules-container">
+    <div class="ork-header-band">
+        <h1 class="page-title text-center">Orks Rules Reference</h1>
+    </div>
+
+    <div class="rule-card army-rule mb-4">
+        <div class="rule-header">
+            <i class="bi bi-lightning-charge-fill me-2"></i> FACTION RULE: Waaagh!
+        </div>
+        <div class="rule-body">
+            <p>
+                Once per battle, at the start of your <strong>Command phase</strong>, you can declare a
+                <strong>Waaagh!</strong> Until the end of the turn, the following apply to all
+                <strong>Ork</strong> units from your army:
+            </p>
+            <div class="waaagh-grid">
+                <div class="waaagh-item">
+                    <i class="bi bi-plus-circle-fill me-1"></i>
+                    <strong>+1 to Charge rolls</strong>
+                    <span>For all Ork units attempting a Charge move.</span>
+                </div>
+                <div class="waaagh-item">
+                    <i class="bi bi-plus-circle-fill me-1"></i>
+                    <strong>+1 to Hit rolls (melee)</strong>
+                    <span>Each time an Ork model makes a melee attack.</span>
+                </div>
+                <div class="waaagh-item">
+                    <i class="bi bi-arrows-move me-1"></i>
+                    <strong>Extended Pile In</strong>
+                    <span>Ork units within 12" of a friendly Character can Pile In up to 6" instead of 3".</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-center mb-4">
+        <div class="btn-group" role="group" aria-label="Detachment Selector">
+            <button type="button"
+                    class="btn @(selectedDetachment == "War Horde" ? "btn-ork-active" : "btn-ork-inactive")"
+                    @onclick='() => SetDetachment("War Horde")'>
+                War Horde
+            </button>
+            <button type="button"
+                    class="btn @(selectedDetachment == "Bully Boyz" ? "btn-ork-active" : "btn-ork-inactive")"
+                    @onclick='() => SetDetachment("Bully Boyz")'>
+                Bully Boyz
+            </button>
+        </div>
+    </div>
+
+    @if (selectedDetachment == "War Horde")
+    {
+        <div class="rule-card detachment-rule mb-4">
+            <div class="rule-header">
+                <i class="bi bi-people-fill me-2"></i> DETACHMENT RULE: Green Tide
+            </div>
+            <div class="rule-body">
+                <p>
+                    While an <strong>Ork Core</strong> unit has <strong>10 or more models</strong>,
+                    add 1 to the <strong>Attacks</strong> characteristic of all melee weapons equipped
+                    by models in that unit.
+                </p>
+                <p>
+                    While a <strong>Waaagh!</strong> is active, also add 1 to the
+                    <strong>Strength</strong> characteristic of those melee weapons.
+                </p>
+                <div class="waaagh-grid">
+                    <div class="waaagh-item highlight">
+                        <strong>10+ Models</strong>
+                        <span>+1 Attacks on all melee weapons</span>
+                    </div>
+                    <div class="waaagh-item highlight">
+                        <strong>10+ Models + Waaagh!</strong>
+                        <span>+1 Attacks <em>and</em> +1 Strength on all melee weapons</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="section-heading">Stratagems (War Horde)</h3>
+        <div class="stratagem-grid">
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Mob Rule</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic — Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Ork Infantry unit with 10 or more models.<br />
+                    <strong>Effect:</strong> Until the end of the phase, you can re-roll Wound rolls for attacks made by models in this unit.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Born to Fight</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Epic Deed — Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Ork unit that was just attacked in the Fight phase.<br />
+                    <strong>Effect:</strong> Each time a model in this unit is destroyed, roll one D6. On a 4+, do not remove it — it fights before being removed, then is taken off.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Unstoppable Green Tide</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy — Charge Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Ork Infantry unit that just made a Charge move.<br />
+                    <strong>Effect:</strong> Until the end of the turn, this unit's Pile In and Consolidate moves are 6" instead of 3".
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Ere We Go!</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic — Charge Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Ork unit that is about to make a Charge move.<br />
+                    <strong>Effect:</strong> Re-roll the Charge roll. If a Waaagh! is currently active, also add 1 to the result after re-rolling.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Dakka! Dakka! Dakka!</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic — Shooting Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Ork unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, each unmodified Hit roll of 6 (Critical Hit) scores 1 additional hit. If a Waaagh! is active, Critical Hits also inflict 1 mortal wound on the target.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Squig Bomb</span>
+                    <span class="cp-cost">2CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy — Opponent's Movement Phase</div>
+                <div class="strat-text">
+                    <strong>Trigger:</strong> An enemy unit within 18" of a friendly Ork unit Advances or Falls Back.<br />
+                    <strong>Effect:</strong> That Ork unit can immediately shoot at the triggering enemy unit as if it were your Shooting phase.
+                </div>
+            </div>
+        </div>
+    }
+    else if (selectedDetachment == "Bully Boyz")
+    {
+        <div class="rule-card detachment-rule mb-4">
+            <div class="rule-header">
+                <i class="bi bi-shield-fill me-2"></i> DETACHMENT RULE: Might Makes Right
+            </div>
+            <div class="rule-body">
+                <p>
+                    Each time a model in a <strong>Meganobz</strong> or <strong>Nobz</strong> unit makes
+                    a melee attack that targets a <strong>Character</strong> unit, add 1 to the
+                    <strong>Wound roll</strong>.
+                </p>
+                <p>
+                    While a <strong>Meganobz</strong> unit is within 6" of a friendly
+                    <strong>Ork Core</strong> unit, models in that Core unit can re-roll
+                    <strong>Wound rolls</strong> in the Fight phase.
+                </p>
+                <div class="waaagh-grid">
+                    <div class="waaagh-item highlight">
+                        <strong>Vs Characters</strong>
+                        <span>Meganobz &amp; Nobz: +1 to Wound rolls</span>
+                    </div>
+                    <div class="waaagh-item highlight">
+                        <strong>Aura (6")</strong>
+                        <span>Nearby Core units re-roll Wound rolls in melee</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="section-heading">Stratagems (Bully Boyz)</h3>
+        <div class="stratagem-grid">
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Brutal but Kunnin'</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Epic Deed — Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Nobz or Meganobz unit that has not yet fought this phase.<br />
+                    <strong>Effect:</strong> This unit fights twice this Fight phase. The second fight resolves after all other units have fought.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Power Klaw Grip</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic — Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Nobz or Meganobz unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, Power Klaw weapons equipped by models in this unit gain the <strong>[DEVASTATING WOUNDS]</strong> ability.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Warboss in a Box</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy — Shooting Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Meganobz unit within 12" of a friendly Character.<br />
+                    <strong>Effect:</strong> Until the end of the phase, this unit can shoot its ranged weapons even if it Advanced this turn, and does not suffer the penalty for shooting Heavy weapons after moving.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Size Matters</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic — Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Nobz or Meganobz unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, add 1 to the Strength characteristic and improve the AP characteristic by 1 for all melee weapons equipped by models in this unit.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Not So Fast, Humie</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy — Opponent's Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Trigger:</strong> An enemy unit declares a Charge against a Nobz or Meganobz unit.<br />
+                    <strong>Effect:</strong> That friendly unit can fight before the charging unit resolves its attacks, even if it has already fought this phase.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Cybork Enhancements</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Wargear — Opponent's Shooting / Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Meganobz unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, models in this unit have the <strong>Feel No Pain 4+</strong> ability.
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string selectedDetachment = "War Horde";
+
+    private void SetDetachment(string detachmentName)
+    {
+        selectedDetachment = detachmentName;
+    }
+}
+
+<style>
+    .rules-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding-bottom: 50px;
+        color: #e0e0e0;
+    }
+
+    /* Checkerboard header band */
+    .ork-header-band {
+        background-image: repeating-linear-gradient(
+            45deg,
+            #111 0px,
+            #111 12px,
+            #1a1a1a 12px,
+            #1a1a1a 24px
+        );
+        border-top: 4px solid #4caf50;
+        border-bottom: 4px solid #4caf50;
+        padding: 12px 0;
+        margin-bottom: 24px;
+    }
+
+    .page-title {
+        color: #4caf50;
+        text-transform: uppercase;
+        font-weight: 900;
+        letter-spacing: 3px;
+        margin: 0;
+        text-shadow: 2px 2px 0 #000, 0 0 10px rgba(76, 175, 80, 0.5);
+    }
+
+    /* Buttons */
+    .btn-ork-active {
+        background-color: #4caf50;
+        color: #000;
+        border: 2px solid #2e7d32;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 2px 2px 0 #1b5e20;
+    }
+
+    .btn-ork-inactive {
+        background-color: #1a1a1a;
+        color: #666;
+        border: 2px solid #333;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: bold;
+        transition: all 0.15s;
+    }
+
+        .btn-ork-inactive:hover {
+            background-color: #222;
+            color: #4caf50;
+            border-color: #4caf50;
+        }
+
+    .section-heading {
+        color: #4caf50;
+        text-transform: uppercase;
+        font-weight: 900;
+        letter-spacing: 2px;
+        margin-bottom: 15px;
+        text-shadow: 1px 1px 0 #000;
+    }
+
+    /* Rule Cards */
+    .rule-card {
+        background: #111;
+        border: 1px solid #2e3d2e;
+        border-radius: 2px;
+        overflow: hidden;
+        box-shadow: 3px 3px 0 #0a0a0a;
+    }
+
+    .rule-header {
+        padding: 10px 15px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .rule-body {
+        padding: 15px;
+        background: #161a16;
+    }
+
+    .army-rule .rule-header {
+        background: #33691e;
+        color: #a5d6a7;
+        border-bottom: 3px solid #4caf50;
+    }
+
+    .detachment-rule .rule-header {
+        background: #1a2a1a;
+        color: #81c784;
+        border-left: 6px solid #4caf50;
+    }
+
+    /* Waaagh grid */
+    .waaagh-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-top: 15px;
+    }
+
+    .waaagh-item {
+        background: #1a241a;
+        border-left: 4px solid #4caf50;
+        padding: 10px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border-radius: 0 2px 2px 0;
+    }
+
+        .waaagh-item i {
+            color: #4caf50;
+        }
+
+        .waaagh-item strong {
+            color: #a5d6a7;
+            font-size: 0.92rem;
+        }
+
+        .waaagh-item span {
+            font-size: 0.82rem;
+            color: #999;
+        }
+
+        .waaagh-item.highlight {
+            border-left-color: #bf360c;
+        }
+
+        .waaagh-item.highlight strong {
+            color: #ff8a65;
+        }
+
+    /* Stratagem cards */
+    .stratagem-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+
+    .strat-card {
+        background: #161a16;
+        border: 1px solid #2e3d2e;
+        border-radius: 2px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 2px 2px 0 #0a0a0a;
+    }
+
+    .strat-top {
+        background: #0d110d;
+        padding: 8px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 3px solid #33691e;
+    }
+
+    .strat-name {
+        font-weight: 900;
+        color: #e0e0e0;
+        text-transform: uppercase;
+        font-size: 0.83rem;
+        letter-spacing: 0.5px;
+    }
+
+    .cp-cost {
+        background: #bf360c;
+        color: #fff;
+        padding: 2px 8px;
+        border-radius: 2px;
+        font-weight: bold;
+        font-size: 0.8rem;
+        white-space: nowrap;
+        box-shadow: 1px 1px 0 #7f0000;
+    }
+
+    .strat-type {
+        background: #131913;
+        color: #66bb6a;
+        font-size: 0.75rem;
+        padding: 4px 12px;
+        font-style: italic;
+        border-bottom: 1px solid #2e3d2e;
+    }
+
+    .strat-text {
+        padding: 12px;
+        font-size: 0.88rem;
+        color: #ccc;
+        line-height: 1.45;
+    }
+</style>

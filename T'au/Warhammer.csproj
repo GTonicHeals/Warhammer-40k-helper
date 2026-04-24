@@ -15,4 +15,18 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      Warhammer 40,000.gst has a comma in its filename which breaks the MSBuild
+      MakeRelative function used by the static web assets pipeline.
+      The file is only read via File.ReadAllText (never served over HTTP),
+      so removing it from Content and re-adding it as None is safe.
+    -->
+    <Content Remove="wwwroot\data\Warhammer 40,000.gst" />
+    <None Include="wwwroot\data\Warhammer 40,000.gst">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

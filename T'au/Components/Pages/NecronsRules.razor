@@ -1,0 +1,487 @@
+@page "/necronsrules"
+@rendermode InteractiveServer
+
+<div class="rules-container">
+    <h1 class="page-title text-center">Necrons Rules Reference</h1>
+
+    <div class="rule-card army-rule mb-4">
+        <div class="rule-header">
+            <i class="bi bi-arrow-repeat me-2"></i> FACTION RULE: Reanimation Protocols
+        </div>
+        <div class="rule-body">
+            <p>
+                At the end of your opponent's turn, for each <strong>Necrons</strong> unit from your army
+                that is below its <strong>Starting Strength</strong>, roll one D6 per destroyed model.
+                On a <strong>5+</strong>, one model is returned to that unit with its full wounds.
+            </p>
+            <div class="reanimation-diagram">
+                <div class="step">
+                    <span class="badge bg-necron">1</span>
+                    <strong>End of Opponent's Turn</strong>
+                    <small>For each unit below Starting Strength</small>
+                </div>
+                <div class="arrow">➜</div>
+                <div class="step">
+                    <span class="badge bg-necron">2</span>
+                    <strong>Roll D6 Per Dead Model</strong>
+                    <small>5+ = Return one model</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-center mb-4">
+        <div class="btn-group" role="group" aria-label="Detachment Selector">
+            <button type="button"
+                    class="btn @(selectedDetachment == "Awakened Dynasty" ? "btn-necron-active" : "btn-necron-inactive")"
+                    @onclick='() => SetDetachment("Awakened Dynasty")'>
+                Awakened Dynasty
+            </button>
+            <button type="button"
+                    class="btn @(selectedDetachment == "Hypercrypt Legion" ? "btn-necron-active" : "btn-necron-inactive")"
+                    @onclick='() => SetDetachment("Hypercrypt Legion")'>
+                Hypercrypt Legion
+            </button>
+        </div>
+    </div>
+
+    @if (selectedDetachment == "Awakened Dynasty")
+    {
+        <div class="rule-card detachment-rule mb-4">
+            <div class="rule-header">
+                <i class="bi bi-stars me-2"></i> DETACHMENT RULE: Eternal Conquerors
+            </div>
+            <div class="rule-body">
+                <p>
+                    At the start of your <strong>Command phase</strong>, select one of the following
+                    <strong>Noble Protocols</strong> to be active for all <strong>Necrons Core</strong> and
+                    <strong>Necrons Character</strong> units until the start of your next Command phase.
+                </p>
+                <div class="protocol-grid">
+                    <div class="protocol-item">
+                        <strong>Protocol of the Conquering Tyrant</strong>
+                        <span>Add 1 to the OC characteristic of models in this unit.</span>
+                    </div>
+                    <div class="protocol-item">
+                        <strong>Protocol of the Eternal Guardian</strong>
+                        <span>Improve the Save characteristic of models in this unit by 1.</span>
+                    </div>
+                    <div class="protocol-item">
+                        <strong>Protocol of the Hungry Void</strong>
+                        <span>Melee weapons equipped by models in this unit gain the <strong>[LETHAL HITS]</strong> ability.</span>
+                    </div>
+                    <div class="protocol-item">
+                        <strong>Protocol of the Undying Legions</strong>
+                        <span>Reanimation Protocol rolls for this unit succeed on a <strong>4+</strong> instead of 5+.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="section-heading">Stratagems (Awakened Dynasty)</h3>
+        <div class="stratagem-grid">
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Adaptive Subroutines</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy — Movement Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Necrons Core Infantry unit not in Engagement Range.<br />
+                    <strong>Effect:</strong> Remove that unit from the battlefield and set it up again anywhere more than 9" from all enemy models.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Disruption Fields</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic — Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Necrons Core unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, each time a model in this unit makes a melee attack, an unmodified Hit roll of 6 inflicts 1 mortal wound on the target in addition to normal damage.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">My Will Be Done</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Epic Deed — Command Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Necrons Character unit.<br />
+                    <strong>Effect:</strong> Until the start of your next Command phase, each time a Necrons Core unit within 6" of that Character makes an attack, you can re-roll the Hit roll.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Protocol of the Sudden Storm</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic — Shooting Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Necrons Core unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, ranged weapons equipped by models in this unit gain the <strong>[RAPID FIRE 1]</strong> ability.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Hypermaterial Ablator</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Wargear — Opponent's Shooting Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Necrons Core unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, improve the Save characteristic of models in this unit by 1 (to a maximum of 2+).
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Dimensional Translocation</span>
+                    <span class="cp-cost">2CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy — Movement Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Necrons Core Infantry unit not in Engagement Range.<br />
+                    <strong>Effect:</strong> Remove that unit from the battlefield and place it into Strategic Reserves. It may be redeployed at the end of any subsequent Movement phase.
+                </div>
+            </div>
+        </div>
+    }
+    else if (selectedDetachment == "Hypercrypt Legion")
+    {
+        <div class="rule-card detachment-rule mb-4">
+            <div class="rule-header">
+                <i class="bi bi-box-arrow-in-down me-2"></i> DETACHMENT RULE: Translocation Protocols
+            </div>
+            <div class="rule-body">
+                <p>
+                    <strong>Necrons Core Infantry</strong> units can be placed into
+                    <strong>Hypercrypt Reserve</strong> instead of being deployed normally.
+                </p>
+                <p>
+                    At the end of any of your <strong>Movement phases</strong>, units from your Hypercrypt Reserve
+                    can be set up anywhere on the battlefield that is more than <strong>9"</strong> from all
+                    enemy models.
+                </p>
+                <div class="alert-box mt-2">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <span>Units that arrive from Hypercrypt Reserve cannot move further that phase, but can shoot and charge normally.</span>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="section-heading">Stratagems (Hypercrypt Legion)</h3>
+        <div class="stratagem-grid">
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Prismatic Erosion</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic — Shooting Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Necrons Core unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, ranged weapons equipped by models in this unit ignore the benefit of cover and their AP characteristic is improved by 1.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Ethereal Interception</span>
+                    <span class="cp-cost">2CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy — Opponent's Charge Phase</div>
+                <div class="strat-text">
+                    <strong>Trigger:</strong> An enemy unit declares a Charge move.<br />
+                    <strong>Effect:</strong> Set up one unit from your Hypercrypt Reserve anywhere on the battlefield more than 9" from all enemy models. That unit can then attempt to intercept the charge.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Void Hardened</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Wargear — Opponent's Shooting / Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Necrons Core unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, models in this unit have a <strong>4+ Invulnerable Save</strong>.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Phased Displacement</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Epic Deed — Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Necrons Core unit that has just fought.<br />
+                    <strong>Effect:</strong> After resolving that unit's attacks, remove it from the battlefield and set it up again more than 3" from all enemy models.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Timesplinter Cloaking</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic — Opponent's Shooting / Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Necrons Core unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, subtract 1 from the Hit rolls of attacks that target this unit.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Translocation Crypt</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy — Any Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Necrons Core unit on the battlefield not in Engagement Range.<br />
+                    <strong>Effect:</strong> Remove that unit from the battlefield and place it into your Hypercrypt Reserve to be redeployed in a future Movement phase.
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string selectedDetachment = "Awakened Dynasty";
+
+    private void SetDetachment(string detachmentName)
+    {
+        selectedDetachment = detachmentName;
+    }
+}
+
+<style>
+    .rules-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding-bottom: 50px;
+        color: #e0e0e0;
+    }
+
+    .page-title {
+        color: #00e676;
+        border-bottom: 3px solid #00e676;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        text-transform: uppercase;
+        font-weight: 900;
+        letter-spacing: 2px;
+        text-shadow: 0 0 12px rgba(0, 230, 118, 0.6);
+    }
+
+    /* Buttons */
+    .btn-necron-active {
+        background-color: #00c853;
+        color: #000;
+        border: 1px solid #00e676;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 0 10px rgba(0, 230, 118, 0.5);
+    }
+
+    .btn-necron-inactive {
+        background-color: #0a0a0a;
+        color: #555;
+        border: 1px solid #333;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.2s;
+    }
+
+        .btn-necron-inactive:hover {
+            background-color: #111;
+            color: #00e676;
+            border-color: #00c853;
+        }
+
+    .section-heading {
+        color: #00e676;
+        text-transform: uppercase;
+        font-weight: bold;
+        letter-spacing: 1px;
+        margin-bottom: 15px;
+        text-shadow: 0 0 8px rgba(0, 230, 118, 0.4);
+    }
+
+    /* Rule Cards */
+    .rule-card {
+        background: #0d0d0d;
+        border: 1px solid #1a3a2a;
+        border-radius: 4px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7), 0 0 6px rgba(0, 230, 118, 0.08);
+    }
+
+    .rule-header {
+        padding: 10px 15px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .rule-body {
+        padding: 15px;
+        background: #111;
+    }
+
+    .army-rule .rule-header {
+        background: #00c853;
+        color: #000;
+    }
+
+    .detachment-rule .rule-header {
+        background: #0d1f15;
+        color: #00e676;
+        border-left: 5px solid #00c853;
+        text-shadow: 0 0 8px rgba(0, 230, 118, 0.4);
+    }
+
+    /* Reanimation diagram */
+    .reanimation-diagram {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        background: rgba(0, 230, 118, 0.05);
+        border: 1px solid #1a3a2a;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 6px;
+    }
+
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 4px;
+    }
+
+    .arrow {
+        font-size: 1.5rem;
+        color: #00c853;
+    }
+
+    .bg-necron {
+        background-color: #00c853 !important;
+        color: #000 !important;
+    }
+
+    /* Protocol grid */
+    .protocol-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 15px;
+    }
+
+    .protocol-item {
+        background: #0d1f15;
+        border-left: 4px solid #00c853;
+        padding: 10px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border-radius: 0 4px 4px 0;
+    }
+
+        .protocol-item strong {
+            color: #00e676;
+            font-size: 0.9rem;
+        }
+
+        .protocol-item span {
+            font-size: 0.82rem;
+            color: #aaa;
+        }
+
+    /* Info alert box */
+    .alert-box {
+        background: rgba(0, 230, 118, 0.07);
+        border: 1px solid #1a3a2a;
+        border-radius: 4px;
+        padding: 10px 14px;
+        font-size: 0.85rem;
+        color: #bbb;
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+        .alert-box i {
+            color: #00c853;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+    /* Stratagem cards */
+    .stratagem-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+
+    .strat-card {
+        background: #111;
+        border: 1px solid #1a3a2a;
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    .strat-top {
+        background: #0a0a0a;
+        padding: 8px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #00c853;
+    }
+
+    .strat-name {
+        font-weight: bold;
+        color: #e0e0e0;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+    }
+
+    .cp-cost {
+        background: #00c853;
+        color: #000;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-weight: bold;
+        font-size: 0.8rem;
+        white-space: nowrap;
+    }
+
+    .strat-type {
+        background: #0d1a12;
+        color: #6dbf8a;
+        font-size: 0.75rem;
+        padding: 4px 12px;
+        font-style: italic;
+        border-bottom: 1px solid #1a3a2a;
+    }
+
+    .strat-text {
+        padding: 12px;
+        font-size: 0.88rem;
+        color: #ccc;
+        line-height: 1.45;
+    }
+</style>

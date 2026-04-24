@@ -2,11 +2,13 @@
 @rendermode InteractiveServer
 @using System.Text.Json
 @using Warhammer.Models
+@using Warhammer.Services
 @using System.IO
 @using System.Text.RegularExpressions
 @inject IWebHostEnvironment Env
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject FactionStateService FactionState
 @implements IDisposable
 
 
@@ -91,7 +93,7 @@ else
                     // Resolve objects
                     var resolvedStrats = unitStrats
                     .Select(name => AllStratagemsDetailed.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
-                    .Where(s => s != null)
+                    .OfType<StratagemModelWithDetachment>()
                     .ToList();
 
                     // Sort: Your Turn (Blue) -> Opponent (Red) -> Either (Green)
@@ -310,6 +312,9 @@ else
                 var jsonString = await File.ReadAllTextAsync(filePath);
                 var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                 rosterData = JsonSerializer.Deserialize<RosterRoot>(jsonString, options);
+                var faction = rosterData?.Roster?.Forces?.FirstOrDefault()?.CatalogueName ?? "";
+                if (!string.IsNullOrEmpty(faction))
+                    FactionState.SetFaction(Side!, faction);
                 FindDetachmentRules();
                 await LoadStratagemDatabase();
             }
@@ -409,7 +414,7 @@ else
     {
         if (string.IsNullOrEmpty(unitName)) return new List<string>();
 
-        List<string> possibleStrats;
+        List<string>? possibleStrats;
         if (!UnitStratagemMap.TryGetValue(unitName.ToLower(), out possibleStrats))
         {
             var key = UnitStratagemMap.Keys.FirstOrDefault(k => k.Contains(unitName.ToLower()) || unitName.ToLower().Contains(k));

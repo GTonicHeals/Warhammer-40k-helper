@@ -1,4 +1,5 @@
 using Warhammer.Components;
+using Warhammer.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,7 @@ builder.Services.AddScoped(sp => new HttpClient
 });
 
 builder.Services.AddScoped<ObjectiveService>();
+builder.Services.AddScoped<FactionStateService>();
 
 var app = builder.Build();
 

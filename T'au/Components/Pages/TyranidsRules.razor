@@ -1,0 +1,491 @@
+@page "/tyranidsrules"
+@rendermode InteractiveServer
+
+<div class="rules-container">
+    <h1 class="page-title text-center">Tyranids Rules Reference</h1>
+
+    <!-- Army Rules — always visible -->
+    <div class="rule-card army-rule mb-3">
+        <div class="rule-header">
+            <i class="bi bi-diagram-3-fill me-2"></i> FACTION RULE: Synapse
+        </div>
+        <div class="rule-body">
+            <p>
+                Each <strong>Tyranids</strong> unit has the <strong>Synapse</strong> ability.
+                While a Tyranids unit is within <strong>6"</strong> of a friendly
+                <strong>Synapse</strong> unit, it is said to be <em>within Synapse range</em>.
+            </p>
+            <div class="synapse-grid">
+                <div class="synapse-item">
+                    <strong>Instinctive Behaviour</strong>
+                    <span>If a Tyranids unit <em>outside</em> Synapse range fails a Battle-shock test, until the start of your next Command phase it cannot use Stratagems and must target the nearest visible enemy unit.</span>
+                </div>
+                <div class="synapse-item">
+                    <strong>Synapse Override</strong>
+                    <span>While a Tyranids unit is <em>within</em> Synapse range, it automatically passes Battle-shock tests (do not roll).</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="rule-card army-rule mb-4">
+        <div class="rule-header">
+            <i class="bi bi-eye-fill me-2"></i> FACTION RULE: Shadow in the Warp
+        </div>
+        <div class="rule-body">
+            <p>
+                At the start of the <strong>Battle-shock step</strong> of each player's Command phase,
+                each <strong>enemy unit</strong> within <strong>12"</strong> of any Tyranids
+                <strong>Synapse</strong> unit from your army must take a Battle-shock test.
+            </p>
+            <div class="shadow-info">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                <span>This is in addition to any Battle-shock tests that unit must already take — enemies near your Synapse creatures are constantly harassed by the psychic emanations of the Hive Mind.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detachment toggle -->
+    <div class="d-flex justify-content-center mb-4">
+        <div class="btn-group" role="group" aria-label="Detachment Selector">
+            <button type="button"
+                    class="btn @(selectedDetachment == "Invasion Fleet" ? "btn-nid-active" : "btn-nid-inactive")"
+                    @onclick='() => SetDetachment("Invasion Fleet")'>
+                Invasion Fleet
+            </button>
+            <button type="button"
+                    class="btn @(selectedDetachment == "Synaptic Nexus" ? "btn-nid-active" : "btn-nid-inactive")"
+                    @onclick='() => SetDetachment("Synaptic Nexus")'>
+                Synaptic Nexus
+            </button>
+        </div>
+    </div>
+
+    @if (selectedDetachment == "Invasion Fleet")
+    {
+        <div class="rule-card detachment-rule mb-4">
+            <div class="rule-header">
+                <i class="bi bi-bug-fill me-2"></i> DETACHMENT RULE: Hungering Swarms
+            </div>
+            <div class="rule-body">
+                <p>
+                    Each time a <strong>Tyranids</strong> unit from your army is selected to
+                    shoot or fight, until the end of the phase, each time a model in that unit makes
+                    an attack, if the <strong>Strength</strong> of that attack's weapon equals or
+                    exceeds the <strong>Toughness</strong> of the target, add 1 to the
+                    <strong>Wound roll</strong>.
+                </p>
+                <div class="rule-highlight">
+                    <i class="bi bi-lightning-fill me-1"></i>
+                    <span>Applies to <strong>all</strong> shooting and melee attacks, every activation — keeping the swarm fed on superior prey.</span>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="section-heading">Stratagems — Invasion Fleet</h3>
+        <div class="stratagem-grid">
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Lurk in the Shadows</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy — Movement Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Tyranids Infantry or Beast unit.<br />
+                    <strong>Effect:</strong> Until the start of your next Movement phase, this unit has the <strong>Stealth</strong> ability and gains the <strong>Light Cover</strong> benefit even in the open.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Voracious Appetite</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic — Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Tyranids unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, add 1 to Wound rolls for melee attacks made by this unit. On an unmodified Wound roll of 6, the attack has <strong>[DEVASTATING WOUNDS]</strong>.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Swarming Instincts</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Epic Deed — Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Tyranids unit that has not yet fought this phase.<br />
+                    <strong>Effect:</strong> This unit fights next, before the opposing player resolves any further units. After fighting, it may Consolidate an additional 3".
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Adaptive Toxins</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic — Shooting / Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Tyranids unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, weapons equipped by models in this unit gain the <strong>[LETHAL HITS]</strong> ability (Critical Hits automatically wound).
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Biomorphic Regeneration</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Wargear — Command Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Tyranids Monster or Vehicle unit.<br />
+                    <strong>Effect:</strong> Restore up to D3 lost wounds to that model. If the model has the <strong>Regeneration</strong> ability, restore D3+1 wounds instead.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Infestation Node</span>
+                    <span class="cp-cost">2CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy — End of Movement Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Tyranids Swarm unit on an objective marker you control.<br />
+                    <strong>Effect:</strong> Add D3+1 models to that unit, up to its Starting Strength. Each returned model has its full wounds characteristic.
+                </div>
+            </div>
+
+        </div>
+    }
+    else if (selectedDetachment == "Synaptic Nexus")
+    {
+        <div class="rule-card detachment-rule mb-4">
+            <div class="rule-header">
+                <i class="bi bi-stars me-2"></i> DETACHMENT RULE: Synaptic Web
+            </div>
+            <div class="rule-body">
+                <p>
+                    The <strong>Synapse range</strong> of Tyranids Synapse units from your army
+                    is extended to <strong>9"</strong> (instead of 6").
+                </p>
+                <p>
+                    While a <strong>Tyranids Core</strong> unit is within Synapse range of a friendly
+                    Synapse unit, each time a model in that unit would lose a wound, roll one D6.
+                    On a <strong>6+</strong>, that wound is not lost.
+                </p>
+                <div class="synapse-grid mt-3">
+                    <div class="synapse-item">
+                        <strong>Extended Synapse (9")</strong>
+                        <span>All Synapse units project a wider web — more of your swarm benefits from Synapse Override and avoids Instinctive Behaviour.</span>
+                    </div>
+                    <div class="synapse-item">
+                        <strong>Hivemind Resilience (6+)</strong>
+                        <span>Core units within the web channel the Hive Mind's vitality, shrugging off wounds on a natural 6.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="section-heading">Stratagems — Synaptic Nexus</h3>
+        <div class="stratagem-grid">
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Synaptic Command</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Epic Deed — Command Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Tyranids unit within Synapse range of a friendly Synapse unit.<br />
+                    <strong>Effect:</strong> Until the start of your next Command phase, you can re-roll Hit rolls for attacks made by models in this unit.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Psychic Shriek</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic — Shooting Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Tyranids Synapse unit.<br />
+                    <strong>Effect:</strong> Select one enemy unit within 18" and visible. That unit suffers D3 mortal wounds. If it is currently Battle-shocked, it suffers D3+1 mortal wounds instead.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Neural Override</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Strategic Ploy — Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Tyranids Core unit within Synapse range that is below Half-strength.<br />
+                    <strong>Effect:</strong> Until the end of the phase, this unit counts as being at its Starting Strength for the purpose of any abilities or rules that are affected by the number of models remaining.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Synaptic Shield</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Wargear — Opponent's Shooting / Fight Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> One Tyranids unit within Synapse range of a friendly Synapse unit.<br />
+                    <strong>Effect:</strong> Until the end of the phase, improve the Save characteristic of models in this unit by 1 (to a maximum of 2+).
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Mental Assault</span>
+                    <span class="cp-cost">1CP</span>
+                </div>
+                <div class="strat-type">Battle Tactic — Opponent's Command Phase</div>
+                <div class="strat-text">
+                    <strong>Trigger:</strong> An enemy unit within 12" of a friendly Synapse unit passes a Battle-shock test.<br />
+                    <strong>Effect:</strong> That test is considered failed instead. Apply all consequences of a failed Battle-shock test to that enemy unit immediately.
+                </div>
+            </div>
+
+            <div class="strat-card">
+                <div class="strat-top">
+                    <span class="strat-name">Resonating Hivemind</span>
+                    <span class="cp-cost">2CP</span>
+                </div>
+                <div class="strat-type">Epic Deed — Command Phase</div>
+                <div class="strat-text">
+                    <strong>Target:</strong> Your entire army.<br />
+                    <strong>Effect:</strong> Until the start of your next Command phase, all Tyranids Synapse units from your army increase their Synapse range by a further 3" (to 12"). Additionally, the Hivemind Resilience ability triggers on a 5+ instead of 6+.
+                </div>
+            </div>
+
+        </div>
+    }
+</div>
+
+@code {
+    private string selectedDetachment = "Invasion Fleet";
+
+    private void SetDetachment(string detachmentName)
+    {
+        selectedDetachment = detachmentName;
+    }
+}
+
+<style>
+    .rules-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding-bottom: 50px;
+        color: #e0d8f0;
+    }
+
+    .page-title {
+        color: #c084fc;
+        border-bottom: 3px solid #7c3aed;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        text-transform: uppercase;
+        font-weight: 900;
+        letter-spacing: 2px;
+        text-shadow: 0 0 16px rgba(192, 132, 252, 0.4);
+    }
+
+    /* Toggle buttons */
+    .btn-nid-active {
+        background-color: #7c3aed;
+        color: #f3e8ff;
+        border: 2px solid #6d28d9;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 0 10px rgba(124, 58, 237, 0.5);
+    }
+
+    .btn-nid-inactive {
+        background-color: #100820;
+        color: #6b5a80;
+        border: 2px solid #3b2a52;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.2s;
+    }
+
+        .btn-nid-inactive:hover {
+            background-color: #1e0f33;
+            color: #c084fc;
+            border-color: #7c3aed;
+        }
+
+    .section-heading {
+        color: #c084fc;
+        text-transform: uppercase;
+        font-weight: bold;
+        letter-spacing: 1px;
+        margin-bottom: 15px;
+        text-shadow: 0 0 8px rgba(192, 132, 252, 0.3);
+    }
+
+    /* Rule cards */
+    .rule-card {
+        background: #0d0818;
+        border: 1px solid #3b2a52;
+        border-radius: 4px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), 0 0 4px rgba(124, 58, 237, 0.08);
+    }
+
+    .rule-header {
+        padding: 10px 15px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .rule-body {
+        padding: 15px;
+        background: #120c22;
+    }
+
+    .army-rule .rule-header {
+        background: #6d28d9;
+        color: #f3e8ff;
+    }
+
+    .detachment-rule .rule-header {
+        background: #1a0d30;
+        color: #c084fc;
+        border-left: 5px solid #7c3aed;
+    }
+
+    /* Synapse info grid */
+    .synapse-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .synapse-item {
+        background: #1a0d30;
+        border-left: 4px solid #7c3aed;
+        padding: 10px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        border-radius: 0 4px 4px 0;
+    }
+
+        .synapse-item strong {
+            color: #c084fc;
+            font-size: 0.9rem;
+        }
+
+        .synapse-item span {
+            font-size: 0.82rem;
+            color: #a89ab8;
+        }
+
+    /* Shadow in the Warp info box */
+    .shadow-info {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        background: rgba(124, 58, 237, 0.08);
+        border: 1px solid #3b2a52;
+        border-radius: 4px;
+        padding: 10px 14px;
+        margin-top: 12px;
+        font-size: 0.85rem;
+        color: #b8a8cc;
+    }
+
+        .shadow-info i {
+            color: #86efac;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+    /* Detachment rule highlight */
+    .rule-highlight {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        background: rgba(134, 239, 172, 0.06);
+        border: 1px solid #1e4034;
+        border-radius: 4px;
+        padding: 10px 14px;
+        margin-top: 12px;
+        font-size: 0.85rem;
+        color: #b8a8cc;
+    }
+
+        .rule-highlight i {
+            color: #86efac;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+    /* Stratagem grid */
+    .stratagem-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+
+    .strat-card {
+        background: #120c22;
+        border: 1px solid #3b2a52;
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+
+    .strat-top {
+        background: #0a0614;
+        padding: 8px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #7c3aed;
+    }
+
+    .strat-name {
+        font-weight: bold;
+        color: #e0d8f0;
+        text-transform: uppercase;
+        font-size: 0.83rem;
+        letter-spacing: 0.5px;
+    }
+
+    .cp-cost {
+        background: #7c3aed;
+        color: #f3e8ff;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-weight: bold;
+        font-size: 0.8rem;
+        white-space: nowrap;
+    }
+
+    .strat-type {
+        background: #150e26;
+        color: #86efac;
+        font-size: 0.75rem;
+        padding: 4px 12px;
+        font-style: italic;
+        border-bottom: 1px solid #3b2a52;
+    }
+
+    .strat-text {
+        padding: 12px;
+        font-size: 0.88rem;
+        color: #c8bedd;
+        line-height: 1.45;
+    }
+</style>

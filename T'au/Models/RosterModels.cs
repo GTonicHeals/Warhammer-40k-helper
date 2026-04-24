@@ -1,11 +1,11 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace Warhammer.Models
 {
     public class RosterRoot
     {
         [JsonPropertyName("roster")]
-        public Roster Roster { get; set; }
+        public Roster Roster { get; set; } = new();
     }
 
     public class Roster
@@ -22,6 +22,9 @@ namespace Warhammer.Models
 
     public class Force
     {
+        [JsonPropertyName("catalogueName")]
+        public string CatalogueName { get; set; } = "";
+
         [JsonPropertyName("selections")]
         public List<Selection> Selections { get; set; } = new();
 
@@ -32,7 +35,7 @@ namespace Warhammer.Models
     public class Selection
     {
         [JsonPropertyName("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = "";
 
         [JsonPropertyName("number")]
         public int Number { get; set; }
@@ -44,10 +47,10 @@ namespace Warhammer.Models
         public List<Profile> Profiles { get; set; } = new();
 
         [JsonPropertyName("rules")]
-        public List<Rule> Rules { get; set; } = new(); 
+        public List<Rule> Rules { get; set; } = new();
 
         [JsonPropertyName("categories")]
-        public List<Category> Categories { get; set; } = new(); 
+        public List<Category> Categories { get; set; } = new();
 
         [JsonPropertyName("costs")]
         public List<Cost> Costs { get; set; } = new();
@@ -56,10 +59,10 @@ namespace Warhammer.Models
     public class Profile
     {
         [JsonPropertyName("typeName")]
-        public string TypeName { get; set; }
+        public string TypeName { get; set; } = "";
 
         [JsonPropertyName("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = "";
 
         [JsonPropertyName("characteristics")]
         public List<Characteristic> Characteristics { get; set; } = new();
@@ -68,34 +71,34 @@ namespace Warhammer.Models
     public class Characteristic
     {
         [JsonPropertyName("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = "";
 
         [JsonPropertyName("$text")]
-        public string Value { get; set; }
+        public string Value { get; set; } = "";
     }
 
     public class Cost
     {
         [JsonPropertyName("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = "";
 
         [JsonPropertyName("value")]
         public double Value { get; set; }
     }
 
-     public class Rule
+    public class Rule
     {
         [JsonPropertyName("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = "";
 
         [JsonPropertyName("description")]
-        public string Description { get; set; }
+        public string Description { get; set; } = "";
     }
 
     public class Category
     {
         [JsonPropertyName("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = "";
 
         [JsonPropertyName("primary")]
         public bool Primary { get; set; }
