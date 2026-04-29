@@ -1,42 +1,74 @@
-/* --- BASE STYLES --- */
-.navbar-toggler {
-    appearance: none;
-    cursor: pointer;
-    width: 3.5rem;
-    height: 2.5rem;
-    color: white;
-    position: absolute;
-    top: 0.5rem;
-    right: 1rem;
-    border: 1px solid rgba(211, 84, 0, 0.3);
-    background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28211, 84, 0, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") no-repeat center/1.75rem rgba(0, 0, 0, 0.5);
-    border-radius: 4px;
-    transition: all 0.2s ease;
-}
-
-    .navbar-toggler:checked {
-        background-color: rgba(211, 84, 0, 0.2);
-        border-color: #d35400;
-    }
-
+/* ===================================================
+   TOP ROW
+   =================================================== */
 .top-row {
-    min-height: 3.5rem;
-    background-color: rgba(0,0,0,0.6);
-    border-bottom: 1px solid #444;
+    min-height: var(--toprow-h, 3.5rem);
+    background-color: rgba(0, 0, 0, 0.6);
+    border-bottom: 1px solid var(--b-default, #3d3d3d);
     display: flex;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .navbar-brand {
     font-size: 1.2rem;
     font-weight: 700;
-    color: #e0e0e0;
+    color: var(--t-primary, #e8e8e8);
     text-transform: uppercase;
     letter-spacing: 1px;
     padding-left: 1rem;
 }
 
-/* --- ICONS --- */
+
+/* ===================================================
+   HAMBURGER TOGGLE
+   The actual <input type="checkbox"> is hidden;
+   the <label> is the tappable button on mobile.
+   =================================================== */
+.navbar-toggler {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.navbar-toggler-btn {
+    display: none; /* revealed in mobile media query */
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid rgba(211, 84, 0, 0.35);
+    border-radius: var(--r-sm, 4px);
+    color: var(--t-primary, #e8e8e8);
+    width: 2.5rem;
+    height: 2.2rem;
+    font-size: 1.25rem;
+    line-height: 1;
+    transition: background-color var(--tr-fast, 0.15s ease),
+                border-color    var(--tr-fast, 0.15s ease);
+    user-select: none;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+}
+
+    .navbar-toggler-btn:hover {
+        background: rgba(211, 84, 0, 0.15);
+        border-color: var(--c-primary, #d35400);
+    }
+
+/* Highlight the button when the menu is open */
+.navbar-toggler:checked ~ .top-row .navbar-toggler-btn {
+    background: rgba(211, 84, 0, 0.2);
+    border-color: var(--c-primary, #d35400);
+    color: var(--c-primary, #d35400);
+}
+
+
+/* ===================================================
+   ICONS
+   =================================================== */
 .bi {
     display: inline-block;
     position: relative;
@@ -46,10 +78,9 @@
     top: -1px;
     background-size: cover;
     opacity: 0.7;
-    transition: opacity 0.2s;
+    transition: opacity var(--tr-normal, 0.25s ease);
 }
 
-/* Define Icon Images */
 .bi-house-door-fill-nav-menu {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-house-door-fill' viewBox='0 0 16 16'%3E%3Cpath d='M6.5 14.5v-3.505c0-.245.25-.495.5-.495h2c.25 0 .5.25.5.5v3.5a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5Z'/%3E%3C/svg%3E");
 }
@@ -62,7 +93,10 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-chevron-right' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
 }
 
-/* --- NAVIGATION ITEMS --- */
+
+/* ===================================================
+   NAVIGATION ITEMS
+   =================================================== */
 .nav-item {
     font-size: 0.9rem;
     padding-bottom: 0.2rem;
@@ -77,7 +111,7 @@
     }
 
     .nav-item ::deep .nav-link {
-        color: #a0a0a0;
+        color: var(--t-secondary, #aaaaaa);
         background: transparent;
         border: none;
         border-left: 3px solid transparent;
@@ -85,101 +119,128 @@
         display: flex;
         align-items: center;
         width: 100%;
-        position: relative; /* Needed for the background animation layer */
-        z-index: 1; /* Ensures text sits on top of background */
-        transition: color 0.3s ease, border-left-color 0.3s ease;
+        position: relative;
+        z-index: 1;
+        transition: color var(--tr-normal, 0.25s ease),
+                    border-left-color var(--tr-normal, 0.25s ease);
     }
 
-        /* BACKGROUND ANIMATION LAYER */
+        /* Gradient background layer — fades in on active/hover */
         .nav-item ::deep .nav-link::before {
             content: "";
             position: absolute;
             inset: 0;
             z-index: -1;
-            opacity: 0; /* Hidden by default */
-            transition: opacity 0.4s ease; /* THE SMOOTH FADE ANIMATION */
-            /* Default Player 1 (Orange) Gradient */
+            opacity: 0;
+            transition: opacity var(--tr-slow, 0.4s ease);
             background: linear-gradient(90deg, rgba(211, 84, 0, 0.15) 0%, transparent 100%);
         }
 
-        /* --- HOVER STATE --- */
         .nav-item ::deep .nav-link:hover {
             background-color: rgba(255, 255, 255, 0.05);
-            color: #e0e0e0;
+            color: var(--t-primary, #e8e8e8);
         }
 
             .nav-item ::deep .nav-link:hover .bi {
                 opacity: 1;
             }
 
-    /* --- ACTIVE STATE (Standard / Player 1) --- */
+    /* Active state — Player 1 (orange) */
     .nav-item ::deep a.active {
         color: white;
-        border-left-color: #d35400; /* Orange Border */
+        border-left-color: var(--c-primary, #d35400);
     }
 
         .nav-item ::deep a.active::before {
             opacity: 1;
         }
-        /* Show Gradient */
+
         .nav-item ::deep a.active .bi {
             opacity: 1;
         }
 
-/* --- PLAYER 2 OVERRIDES (BLUE) --- */
+
+/* ===================================================
+   PLAYER 2 OVERRIDES (blue)
+   =================================================== */
 .p2-section ::deep a.active {
-    color: #5dade2 !important;
-    border-left-color: #5dade2 !important;
+    color: var(--c-p2, #5dade2) !important;
+    border-left-color: var(--c-p2, #5dade2) !important;
 }
 
     .p2-section ::deep a.active .bi {
-        color: #5dade2 !important;
+        color: var(--c-p2, #5dade2) !important;
     }
 
-    /* Blue Gradient Background */
     .p2-section ::deep a.active::before {
         background: linear-gradient(90deg, rgba(93, 173, 226, 0.15) 0%, transparent 100%);
     }
 
 
-
-/* --- SCROLLBAR --- */
+/* ===================================================
+   SCROLLBAR
+   =================================================== */
 ::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #1a1a1a;
+    background: var(--s-2, #1a1a1a);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #444;
-    border-radius: 4px;
+    background: var(--b-strong, #555);
+    border-radius: 3px;
 }
 
     ::-webkit-scrollbar-thumb:hover {
-        background: #d35400;
+        background: var(--c-primary, #d35400);
     }
 
-/* --- RESPONSIVE LOGIC --- */
-.nav-scrollable {
-    display: none;
+
+/* ===================================================
+   RESPONSIVE — mobile (≤ 640px)
+   Nav is hidden by default; revealed when the
+   checkbox toggle is :checked.
+   =================================================== */
+@media (max-width: 640px) {
+    .navbar-toggler-btn {
+        display: flex;
+    }
+
+    .nav-scrollable {
+        display: none;
+        position: absolute;
+        top: var(--toprow-h, 3.5rem);
+        left: 0;
+        right: 0;
+        background: var(--s-4, #2b2b2b);
+        border-top: 1px solid var(--b-default, #3d3d3d);
+        border-bottom: 2px solid var(--c-primary, #d35400);
+        box-shadow: var(--sh-lg, 0 8px 24px rgba(0, 0, 0, 0.7));
+        max-height: calc(100vh - var(--toprow-h, 3.5rem));
+        overflow-y: auto;
+        z-index: 50;
+        scrollbar-width: thin;
+        scrollbar-color: var(--b-strong, #555) var(--s-2, #1a1a1a);
+    }
+
+    .navbar-toggler:checked ~ .nav-scrollable {
+        display: block;
+    }
 }
 
-.navbar-toggler:checked ~ .nav-scrollable {
-    display: block;
-}
-
+/* Desktop (≥ 641px) — always visible, hide the toggle button */
 @media (min-width: 641px) {
-    .navbar-toggler {
+    .navbar-toggler-btn {
         display: none;
     }
 
     .nav-scrollable {
         display: block;
-        height: calc(100vh - 3.5rem);
+        height: calc(100vh - var(--toprow-h, 3.5rem));
         overflow-y: auto;
         scrollbar-width: thin;
-        scrollbar-color: #444 #1a1a1a;
+        scrollbar-color: var(--b-strong, #555) var(--s-2, #1a1a1a);
     }
 }

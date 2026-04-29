@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 public class ObjectiveService
 {
@@ -16,9 +17,24 @@ public class PlayerState
     public List<Objective> Deck { get; set; } = new();
     public List<Objective> ActiveMissions { get; set; } = new();
     public List<Objective> ScoredMissions { get; set; } = new();
+
+    // Primary (Main Objective) VP — index 0-3 maps to Battle Rounds 2-5
+    public int[] PrimaryScores { get; set; } = new int[4];
+
+    // Manual secondary VP counter (supplements the scored-card list)
+    public int SecondaryVP { get; set; } = 0;
+
+    // Primary capped at 50, secondary capped at 40 per 10th-edition rules
+    public int PrimaryTotal   => Math.Min(PrimaryScores.Sum(), 50);
+    public int SecondaryTotal => Math.Min(SecondaryVP, 40);
+    public int TotalScore     => PrimaryTotal + SecondaryTotal;
+
     public bool IsInitialized => Deck.Count > 0 || ActiveMissions.Count > 0 || ScoredMissions.Count > 0;
+
     public void Reset()
     {
+        PrimaryScores = new int[4];
+        SecondaryVP = 0;
         ActiveMissions.Clear();
         ScoredMissions.Clear();
         Deck = new List<Objective>

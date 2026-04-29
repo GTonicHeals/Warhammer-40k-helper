@@ -8,10 +8,6 @@
     </div>
 
     <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
         <article class="content px-4">
             @Body
         </article>
@@ -20,6 +16,7 @@
 
 @code {
     private bool IsP2 = false;
+    private bool _disposed;
 
     protected override void OnInitialized()
     {
@@ -30,18 +27,19 @@
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
+        if (_disposed) return;
         CheckUrl();
-        StateHasChanged(); // Refresh the layout
+        StateHasChanged();
     }
 
     private void CheckUrl()
     {
-        // Simple check: does the URL contain "/p2"?
         IsP2 = Nav.Uri.Contains("/p2", StringComparison.OrdinalIgnoreCase);
     }
 
     public void Dispose()
     {
+        _disposed = true;
         Nav.LocationChanged -= OnLocationChanged;
     }
 }

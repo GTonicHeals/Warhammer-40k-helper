@@ -6,8 +6,8 @@
         <h1 class="page-title text-warning">Mission Generator</h1>
         <p class="text-muted">Configure your Primary Mission, Mission Rule, Deployment, Terrain, and Map Layout.</p>
 
-        <button class="btn btn-outline-warning mt-2" @onclick="RandomizeMission">
-            <i class="bi bi-dice-5"></i> Randomize Scenario
+        <button class="btn btn-randomize mt-2" @onclick="RandomizeMission">
+            <i class="bi bi-dice-5-fill me-1"></i> Randomize All
         </button>
     </div>
 
@@ -63,7 +63,7 @@
         @if (CurrentDeployment != null)
         {
             <div class="scenario-card deployment-card">
-                <div class="card-header-custom bg-secondary">
+                <div class="card-header-custom">
                     <i class="bi bi-map me-2"></i> Deployment: @CurrentDeployment.Name
                 </div>
                 <div class="card-body-custom">
@@ -83,7 +83,7 @@
         @if (CurrentTerrain != null)
         {
             <div class="scenario-card terrain-card">
-                <div class="card-header-custom bg-success">
+                <div class="card-header-custom">
                     <i class="bi bi-tree-fill me-2"></i> Terrain: @CurrentTerrain.Name
                 </div>
                 <div class="card-body-custom text-center">
@@ -99,7 +99,7 @@
         @if (CurrentRule != null)
         {
             <div class="scenario-card rule-card">
-                <div class="card-header-custom bg-danger">
+                <div class="card-header-custom">
                     <i class="bi bi-exclamation-triangle me-2"></i> Mission Rule: @CurrentRule.Name
                 </div>
                 <div class="card-body-custom">
@@ -111,7 +111,7 @@
         @if (CurrentPrimary != null)
         {
             <div class="scenario-card primary-card">
-                <div class="card-header-custom bg-primary">
+                <div class="card-header-custom">
                     <i class="bi bi-star-fill me-2"></i> Primary Mission: @CurrentPrimary.Name
                 </div>
                 <div class="card-body-custom">
@@ -252,52 +252,117 @@
 }
 
 <style>
+    /* ---- Container ---- */
     .rules-container {
-        max-width: 1000px; /* Slightly wider to accommodate 5 columns */
+        max-width: 1000px;
         margin: 0 auto;
-        padding-bottom: 50px;
-        color: #e0e0e0;
+        padding-bottom: 3rem;
+        color: var(--t-primary, #e8e8e8);
     }
 
     .page-title {
-        border-bottom: 2px solid #d35400;
-        padding-bottom: 10px;
+        border-bottom: 2px solid var(--c-primary, #d35400);
+        padding-bottom: 0.6rem;
         font-weight: 900;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 2px;
+        color: var(--c-warning, #f39c12);
     }
 
+    /* ---- Randomize button ---- */
+    .btn-randomize {
+        background: var(--c-primary, #d35400);
+        color: #fff;
+        border: none;
+        padding: 0.55rem 1.4rem;
+        border-radius: var(--r-md, 6px);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.88rem;
+        transition: background-color var(--tr-fast, 0.15s ease),
+                    transform       var(--tr-fast, 0.15s ease),
+                    box-shadow      var(--tr-fast, 0.15s ease);
+        box-shadow: var(--sh-sm, 0 2px 4px rgba(0,0,0,0.3));
+    }
+
+        .btn-randomize:hover {
+            background: var(--c-primary-hover, #ba4a00);
+            transform: translateY(-2px);
+            box-shadow: var(--sh-md, 0 4px 12px rgba(0,0,0,0.5));
+            color: #fff;
+        }
+
+        .btn-randomize:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+    /* ---- Form controls ---- */
+    .form-select.bg-dark {
+        background-color: var(--s-3, #242424) !important;
+        color: var(--t-primary, #e8e8e8);
+        border-color: var(--b-default, #3d3d3d);
+        transition: border-color var(--tr-fast, 0.15s ease),
+                    box-shadow   var(--tr-fast, 0.15s ease);
+    }
+
+        .form-select.bg-dark:focus {
+            border-color: var(--c-primary, #d35400);
+            box-shadow: 0 0 0 0.2rem var(--c-primary-glow, rgba(211, 84, 0, 0.25));
+        }
+
+    /* ---- Cards ---- */
     .scenario-display {
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 1.25rem;
     }
+
+    /* Per-type accent colour — set by each modifier class below */
+    .deployment-card { --card-accent: var(--c-info,    #3498db); }
+    .terrain-card    { --card-accent: var(--c-success, #27ae60); }
+    .rule-card       { --card-accent: var(--c-danger,  #c0392b); }
+    .primary-card    { --card-accent: var(--c-primary, #d35400); }
 
     .scenario-card {
-        background: #1a1a1a;
-        border: 1px solid #444;
-        border-radius: 6px;
+        background: var(--s-2, #1a1a1a);
+        border: 1px solid var(--b-default, #3d3d3d);
+        border-left: 4px solid var(--card-accent, var(--b-strong, #555));
+        border-radius: var(--r-md, 6px);
         overflow: hidden;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        box-shadow: var(--sh-sm, 0 2px 4px rgba(0,0,0,0.3));
+        transition: transform      var(--tr-normal, 0.25s ease),
+                    box-shadow     var(--tr-normal, 0.25s ease);
     }
 
+        .scenario-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--sh-md, 0 4px 12px rgba(0,0,0,0.5));
+        }
+
+        .scenario-card:active {
+            transform: translateY(0);
+        }
+
     .card-header-custom {
-        padding: 12px 15px;
-        font-weight: bold;
+        padding: 0.7rem 1rem;
+        font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 1px;
-        color: white;
+        font-size: 0.82rem;
+        color: var(--card-accent, var(--t-primary, #e8e8e8));
+        background: rgba(0, 0, 0, 0.25);
+        border-bottom: 1px solid var(--b-subtle, #2a2a2a);
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
     }
 
     .card-body-custom {
-        padding: 20px;
+        padding: 1.25rem;
         font-size: 0.95rem;
-        color: #ccc;
-        line-height: 1.5;
-    }
-
-    .form-select:focus {
-        border-color: #d35400;
-        box-shadow: 0 0 0 0.25rem rgba(211, 84, 0, 0.25);
+        color: var(--t-secondary, #aaaaaa);
+        line-height: 1.6;
     }
 </style>

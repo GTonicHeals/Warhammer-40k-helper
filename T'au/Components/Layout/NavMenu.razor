@@ -16,13 +16,16 @@
     }
 </style>
 
+<input type="checkbox" id="nav-toggle" class="navbar-toggler" />
+
 <div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
+    <div class="container-fluid d-flex align-items-center justify-content-between">
         <a class="navbar-brand" href="">Battle Command</a>
+        <label for="nav-toggle" class="navbar-toggler-btn" aria-label="Toggle navigation">&#9776;</label>
     </div>
 </div>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+<div class="nav-scrollable" onclick="document.getElementById('nav-toggle').checked = false;">
     <nav class="flex-column">
 
         <div class="nav-item px-3 mt-3 mb-1">
@@ -139,6 +142,7 @@
 
     private List<PlayerMenuData> Players = new();
     private Action _onFactionChange = default!;
+    private bool _disposed;
 
     private string ActivePlayerId = "p1";
     private string ActiveGradientColor => GetGradientColor(ActivePlayerId);
@@ -148,7 +152,12 @@
         NavManager.LocationChanged += OnLocationChanged;
         UpdateActivePlayer(NavManager.Uri);
 
-        _onFactionChange = () => InvokeAsync(StateHasChanged);
+        _onFactionChange = async () =>
+        {
+            if (_disposed) return;
+            try { await InvokeAsync(StateHasChanged); }
+            catch (ObjectDisposedException) { }
+        };
         FactionState.OnChange += _onFactionChange;
 
         int playerIndex = 1;
@@ -177,8 +186,9 @@
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
+        if (_disposed) return;
         UpdateActivePlayer(e.Location);
-        InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private void UpdateActivePlayer(string uri)
@@ -192,6 +202,7 @@
 
     public void Dispose()
     {
+        _disposed = true;
         NavManager.LocationChanged -= OnLocationChanged;
         FactionState.OnChange -= _onFactionChange;
     }

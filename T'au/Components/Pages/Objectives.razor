@@ -11,6 +11,88 @@
     </div>
 </div>
 
+<!-- ======================================================
+     SCORE PANEL
+     ====================================================== -->
+<div class="score-panel">
+
+    <!-- Total Score -->
+    <div class="total-score-row">
+        <div>
+            <div class="score-panel-label">Total Score</div>
+            <div class="total-score-value" style="color: @GetPlayerColor();">@CurrentState.TotalScore <span class="vp-unit">VP</span></div>
+        </div>
+        <div class="score-breakdown">
+            <div class="breakdown-chip">
+                <span class="breakdown-label">Primary</span>
+                <span class="breakdown-val">@CurrentState.PrimaryTotal</span>
+            </div>
+            <div class="breakdown-chip">
+                <span class="breakdown-label">Secondary</span>
+                <span class="breakdown-val">@CurrentState.SecondaryTotal</span>
+            </div>
+        </div>
+    </div>
+
+    <hr class="score-divider" />
+
+    <!-- Primary rounds -->
+    <div class="score-section">
+        <div class="score-section-header">
+            <span class="score-section-title">Primary (Main Objectives)</span>
+            <span class="score-section-total">
+                @CurrentState.PrimaryTotal<span class="score-cap"> / 50</span>
+                @if (CurrentState.PrimaryTotal >= 50)
+                {
+                    <span class="cap-max-badge ms-1">MAX</span>
+                }
+            </span>
+        </div>
+        @{
+            var rawPrimary = CurrentState.PrimaryScores.Sum();
+        }
+        <div class="round-grid">
+            @for (int r = 0; r < 4; r++)
+            {
+                var idx = r;
+                var roundNum = r + 2;
+                var roundScore = CurrentState.PrimaryScores[r];
+                var atRoundMax = roundScore >= 15;
+                var atGameCap = rawPrimary >= 50;
+                <div class="round-row">
+                    <span class="round-label">Rnd @roundNum</span>
+                    <button class="score-btn" @onclick="() => DecrementPrimary(idx)">−</button>
+                    <span class="score-num">@roundScore</span>
+                    <button class="score-btn" disabled="@(atGameCap || atRoundMax)" @onclick="() => IncrementPrimary(idx)">+</button>
+                    <button class="score-btn score-btn-quick" disabled="@(rawPrimary + 5 > 50 || roundScore + 5 > 15)" @onclick="() => AddFivePrimary(idx)">+5</button>
+                </div>
+            }
+        </div>
+    </div>
+
+    <hr class="score-divider" />
+
+    <!-- Secondary VP counter -->
+    <div class="score-section">
+        <div class="score-section-header">
+            <span class="score-section-title">Secondary VP</span>
+            <span class="score-section-total">
+                @CurrentState.SecondaryTotal<span class="score-cap"> / 40</span>
+                @if (CurrentState.SecondaryVP >= 40)
+                {
+                    <span class="cap-max-badge ms-1">MAX</span>
+                }
+            </span>
+        </div>
+        <div class="secondary-counter">
+            <button class="score-btn score-btn-lg" @onclick="DecrementSecondary">−</button>
+            <span class="secondary-num">@CurrentState.SecondaryTotal</span>
+            <button class="score-btn score-btn-lg" disabled="@(CurrentState.SecondaryVP >= 40)" @onclick="IncrementSecondary">+</button>
+        </div>
+    </div>
+
+</div>
+
 <div class="controls mb-4">
     @if (CurrentState.Deck.Count > 0)
     {
@@ -72,10 +154,17 @@
                     </div>
                 </div>
                 <div class="mission-footer">
-                    <button class="btn btn-sm btn-success flex-fill me-1" @onclick="() => ScoreMission(mission)">
-                        <i class="bi bi-check-lg"></i> Score
-                    </button>
-                    <button class="btn btn-sm btn-danger flex-fill ms-1" @onclick="() => DiscardMission(mission)">
+                    <div class="mission-score-btns">
+                        @foreach (var vp in ParseRewardAmounts(mission.Reward))
+                        {
+                            var capturedVp = vp;
+                            <button class="btn btn-sm btn-success mission-vp-btn"
+                                    @onclick="() => ScoreMissionWithVP(mission, capturedVp)">
+                                +@capturedVp VP
+                            </button>
+                        }
+                    </div>
+                    <button class="btn btn-sm btn-danger mission-discard-btn" @onclick="() => DiscardMission(mission)">
                         <i class="bi bi-x-lg"></i> Discard
                     </button>
                 </div>
@@ -138,6 +227,69 @@
     private void ResetDeck()
     {
         CurrentState.Reset();
+    }
+
+    // --- Primary scoring (Rounds 2-5, max 15/round, 50 total) ---
+
+    private void IncrementPrimary(int idx)
+    {
+        if (CurrentState.PrimaryScores[idx] < 15 && CurrentState.PrimaryScores.Sum() < 50)
+            CurrentState.PrimaryScores[idx]++;
+    }
+
+    private void DecrementPrimary(int idx)
+    {
+        if (CurrentState.PrimaryScores[idx] > 0)
+            CurrentState.PrimaryScores[idx]--;
+    }
+
+    private void AddFivePrimary(int idx)
+    {
+        int rawTotal = CurrentState.PrimaryScores.Sum();
+        int roundScore = CurrentState.PrimaryScores[idx];
+        if (rawTotal + 5 <= 50 && roundScore + 5 <= 15)
+            CurrentState.PrimaryScores[idx] += 5;
+    }
+
+    // --- Secondary VP counter (capped at 40) ---
+
+    private void IncrementSecondary()
+    {
+        if (CurrentState.SecondaryVP < 40)
+            CurrentState.SecondaryVP++;
+    }
+
+    private void DecrementSecondary()
+    {
+        if (CurrentState.SecondaryVP > 0)
+            CurrentState.SecondaryVP--;
+    }
+
+    // --- Secondary mission auto-scoring ---
+
+    private void ScoreMissionWithVP(Objective m, int vp)
+    {
+        // Clip VP at the 40-point secondary cap
+        CurrentState.SecondaryVP = Math.Min(CurrentState.SecondaryVP + vp, 40);
+        CurrentState.ActiveMissions.Remove(m);
+        CurrentState.ScoredMissions.Add(m);
+    }
+
+    // Parses distinct integer VP amounts from a Reward string.
+    // "2VP / 5VP" → [2, 5]   "5VP" → [5]   "3VP+" → [3]
+    private List<int> ParseRewardAmounts(string reward)
+    {
+        var results = new List<int>();
+        if (string.IsNullOrEmpty(reward)) return results;
+
+        foreach (var part in reward.Split('/'))
+        {
+            var digits = new string(part.Trim().TakeWhile(char.IsDigit).ToArray());
+            if (int.TryParse(digits, out var vp) && vp > 0)
+                results.Add(vp);
+        }
+
+        return results.Distinct().OrderBy(v => v).ToList();
     }
 
     // --- Dynamic Rendering Helpers ---
@@ -236,5 +388,253 @@
         background: #ccc;
         display: flex;
         justify-content: space-between;
+    }
+
+    /* ======================================================
+       SCORE PANEL
+       ====================================================== */
+
+    .score-panel {
+        background: var(--s-2, #1a1a1a);
+        border: 1px solid var(--b-default, #3d3d3d);
+        border-radius: var(--r-md, 6px);
+        padding: 1rem;
+        margin-bottom: 1.25rem;
+    }
+
+    /* Total row */
+    .total-score-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+
+    .score-panel-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: var(--t-muted, #686868);
+        margin-bottom: 0.15rem;
+    }
+
+    .total-score-value {
+        font-size: 2.2rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .vp-unit {
+        font-size: 1rem;
+        font-weight: 600;
+        opacity: 0.7;
+    }
+
+    .score-breakdown {
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-end;
+        padding-bottom: 0.2rem;
+    }
+
+    .breakdown-chip {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: var(--s-3, #242424);
+        border-radius: var(--r-sm, 4px);
+        padding: 0.25rem 0.6rem;
+        min-width: 3.5rem;
+    }
+
+    .breakdown-label {
+        font-size: 0.6rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--t-muted, #686868);
+    }
+
+    .breakdown-val {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--t-primary, #e8e8e8);
+    }
+
+    .score-divider {
+        border: none;
+        border-top: 1px solid var(--b-subtle, #2a2a2a);
+        margin: 0.85rem 0;
+    }
+
+    /* Section header */
+    .score-section {
+        /* intentionally empty — sections share a common layout */
+    }
+
+    .score-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .score-section-title {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--t-secondary, #aaaaaa);
+        font-weight: 700;
+    }
+
+    .score-section-total {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--t-primary, #e8e8e8);
+    }
+
+    .score-cap {
+        font-size: 0.75rem;
+        color: var(--t-muted, #686868);
+        font-weight: 400;
+    }
+
+    .cap-max-badge {
+        font-size: 0.65rem;
+        background: var(--c-danger, #c0392b);
+        color: white;
+        padding: 0.1rem 0.35rem;
+        border-radius: 3px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        vertical-align: middle;
+    }
+
+    /* Round grid */
+    .round-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.4rem;
+    }
+
+    .round-row {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: var(--s-3, #242424);
+        border-radius: var(--r-sm, 4px);
+        padding: 0.4rem 0.55rem;
+    }
+
+    .round-label {
+        font-size: 0.72rem;
+        color: var(--t-muted, #686868);
+        flex: 1;
+        white-space: nowrap;
+    }
+
+    .score-num {
+        font-size: 1.05rem;
+        font-weight: 700;
+        min-width: 1.6rem;
+        text-align: center;
+        color: var(--t-primary, #e8e8e8);
+    }
+
+    /* +/− buttons */
+    .score-btn {
+        width: 1.75rem;
+        height: 1.75rem;
+        flex-shrink: 0;
+        border: 1px solid var(--b-default, #3d3d3d);
+        background: var(--s-4, #2b2b2b);
+        color: var(--t-primary, #e8e8e8);
+        border-radius: var(--r-sm, 4px);
+        font-size: 1.05rem;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        transition: background-color var(--tr-fast, 0.15s ease),
+                    border-color    var(--tr-fast, 0.15s ease);
+    }
+
+        .score-btn:hover:not(:disabled) {
+            background: var(--s-5, #333333);
+            border-color: var(--b-strong, #555555);
+        }
+
+        .score-btn:active:not(:disabled) {
+            background: var(--s-4, #2b2b2b);
+        }
+
+        .score-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+    .score-btn-lg {
+        width: 2.4rem;
+        height: 2.4rem;
+        font-size: 1.3rem;
+    }
+
+    /* Secondary counter */
+    .secondary-counter {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .secondary-num {
+        font-size: 1.6rem;
+        font-weight: 700;
+        min-width: 2.5rem;
+        text-align: center;
+        color: var(--t-primary, #e8e8e8);
+    }
+
+    /* +5 quick-add button — prominent, brand-coloured */
+    .score-btn-quick {
+        background: rgba(211, 84, 0, 0.15);
+        border-color: var(--c-primary, #d35400);
+        color: var(--c-primary, #d35400);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        width: auto;
+        padding: 0 0.45rem;
+    }
+
+        .score-btn-quick:hover:not(:disabled) {
+            background: var(--c-primary, #d35400);
+            border-color: var(--c-primary, #d35400);
+            color: white;
+        }
+
+    /* Mission card footer — VP score buttons */
+    .mission-footer {
+        padding: 10px;
+        background: #ccc;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .mission-score-btns {
+        display: flex;
+        gap: 0.3rem;
+        flex: 1;
+    }
+
+    .mission-vp-btn {
+        flex: 1;
+        font-weight: 700;
+        font-size: 0.82rem;
+        letter-spacing: 0.3px;
+    }
+
+    .mission-discard-btn {
+        flex-shrink: 0;
     }
 </style>

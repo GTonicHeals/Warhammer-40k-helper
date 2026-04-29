@@ -1,75 +1,180 @@
-/* --- GLOBAL STYLES --- */
+/* ===================================================
+   CSS DESIGN TOKENS
+   Single source of truth — all colours, spacing,
+   shadows, and timing live here as custom properties.
+   =================================================== */
+:root {
+    /* Brand */
+    --c-primary:       #d35400;
+    --c-primary-dark:  #a04000;
+    --c-primary-hover: #ba4a00;
+    --c-primary-glow:  rgba(211, 84, 0, 0.25);
+    --c-accent:        #f39c12;
+    --c-accent-hover:  #e67e22;
+
+    /* Surface layers (darkest → lightest) */
+    --s-0: #0d0d0d;
+    --s-1: #121212;
+    --s-2: #1a1a1a;
+    --s-3: #242424;
+    --s-4: #2b2b2b;
+    --s-5: #333333;
+
+    /* Borders */
+    --b-subtle:  #2a2a2a;
+    --b-default: #3d3d3d;
+    --b-strong:  #555555;
+
+    /* Text */
+    --t-primary:   #e8e8e8;
+    --t-secondary: #aaaaaa;
+    --t-muted:     #686868;
+
+    /* Semantic */
+    --c-success: #27ae60;
+    --c-danger:  #c0392b;
+    --c-warning: #f39c12;
+    --c-info:    #3498db;
+
+    /* Player accent colours */
+    --c-p1: #ffc107;
+    --c-p2: #5dade2;
+    --c-p3: #2ecc71;
+    --c-p4: #a855f7;
+    --c-p5: #e74c3c;
+
+    /* Layout */
+    --sidebar-w: 280px;
+    --toprow-h:  3.5rem;
+
+    /* Radii */
+    --r-sm: 4px;
+    --r-md: 6px;
+    --r-lg: 10px;
+
+    /* Transitions */
+    --tr-fast:   0.15s ease;
+    --tr-normal: 0.25s ease;
+    --tr-slow:   0.4s  ease;
+
+    /* Shadows */
+    --sh-sm: 0 2px  4px  rgba(0, 0, 0, 0.3);
+    --sh-md: 0 4px  12px rgba(0, 0, 0, 0.5);
+    --sh-lg: 0 8px  24px rgba(0, 0, 0, 0.7);
+}
+
+
+/* ===================================================
+   GLOBAL BASE
+   =================================================== */
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    /* Actually changed to Dark Tech Grey this time! */
-    background-color: #121212; 
-    color: #e0e0e0;
-    /* CRITICAL LAYOUT SETTINGS */
+    background-color: var(--s-1);
+    color: var(--t-primary);
     height: 100vh;
     width: 100vw;
     margin: 0;
-    overflow: hidden; /* Stops double scrollbars */
+    overflow: hidden;
 }
 
-/* --- LINKS (T'au Light Ochre) --- */
 a, .btn-link {
-    color: #f39c12;
-    transition: color 0.2s ease;
+    color: var(--c-accent);
+    transition: color var(--tr-fast);
 }
 
     a:hover, .btn-link:hover {
-        color: #e67e22; /* Slightly darker on hover */
+        color: var(--c-accent-hover);
     }
 
-/* --- BUTTONS (T'au Dark Ochre) --- */
+
+/* ===================================================
+   BUTTONS
+   =================================================== */
 .btn-primary {
     color: #fff;
-    background-color: #d35400; /* The Classic T'au Orange */
-    border-color: #a04000;
+    background-color: var(--c-primary);
+    border-color: var(--c-primary-dark);
+    transition: background-color var(--tr-fast), border-color var(--tr-fast),
+                transform var(--tr-fast), box-shadow var(--tr-fast);
 }
 
     .btn-primary:hover {
-        background-color: #ba4a00;
+        background-color: var(--c-primary-hover);
         border-color: #873600;
+        transform: translateY(-1px);
+        box-shadow: var(--sh-sm);
     }
 
-/* --- FOCUS RINGS (Orange Glow instead of Blue) --- */
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-    /* The 0.25rem shadow is now orange rgba(211, 84, 0, 0.5) */
-    box-shadow: 0 0 0 0.1rem #1a1a1a, 0 0 0 0.25rem rgba(211, 84, 0, 0.5);
-    border-color: #d35400;
+    .btn-primary:active {
+        transform: translateY(0);
+        box-shadow: none;
+    }
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus,
+.form-control:focus, .form-check-input:focus {
+    box-shadow: 0 0 0 0.1rem var(--s-2), 0 0 0 0.25rem var(--c-primary-glow);
+    border-color: var(--c-primary);
 }
 
-/* --- HEADERS --- */
+
+/* ===================================================
+   TYPOGRAPHY
+   =================================================== */
 h1:focus {
     outline: none;
 }
 
 h3 {
-    color: #f39c12; /* Ochre headers */
-    border-bottom: 2px solid #444;
+    color: var(--c-accent);
+    border-bottom: 2px solid var(--b-default);
     padding-bottom: 0.5rem;
 }
 
-/* --- CONTENT PADDING --- */
-.content {
-    padding-top: 1.1rem;
+
+/* ===================================================
+   FORMS
+   =================================================== */
+.darker-border-checkbox.form-check-input {
+    border-color: #666;
+    background-color: var(--s-5);
 }
 
-/* --- VALIDATION --- */
+.form-check-input:checked {
+    background-color: var(--c-primary);
+    border-color: var(--c-primary);
+}
+
+.form-floating > .form-control-plaintext::placeholder,
+.form-floating > .form-control::placeholder {
+    color: var(--t-muted);
+    text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder,
+.form-floating > .form-control:focus::placeholder {
+    text-align: start;
+}
+
+
+/* ===================================================
+   VALIDATION
+   =================================================== */
 .valid.modified:not([type=checkbox]) {
-    outline: 1px solid #27ae60; /* Green remains fine for "Good" */
+    outline: 1px solid var(--c-success);
 }
 
 .invalid {
-    outline: 1px solid #c0392b; /* Deep Red for "Bad" */
+    outline: 1px solid var(--c-danger);
 }
 
 .validation-message {
     color: #e74c3c;
 }
 
-/* --- ERROR UI --- */
+
+/* ===================================================
+   ERROR BOUNDARY
+   =================================================== */
 .blazor-error-boundary {
     background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
     padding: 1rem 1rem 1rem 3.7rem;
@@ -80,31 +185,10 @@ h3 {
         content: "An error has occurred."
     }
 
-/* --- FORMS --- */
-.darker-border-checkbox.form-check-input {
-    border-color: #666;
-    background-color: #333;
-}
 
-.form-check-input:checked {
-    background-color: #d35400; /* Orange Checkbox */
-    border-color: #d35400;
-}
-
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-    color: #888;
-    text-align: end;
-}
-
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-    text-align: start;
-}
-
-/* ========================================= */
-/* LAYOUT SYSTEM (FIXED SIDEBAR)       */
-/* ========================================= */
-
-/* 1. FORCE ROW LAYOUT */
+/* ===================================================
+   LAYOUT SYSTEM — desktop fixed sidebar
+   =================================================== */
 .page {
     display: flex;
     flex-direction: row;
@@ -113,35 +197,28 @@ h3 {
     overflow: hidden;
 }
 
-/* 2. SIDEBAR STYLE (Base Layer = Dark Red/Player 1) */
 .sidebar {
-    width: 280px;
-    min-width: 280px;
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
     height: 100%;
-    background: linear-gradient(180deg, #2b2b2b 0%, darkred 100%);
-    border-right: 2px solid #333;
+    background: linear-gradient(180deg, var(--s-4) 0%, darkred 100%);
+    border-right: 2px solid var(--b-default);
     display: flex;
     flex-direction: column;
-    /* overflow-y: auto;  <--- 1. REMOVE THIS LINE */
     z-index: 10;
     position: relative;
 }
 
-/* 2. ADD THIS BLOCK */
 .nav-scrollable {
-    flex: 1; /* Takes up all remaining height below the header */
-    overflow-y: auto; /* Handles the scrolling internally */
+    flex: 1;
+    overflow-y: auto;
 }
 
-    
-
-/* 3. MAIN CONTENT STYLE */
 main {
     flex: 1;
     height: 100%;
     overflow-y: auto;
-    /* Dark background for content area */
-    background-color: #121212;
+    background-color: var(--s-1);
     position: relative;
 }
 
@@ -149,7 +226,38 @@ main {
     padding: 2rem;
 }
 
-/* 4. HIDE MOBILE TOGGLER */
-.navbar-toggler {
-    display: none;
+
+/* ===================================================
+   MOBILE LAYOUT  (≤ 640px)
+   Sidebar collapses to a top bar; nav appears as an
+   absolute-positioned dropdown overlay when toggled.
+   =================================================== */
+@media (max-width: 640px) {
+    html, body {
+        overflow: hidden;
+    }
+
+    .page {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        min-width: unset;
+        height: auto;
+        position: relative;
+        z-index: 100;
+        border-right: none;
+        border-bottom: 1px solid var(--b-default);
+    }
+
+    main {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .content {
+        padding: 1rem;
+    }
 }
