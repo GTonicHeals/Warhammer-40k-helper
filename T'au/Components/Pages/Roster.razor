@@ -691,20 +691,18 @@ else
         var result = new List<KeywordToken>();
         if (string.IsNullOrEmpty(raw) || raw == "-") return result;
 
-        foreach (Match m in Regex.Matches(raw, @"\[([^\]]+)\]"))
+        foreach (var part in raw.Split(',', StringSplitOptions.RemoveEmptyEntries))
         {
-            var inner = m.Groups[1].Value; // e.g. "RAPID FIRE 1" or "ANTI-INFANTRY 2+"
-            // Strip trailing numeric or roll suffixes to get the base key
-            var baseKey = Regex.Replace(inner, @"[\s\-][^\s\-]+\s*\d+[\+]?\s*$", "").Trim();
-            if (baseKey.StartsWith("ANTI", StringComparison.OrdinalIgnoreCase))
+            var keyword = part.Trim();
+            if (string.IsNullOrEmpty(keyword)) continue;
+
+            // Strip trailing numeric suffix e.g. "Sustained Hits 1" → "Sustained Hits"
+            var baseKey = Regex.Replace(keyword, @"\s+\d+[+]?\s*$", "").Trim();
+            if (baseKey.StartsWith("Anti", StringComparison.OrdinalIgnoreCase))
                 baseKey = "ANTI";
 
             KeywordGlossary.TryGetValue(baseKey, out var def);
-            // If no match, try the full inner text as a fallback
-            if (def == null)
-                KeywordGlossary.TryGetValue(inner, out def);
-
-            result.Add(new KeywordToken(inner, def));
+            result.Add(new KeywordToken(keyword, def));
         }
         return result;
     }
@@ -1146,6 +1144,7 @@ else
         .weapon-table td {
             padding: 6px 4px;
             border-bottom: 1px solid #444;
+            overflow: visible;
         }
 
         .weapon-table tr:nth-child(even) {
