@@ -16,16 +16,14 @@
     }
 </style>
 
-<input type="checkbox" id="nav-toggle" class="navbar-toggler" />
-
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid d-flex align-items-center justify-content-between">
         <a class="navbar-brand" href="">Battle Command</a>
-        <label for="nav-toggle" class="navbar-toggler-btn" aria-label="Toggle navigation">&#9776;</label>
+        <button type="button" class="navbar-toggler-btn @(_navOpen ? "active" : "")" @onclick="ToggleNav" aria-label="Toggle navigation">&#9776;</button>
     </div>
 </div>
 
-<div class="nav-scrollable" onclick="document.getElementById('nav-toggle').checked = false;">
+<div class="nav-scrollable @(_navOpen ? "show" : "")" @onclick="CloseNav">
     <nav class="flex-column">
 
         <div class="nav-item px-3 mt-3 mb-1">
@@ -143,6 +141,10 @@
     private List<PlayerMenuData> Players = new();
     private Action _onFactionChange = default!;
     private bool _disposed;
+    private bool _navOpen = false;
+
+    private void ToggleNav() => _navOpen = !_navOpen;
+    private void CloseNav() => _navOpen = false;
 
     private string ActivePlayerId = "p1";
     private string ActiveGradientColor => GetGradientColor(ActivePlayerId);

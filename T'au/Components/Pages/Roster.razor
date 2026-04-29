@@ -47,9 +47,17 @@
 else
 {
     <div class="roster-grid">
-        @foreach (var unit in GetUnits())
+        @{
+            var unitList = GetUnits().ToList();
+        }
+        @for (int ui = 0; ui < unitList.Count; ui++)
         {
-            <div class="datasheet" id="@GetId(unit)">
+            var unit = unitList[ui];
+            var unitKey = $"{unit.Name}_{ui}";
+            var status = GetUnitStatus(unitKey);
+            var maxW = GetMaxWoundsInt(unit);
+            var curW = maxW - status.WoundsLost;
+            <div class="datasheet @(status.BattleShocked ? "unit-shocked" : "")" id="@GetId(unit)">
 
                 <div class="datasheet-header">
                     <div class="header-content">
@@ -60,6 +68,30 @@ else
                         <span class="pts-val">@GetPointCost(unit)</span>
                         <span class="pts-label">pts</span>
                     </div>
+                </div>
+
+                <!-- Unit Status Bar -->
+                <div class="unit-status-bar">
+                    <div class="usb-wounds">
+                        <button class="usb-btn" @onclick="() => HealWound(unitKey)"
+                                disabled="@(status.WoundsLost <= 0)">+</button>
+                        <span class="usb-wounds-val @(curW <= 0 ? "usb-destroyed" : "")">
+                            @if (curW <= 0)
+                            {
+                                <span>DESTROYED</span>
+                            }
+                            else
+                            {
+                                <span>@curW<span class="usb-wounds-max">/@GetMaxWoundsStr(unit) W</span></span>
+                            }
+                        </span>
+                        <button class="usb-btn" @onclick="() => AddWound(unitKey)"
+                                disabled="@(curW <= 0)">−</button>
+                    </div>
+                    <button class="usb-shock-btn @(status.BattleShocked ? "usb-shock-active" : "")"
+                            @onclick="() => ToggleBattleShock(unitKey)">
+                        @(status.BattleShocked ? "⚡ BATTLE-SHOCKED" : "Battle-Shock")
+                    </button>
                 </div>
 
                 @{
@@ -152,7 +184,25 @@ else
                                     <tr>
                                         <td class="weapon-name">
                                             @w.Name
-                                            <div class="weapon-keywords">@GetChar(w, "Keywords")</div>
+                                            <div class="weapon-keywords">
+                                                @foreach (var kw in ParseWeaponKeywords(GetChar(w, "Keywords")))
+                                                {
+                                                    @if (kw.Definition != null)
+                                                    {
+                                                        <span class="kw-tag-wrapper">
+                                                            <span class="kw-tag kw-tag-glossary">[@kw.Raw]</span>
+                                                            <div class="kw-tooltip">
+                                                                <div class="kw-tooltip-title">@kw.Raw</div>
+                                                                <div class="kw-tooltip-body">@kw.Definition</div>
+                                                            </div>
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="kw-tag">[@kw.Raw]</span>
+                                                    }
+                                                }
+                                            </div>
                                         </td>
                                         <td class="text-center">@GetChar(w, "Range")</td>
                                         <td class="text-center">@GetChar(w, "A")</td>
@@ -192,7 +242,25 @@ else
                                     <tr>
                                         <td class="weapon-name">
                                             @w.Name
-                                            <div class="weapon-keywords">@GetChar(w, "Keywords")</div>
+                                            <div class="weapon-keywords">
+                                                @foreach (var kw in ParseWeaponKeywords(GetChar(w, "Keywords")))
+                                                {
+                                                    @if (kw.Definition != null)
+                                                    {
+                                                        <span class="kw-tag-wrapper">
+                                                            <span class="kw-tag kw-tag-glossary">[@kw.Raw]</span>
+                                                            <div class="kw-tooltip">
+                                                                <div class="kw-tooltip-title">@kw.Raw</div>
+                                                                <div class="kw-tooltip-body">@kw.Definition</div>
+                                                            </div>
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="kw-tag">[@kw.Raw]</span>
+                                                    }
+                                                }
+                                            </div>
                                         </td>
                                         <td class="text-center">@GetChar(w, "Range")</td>
                                         <td class="text-center">@GetChar(w, "A")</td>
@@ -272,6 +340,70 @@ else
 }
 
 @code {
+    // ── Unit status tracking ──────────────────────────────────────────────────
+    private class UnitStatus
+    {
+        public int WoundsLost { get; set; } = 0;
+        public bool BattleShocked { get; set; } = false;
+    }
+
+    private Dictionary<string, UnitStatus> _unitStates = new();
+
+    private UnitStatus GetUnitStatus(string key)
+    {
+        if (!_unitStates.TryGetValue(key, out var s))
+        {
+            s = new UnitStatus();
+            _unitStates[key] = s;
+        }
+        return s;
+    }
+
+    private string GetMaxWoundsStr(Selection unit)
+    {
+        var profile = GetAllProfilesRecursive(unit, "Unit").FirstOrDefault();
+        return profile == null ? "?" : GetChar(profile, "W");
+    }
+
+    private int GetMaxWoundsInt(Selection unit)
+    {
+        var wStr = GetMaxWoundsStr(unit);
+        return int.TryParse(wStr, out var w) ? Math.Max(1, w) : 1;
+    }
+
+    private void AddWound(string key)
+    {
+        var s = GetUnitStatus(key);
+        var unit = FindUnit(key);
+        if (unit != null)
+            s.WoundsLost = Math.Min(s.WoundsLost + 1, GetMaxWoundsInt(unit));
+        StateHasChanged();
+    }
+
+    private void HealWound(string key)
+    {
+        var s = GetUnitStatus(key);
+        if (s.WoundsLost > 0) s.WoundsLost--;
+        StateHasChanged();
+    }
+
+    private void ToggleBattleShock(string key)
+    {
+        var s = GetUnitStatus(key);
+        s.BattleShocked = !s.BattleShocked;
+        StateHasChanged();
+    }
+
+    private Selection? FindUnit(string key)
+    {
+        var units = GetUnits().ToList();
+        var parts = key.Split('_');
+        if (parts.Length >= 2 && int.TryParse(parts[^1], out var idx) && idx < units.Count)
+            return units[idx];
+        return null;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     [Parameter] public string? Side { get; set; }
     private RosterRoot? rosterData;
     private double CurrentPoints => rosterData?.Roster?.Costs?.FirstOrDefault(c => c.Name == "pts")?.Value ?? 0;
@@ -526,6 +658,58 @@ else
     private void GetRulesRecursive(Selection current, List<Rule> collected) { if (current == null) return; if (current.Rules != null) collected.AddRange(current.Rules); if (current.Selections != null) foreach (var child in current.Selections) GetRulesRecursive(child, collected); }
     private List<string> GetKeywords(Selection unit) => unit.Categories?.Where(c => c.Name != "Configuration" && c.Name != "Uncategorized").Select(c => c.Name).ToList() ?? new List<string>();
 
+    // ── Weapon Keyword Glossary ───────────────────────────────────────────────
+    private static readonly Dictionary<string, string> KeywordGlossary =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ASSAULT"]           = "Can be used to make attacks even if the bearer Advanced this turn.",
+            ["HEAVY"]             = "If the bearer did not move this turn, add 1 to each Hit roll made with this weapon.",
+            ["RAPID FIRE"]        = "If the bearer did not move this turn, make [X] additional attacks with this weapon.",
+            ["PISTOL"]            = "Can be used in Engagement Range; must target the closest eligible enemy unit.",
+            ["TORRENT"]           = "Each attack made with this weapon automatically hits — no Hit roll required.",
+            ["BLAST"]             = "Add 1 attack for every 5 models (rounding down) in the target unit.",
+            ["LETHAL HITS"]       = "Each Critical Hit automatically wounds the target — no Wound roll required.",
+            ["SUSTAINED HITS"]    = "Each Critical Hit scores [X] additional hits.",
+            ["DEVASTATING WOUNDS"]= "Each Critical Wound causes mortal wounds equal to the weapon's Damage; the attack sequence then ends.",
+            ["MELTA"]             = "Add [X] to the Damage characteristic when the target is within half the weapon's Range.",
+            ["INDIRECT FIRE"]     = "Can target units not visible to the bearer. Attacks against non-visible units have −1 to Hit.",
+            ["LANCE"]             = "If the bearer charged this turn, improve Armour Penetration by 1.",
+            ["ANTI"]              = "Wound rolls of [X]+ automatically succeed against the specified keyword target.",
+            ["HAZARDOUS"]         = "After shooting, roll 1D6 per Hazardous weapon fired: on a 1, the bearer's unit suffers 3 mortal wounds.",
+            ["ONE SHOT"]          = "This weapon can only be used once per battle.",
+            ["PRECISION"]         = "On a Critical Hit, the attack can be allocated to a CHARACTER model in the target unit.",
+            ["PSYCHIC"]           = "Bearer must be a PSYKER. On an unmodified Hit roll of 6, the attack inflicts 1 additional mortal wound.",
+            ["TWIN-LINKED"]       = "You may re-roll the Wound roll for each attack made with this weapon.",
+            ["IGNORES COVER"]     = "Attacks made with this weapon ignore the benefits of cover.",
+            ["EXTRA ATTACKS"]     = "Each time the bearer fights, make this many additional attacks with this weapon.",
+        };
+
+    private record KeywordToken(string Raw, string? Definition);
+
+    private List<KeywordToken> ParseWeaponKeywords(string raw)
+    {
+        var result = new List<KeywordToken>();
+        if (string.IsNullOrEmpty(raw) || raw == "-") return result;
+
+        foreach (Match m in Regex.Matches(raw, @"\[([^\]]+)\]"))
+        {
+            var inner = m.Groups[1].Value; // e.g. "RAPID FIRE 1" or "ANTI-INFANTRY 2+"
+            // Strip trailing numeric or roll suffixes to get the base key
+            var baseKey = Regex.Replace(inner, @"[\s\-][^\s\-]+\s*\d+[\+]?\s*$", "").Trim();
+            if (baseKey.StartsWith("ANTI", StringComparison.OrdinalIgnoreCase))
+                baseKey = "ANTI";
+
+            KeywordGlossary.TryGetValue(baseKey, out var def);
+            // If no match, try the full inner text as a fallback
+            if (def == null)
+                KeywordGlossary.TryGetValue(inner, out def);
+
+            result.Add(new KeywordToken(inner, def));
+        }
+        return result;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     private MarkupString FormatText(string text)
     {
         if (string.IsNullOrEmpty(text))
@@ -563,6 +747,101 @@ else
 }
 
 <style>
+    /* ── Unit Status Bar ──────────────────────────────────────────────── */
+    .unit-status-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 12px;
+        background: #1e1e1e;
+        border-bottom: 1px solid #333;
+        gap: 8px;
+    }
+
+    .usb-wounds {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .usb-btn {
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 1px solid #444;
+        background: #2b2b2b;
+        color: #e8e8e8;
+        border-radius: 3px;
+        font-size: 1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        line-height: 1;
+        transition: background 0.15s;
+    }
+
+        .usb-btn:hover:not(:disabled) {
+            background: #3a3a3a;
+            border-color: #666;
+        }
+
+        .usb-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+    .usb-wounds-val {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #e8e8e8;
+        min-width: 5rem;
+        text-align: center;
+    }
+
+    .usb-wounds-max {
+        font-size: 0.65rem;
+        color: #686868;
+        font-weight: 400;
+        margin-left: 1px;
+    }
+
+    .usb-destroyed {
+        color: #c0392b !important;
+    }
+
+    .usb-shock-btn {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 3px;
+        border: 1px solid #555;
+        background: #2b2b2b;
+        color: #888;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.15s;
+    }
+
+        .usb-shock-btn:hover {
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+
+    .usb-shock-active {
+        background: rgba(192, 57, 43, 0.2) !important;
+        border-color: #c0392b !important;
+        color: #e74c3c !important;
+    }
+
+    /* When battle-shocked: dim the header and add a red top border */
+    .unit-shocked .datasheet-header {
+        opacity: 0.65;
+        outline: 2px solid #c0392b;
+        outline-offset: -2px;
+    }
+
     .stratagem-bar {
         background: #1a1a1a;
         padding: 8px 15px;
@@ -747,6 +1026,7 @@ else
         scroll-margin-top: 20px;
         position: relative;
         border-radius: 4px;
+        overflow: visible; /* prevent border-radius from implicitly clipping abs. children */
     }
 
     .datasheet-header {
@@ -847,7 +1127,8 @@ else
 
     .weapon-table {
         width: 100%;
-        border-collapse: collapse;
+        border-collapse: separate; /* avoid table-context overflow clipping on tooltips */
+        border-spacing: 0;         /* keep zero gap between cells, same visual as collapse */
         font-size: 0.9rem;
         background: #2a2a2a;
         color: #ddd;
@@ -934,5 +1215,75 @@ else
         text-transform: uppercase;
         font-weight: bold;
         color: #aaa;
+    }
+
+    /* ── Weapon Keyword Glossary Tooltips ─────────────────────────────── */
+    .weapon-keywords {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+        margin-top: 2px;
+    }
+
+    .kw-tag {
+        font-size: 0.68rem;
+        color: #d35400;
+        font-style: italic;
+        white-space: nowrap;
+    }
+
+    .kw-tag-glossary {
+        text-decoration: underline dotted rgba(211,84,0,0.5);
+        cursor: help;
+    }
+
+    .kw-tag-wrapper {
+        position: relative;
+        display: inline-block;
+        z-index: 0; /* establish stacking context so tooltip z-index is resolved above sibling rows */
+    }
+
+        .kw-tag-wrapper:hover {
+            z-index: 1200; /* elevate above all table-row backgrounds on hover */
+        }
+
+        .kw-tag-wrapper:hover .kw-tooltip {
+            display: block;
+        }
+
+    .kw-tooltip {
+        display: none;
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: #12122a;
+        border: 1px solid #555;
+        border-radius: 5px;
+        padding: 8px 10px;
+        min-width: 220px;
+        max-width: 300px;
+        z-index: 1100;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.8);
+        pointer-events: none;
+        white-space: normal;
+        text-align: left;
+        font-style: normal;
+        font-weight: normal;
+    }
+
+    .kw-tooltip-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #d35400;
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+    }
+
+    .kw-tooltip-body {
+        font-size: 0.72rem;
+        color: #ddd;
+        line-height: 1.4;
     }
 </style>

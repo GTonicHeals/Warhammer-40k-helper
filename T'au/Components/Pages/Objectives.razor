@@ -1,6 +1,8 @@
 ﻿@page "/objectives/{Side?}"
 @rendermode InteractiveServer
+@using Warhammer.Services
 @inject ObjectiveService ObjService
+@inject GameStateService GameState
 
 <div class="header-container">
     <div class="header-left">
@@ -165,7 +167,7 @@
                         }
                     </div>
                     <button class="btn btn-sm btn-danger mission-discard-btn" @onclick="() => DiscardMission(mission)">
-                        <i class="bi bi-x-lg"></i> Discard
+                        <i class="bi bi-x-lg"></i> Discard 
                     </button>
                 </div>
             </div>
@@ -222,6 +224,7 @@
     private void DiscardMission(Objective m)
     {
         CurrentState.ActiveMissions.Remove(m);
+        GameState.AddCP(Side ?? "p1", 1);
     }
 
     private void ResetDeck()
@@ -636,5 +639,6 @@
 
     .mission-discard-btn {
         flex-shrink: 0;
+        min-width: 140px; /* Forces the button to take up more horizontal width */
     }
 </style>

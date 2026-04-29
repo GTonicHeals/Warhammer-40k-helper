@@ -1,0 +1,249 @@
+@* @using Warhammer.Services
+@inject GameStateService GameState
+@inject FactionStateService FactionState
+@implements IDisposable
+
+<div class="gsb-bar">
+
+    <!-- Battle Round (global) -->
+    <div class="gsb-group">
+        <span class="gsb-lbl">ROUND</span>
+        <div class="gsb-rounds">
+            @for (int r = 1; r <= 5; r++)
+            {
+                var round = r;
+                <button class="gsb-round @(GameState.BattleRound == round ? "gsb-round-active" : "")"
+                        @onclick="() => GameState.SetBattleRound(round)">@round</button>
+            }
+        </div>
+    </div>
+
+    <div class="gsb-divider"></div>
+
+    <!-- Per-player CP counters -->
+    @foreach (var pid in ActivePlayers)
+    {
+        var playerId = pid;
+        var cp = GameState.GetCP(playerId);
+        <div class="gsb-cp-group">
+            <span class="gsb-lbl" style="color: @GetPlayerColor(playerId)">@GetPlayerLabel(playerId) CP</span>
+            <div class="gsb-cp-row">
+                <button class="gsb-cp-btn" @onclick="() => GameState.SpendCP(playerId, 1)"
+                        disabled="@(cp <= 0)">−</button>
+                <span class="gsb-cp-val" style="color: @GetPlayerColor(playerId)">@cp</span>
+                <button class="gsb-cp-btn" @onclick="() => GameState.AddCP(playerId, 1)">+</button>
+            </div>
+        </div>
+        if (playerId != ActivePlayers.Last())
+        {
+            <div class="gsb-cp-sep"></div>
+        }
+    }
+
+    <div class="gsb-spacer"></div>
+
+    <button class="gsb-reset" @onclick="GameState.Reset" title="Reset round and all CP">↺ Reset</button>
+</div>
+
+@code {
+    private bool _disposed;
+
+    private IReadOnlyList<string> ActivePlayers =>
+        FactionState.PlayerFactions.Count > 0
+            ? FactionState.PlayerFactions.Keys.OrderBy(k => k).ToList()
+            : (IReadOnlyList<string>)["p1"];
+
+    private static string GetPlayerColor(string playerId) => playerId.ToLowerInvariant() switch
+    {
+        "p1" => "var(--c-p1, #ffc107)",
+        "p2" => "var(--c-p2, #5dade2)",
+        "p3" => "var(--c-p3, #2ecc71)",
+        "p4" => "var(--c-p4, #a855f7)",
+        "p5" => "var(--c-p5, #e74c3c)",
+        _    => "var(--c-accent, #f39c12)",
+    };
+
+    private static string GetPlayerLabel(string playerId)
+    {
+        if (int.TryParse(playerId.TrimStart('p', 'P'), out var n))
+            return $"P{n}";
+        return playerId.ToUpperInvariant();
+    }
+
+    protected override void OnInitialized()
+    {
+        GameState.OnChange   += OnStateChange;
+        FactionState.OnChange += OnStateChange;
+    }
+
+    private async void OnStateChange()
+    {
+        if (_disposed) return;
+        try { await InvokeAsync(StateHasChanged); }
+        catch (ObjectDisposedException) { }
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        GameState.OnChange   -= OnStateChange;
+        FactionState.OnChange -= OnStateChange;
+    }
+}
+
+<style>
+    .gsb-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.4rem 1.25rem;
+        background: var(--s-3, #242424);
+        border-bottom: 1px solid var(--b-default, #3d3d3d);
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+    }
+
+    .gsb-lbl {
+        font-size: 0.58rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: var(--t-muted, #686868);
+        display: block;
+        margin-bottom: 0.15rem;
+        white-space: nowrap;
+    }
+
+    .gsb-group {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    /* Battle round pills */
+    .gsb-rounds {
+        display: flex;
+        gap: 0.2rem;
+    }
+
+    .gsb-round {
+        width: 1.65rem;
+        height: 1.65rem;
+        border: 1px solid var(--b-default, #3d3d3d);
+        background: var(--s-4, #2b2b2b);
+        color: var(--t-secondary, #aaaaaa);
+        border-radius: var(--r-sm, 4px);
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background-color var(--tr-fast, 0.15s ease),
+                    border-color    var(--tr-fast, 0.15s ease),
+                    color           var(--tr-fast, 0.15s ease);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+    }
+
+        .gsb-round:hover:not(.gsb-round-active) {
+            background: var(--s-5, #333333);
+            border-color: var(--b-strong, #555555);
+            color: var(--t-primary, #e8e8e8);
+        }
+
+    .gsb-round-active {
+        background: var(--c-primary, #d35400) !important;
+        border-color: var(--c-primary-dark, #a04000) !important;
+        color: #fff !important;
+    }
+
+    /* Tall divider between Round and CP sections */
+    .gsb-divider {
+        width: 1px;
+        height: 2rem;
+        background: var(--b-default, #3d3d3d);
+        flex-shrink: 0;
+    }
+
+    /* Thin divider between individual player CP groups */
+    .gsb-cp-sep {
+        width: 1px;
+        height: 1.4rem;
+        background: var(--b-subtle, #2a2a2a);
+        flex-shrink: 0;
+    }
+
+    /* Per-player CP block */
+    .gsb-cp-group {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .gsb-cp-row {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .gsb-cp-val {
+        font-size: 1.45rem;
+        font-weight: 900;
+        min-width: 2rem;
+        text-align: center;
+        line-height: 1;
+    }
+
+    .gsb-cp-btn {
+        width: 1.65rem;
+        height: 1.65rem;
+        border: 1px solid var(--b-default, #3d3d3d);
+        background: var(--s-4, #2b2b2b);
+        color: var(--t-primary, #e8e8e8);
+        border-radius: var(--r-sm, 4px);
+        font-size: 1.15rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        line-height: 1;
+        transition: background-color var(--tr-fast, 0.15s ease),
+                    border-color    var(--tr-fast, 0.15s ease);
+    }
+
+        .gsb-cp-btn:hover:not(:disabled) {
+            background: var(--s-5, #333333);
+            border-color: var(--b-strong, #555555);
+        }
+
+        .gsb-cp-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+    .gsb-spacer {
+        flex: 1;
+    }
+
+    .gsb-reset {
+        background: transparent;
+        border: 1px solid var(--b-default, #3d3d3d);
+        color: var(--t-muted, #686868);
+        border-radius: var(--r-sm, 4px);
+        padding: 0.25rem 0.65rem;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: border-color var(--tr-fast, 0.15s ease),
+                    color        var(--tr-fast, 0.15s ease);
+        white-space: nowrap;
+    }
+
+        .gsb-reset:hover {
+            border-color: var(--b-strong, #555555);
+            color: var(--t-primary, #e8e8e8);
+        }
+</style>
+ *@

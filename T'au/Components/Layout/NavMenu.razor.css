@@ -11,57 +11,52 @@
 }
 
 .navbar-brand {
+    flex: 1;
     font-size: 1.2rem;
     font-weight: 700;
     color: var(--t-primary, #e8e8e8);
     text-transform: uppercase;
     letter-spacing: 1px;
     padding-left: 1rem;
+    text-decoration: none;
 }
+
+    .navbar-brand:hover {
+        color: var(--t-primary, #e8e8e8);
+        text-decoration: none;
+    }
 
 
 /* ===================================================
-   HAMBURGER TOGGLE
-   The actual <input type="checkbox"> is hidden;
-   the <label> is the tappable button on mobile.
+   HAMBURGER TOGGLE BUTTON
+   Displayed only on mobile; hidden on desktop.
+   Toggled by a Blazor @onclick — no CSS checkbox hack.
    =================================================== */
-.navbar-toggler {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
-    pointer-events: none;
-}
-
 .navbar-toggler-btn {
     display: none; /* revealed in mobile media query */
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
     background: transparent;
-    border: 1px solid rgba(211, 84, 0, 0.35);
-    border-radius: var(--r-sm, 4px);
-    color: var(--t-primary, #e8e8e8);
+    border: none;
+    color: var(--t-secondary, #aaaaaa);
     width: 2.5rem;
     height: 2.2rem;
-    font-size: 1.25rem;
+    font-size: 1.35rem;
     line-height: 1;
-    transition: background-color var(--tr-fast, 0.15s ease),
-                border-color    var(--tr-fast, 0.15s ease);
+    transition: color var(--tr-fast, 0.15s ease);
     user-select: none;
     margin-right: 0.75rem;
     flex-shrink: 0;
 }
 
     .navbar-toggler-btn:hover {
-        background: rgba(211, 84, 0, 0.15);
-        border-color: var(--c-primary, #d35400);
+        color: var(--t-primary, #e8e8e8);
     }
 
-/* Highlight the button when the menu is open */
-.navbar-toggler:checked ~ .top-row .navbar-toggler-btn {
-    background: rgba(211, 84, 0, 0.2);
-    border-color: var(--c-primary, #d35400);
+.navbar-toggler-btn.active {
     color: var(--c-primary, #d35400);
 }
 
@@ -200,8 +195,8 @@
 
 /* ===================================================
    RESPONSIVE — mobile (≤ 640px)
-   Nav is hidden by default; revealed when the
-   checkbox toggle is :checked.
+   Nav is hidden by default; clicking the hamburger
+   button adds .show via Blazor state.
    =================================================== */
 @media (max-width: 640px) {
     .navbar-toggler-btn {
@@ -225,12 +220,12 @@
         scrollbar-color: var(--b-strong, #555) var(--s-2, #1a1a1a);
     }
 
-    .navbar-toggler:checked ~ .nav-scrollable {
+    .nav-scrollable.show {
         display: block;
     }
 }
 
-/* Desktop (≥ 641px) — always visible, hide the toggle button */
+/* Desktop (≥ 641px) — always visible, toggle button hidden */
 @media (min-width: 641px) {
     .navbar-toggler-btn {
         display: none;

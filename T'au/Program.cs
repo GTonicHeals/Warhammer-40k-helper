@@ -13,6 +13,7 @@ builder.Services.AddScoped(sp => new HttpClient
 
 builder.Services.AddScoped<ObjectiveService>();
 builder.Services.AddScoped<FactionStateService>();
+builder.Services.AddScoped<GameStateService>();
 
 var app = builder.Build();
 
