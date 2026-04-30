@@ -3,8 +3,10 @@
 @using System.Text.Json
 @using System.Text.RegularExpressions
 @using Warhammer.Models
+@using Warhammer.Services
 @using System.IO
 @inject IWebHostEnvironment Env
+@inject StratagemService StratagemSvc
 
 <div class="wc-page">
 
@@ -181,6 +183,29 @@
                         </div>
                     }
 
+                    <!-- Attacker Stratagems -->
+                    @if (AttackerStratagems.Any())
+                    {
+                        <div class="wc-strat-section">
+                            <div class="wc-mods-label">Stratagems</div>
+                            <div class="strat-list">
+                                @foreach (var s in AttackerStratagems)
+                                {
+                                    <button class="strat-badge @StratClass(s)">
+                                        <span class="strat-name-text">@s.Name</span>
+                                        <span class="cp-badge">@s.Cost CP</span>
+                                        <div class="strat-hover-tooltip">
+                                            <div class="tooltip-strat-name">@s.Name</div>
+                                            <div class="tooltip-strat-meta">@s.Turn · @s.Phase · @s.Cost CP</div>
+                                            <hr class="tooltip-strat-divider" />
+                                            <div class="tooltip-strat-desc">@((MarkupString)s.Description)</div>
+                                        </div>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
                 </div>
             </div>
 
@@ -336,6 +361,29 @@
                         </div>
                     }
 
+                    <!-- Defender Stratagems -->
+                    @if (DefenderStratagems.Any())
+                    {
+                        <div class="wc-strat-section">
+                            <div class="wc-mods-label">Stratagems</div>
+                            <div class="strat-list">
+                                @foreach (var s in DefenderStratagems)
+                                {
+                                    <button class="strat-badge @StratClass(s)">
+                                        <span class="strat-name-text">@s.Name</span>
+                                        <span class="cp-badge">@s.Cost CP</span>
+                                        <div class="strat-hover-tooltip">
+                                            <div class="tooltip-strat-name">@s.Name</div>
+                                            <div class="tooltip-strat-meta">@s.Turn · @s.Phase · @s.Cost CP</div>
+                                            <hr class="tooltip-strat-divider" />
+                                            <div class="tooltip-strat-desc">@((MarkupString)s.Description)</div>
+                                        </div>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
                 </div>
             </div>
 
@@ -344,7 +392,7 @@
 </div>
 
 @code {
-    private record UnitEntry(string Key, string Label, string PlayerId, int PlayerIndex, Selection Unit);
+    private record UnitEntry(string Key, string Label, string PlayerId, int PlayerIndex, Selection Unit, string DetachmentName);
 
     private List<UnitEntry> AllUnits = new();
     private List<Profile> AttackerWeapons = new();
@@ -382,6 +430,9 @@
     private string? EffectiveHitRoll;
     private string? EffectiveWoundRoll;
 
+    private List<StratagemModelWithDetachment> AttackerStratagems = new();
+    private List<StratagemModelWithDetachment> DefenderStratagems = new();
+
     private IEnumerable<(string Id, int Index)> LoadedPlayers =>
         AllUnits.Select(u => (u.PlayerId, u.PlayerIndex))
                 .DistinctBy(x => x.Item1)
@@ -399,6 +450,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await StratagemSvc.EnsureLoadedAsync();
+
         int playerIndex = 1;
         while (true)
         {
@@ -414,6 +467,10 @@
                 var force = data?.Roster?.Forces?.FirstOrDefault();
                 if (force == null) { playerIndex++; continue; }
 
+                var detachment = force.Selections
+                    .FirstOrDefault(s => s.Name == "Detachment")
+                    ?.Selections?.FirstOrDefault()?.Name ?? "";
+
                 var units = force.Selections
                     .Where(s => s.Name != "Configuration" &&
                                 s.Name != "Battle Size" &&
@@ -428,7 +485,8 @@
                         unit.Name,
                         playerId,
                         playerIndex,
-                        unit
+                        unit,
+                        detachment
                     ));
                 }
             }
@@ -464,6 +522,10 @@
         _atkPlusOneHit = false;
         _atkPlusOneWound = false;
         AttackerWeapons = GetAllWeapons(entry.Unit);
+        AttackerStratagems = StratagemSvc.GetStratagemsForUnit(entry.Unit.Name, entry.DetachmentName)
+            .Where(s => s.Turn.Contains("your", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(s => s.Phase).ThenBy(s => s.Name)
+            .ToList();
         Recalculate();
     }
 
@@ -510,12 +572,17 @@
 
         var unitProfile = GetAllProfilesRecursive(entry.Unit, "Unit").FirstOrDefault();
         var tVal  = GetChar(unitProfile, "T");
-        var svVal = GetChar(unitProfile, "SV");
+        var svVal = GetChar(unitProfile, "SV"); 
         DefenderToughness = int.TryParse(tVal, out var t)  ? t  : null;
         DefenderSave      = int.TryParse(svVal.TrimEnd('+'), out var sv) ? sv : null;
 
         _autoInvulnSave = ParseInvulnSave(entry.Unit);
         _invulnSave     = _autoInvulnSave ?? 0;
+
+        DefenderStratagems = StratagemSvc.GetStratagemsForUnit(entry.Unit.Name, entry.DetachmentName)
+            .Where(s => s.Turn.Contains("opponent", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(s => s.Phase).ThenBy(s => s.Name)
+            .ToList();
 
         Recalculate();
     }
@@ -524,6 +591,7 @@
     {
         SelectedAttacker = null;
         AttackerWeapons = new();
+        AttackerStratagems = new();
         ClearWeapon();
     }
 
@@ -549,6 +617,7 @@
         _defReduceAp      = false;
         _invulnSave       = 0;
         _autoInvulnSave   = null;
+        DefenderStratagems = new();
         Recalculate();
     }
 
@@ -585,7 +654,7 @@
         {
             var unitProfile = GetAllProfilesRecursive(oldAttacker.Unit, "Unit").FirstOrDefault();
             var tVal  = GetChar(unitProfile, "T");
-            var svVal = GetChar(unitProfile, "Save"); if (svVal == "-") svVal = GetChar(unitProfile, "Sv");
+            var svVal = GetChar(unitProfile, "SV");
             DefenderToughness = int.TryParse(tVal, out var t) ? t : null;
             DefenderSave      = int.TryParse(svVal.TrimEnd('+'), out var sv) ? sv : null;
             _autoInvulnSave   = ParseInvulnSave(oldAttacker.Unit);
@@ -598,6 +667,18 @@
             _autoInvulnSave   = null;
             _invulnSave       = 0;
         }
+
+        AttackerStratagems = SelectedAttacker != null
+            ? StratagemSvc.GetStratagemsForUnit(SelectedAttacker.Unit.Name, SelectedAttacker.DetachmentName)
+                .Where(s => s.Turn.Contains("your", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(s => s.Phase).ThenBy(s => s.Name).ToList()
+            : new();
+
+        DefenderStratagems = SelectedDefender != null
+            ? StratagemSvc.GetStratagemsForUnit(SelectedDefender.Unit.Name, SelectedDefender.DetachmentName)
+                .Where(s => s.Turn.Contains("opponent", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(s => s.Phase).ThenBy(s => s.Name).ToList()
+            : new();
 
         Recalculate();
     }
@@ -732,6 +813,14 @@
     private string GetChar(Profile? p, string statName) =>
         p?.Characteristics?.FirstOrDefault(c => c.Name == statName)?.Value ?? "-";
 
+    private static string StratClass(StratagemModelWithDetachment s)
+    {
+        var t = s.Turn.ToLower();
+        if (t.Contains("your")) return "strat-blue";
+        if (t.Contains("opponent")) return "strat-red";
+        return "strat-green";
+    }
+
     private string GetPlayerColor(string playerId) => playerId switch
     {
         "p2" => "#5dade2",
@@ -852,13 +941,14 @@
         background: #1e1e1e;
         border: 1px solid #333;
         border-radius: 6px;
-        overflow: hidden;
     }
 
     .wc-card-header {
         padding: 9px 14px;
         font-size: 0.8rem;
         font-weight: 800;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
         letter-spacing: 2px;
         text-transform: uppercase;
         display: flex;
@@ -1393,4 +1483,83 @@
         color: #ffc107 !important;
         background: rgba(255, 193, 7, 0.08) !important;
     }
+
+    /* ── Stratagem section ──────────────────────────────────────────────── */
+    .wc-strat-section { margin-top: 10px; }
+
+    .strat-list { display: flex; flex-wrap: wrap; gap: 5px; }
+
+    .strat-badge {
+        border: 1px solid rgba(255,255,255,0.2);
+        color: white;
+        padding: 4px 8px;
+        font-size: 0.72rem;
+        border-radius: 4px;
+        cursor: default;
+        text-transform: uppercase;
+        font-weight: bold;
+        transition: filter 0.2s, transform 0.2s, box-shadow 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        position: relative;
+        font-family: 'Oswald', sans-serif;
+        background: #1e1e1e;
+    }
+
+    .strat-badge:hover {
+        filter: brightness(1.2);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    }
+
+    .strat-badge:hover .strat-hover-tooltip { display: block; }
+
+    .strat-hover-tooltip {
+        display: none;
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 0;
+        transform: translateY(-5px);
+        background: #1a1a2e;
+        border: 1px solid #555;
+        border-radius: 6px;
+        padding: 10px 12px;
+        min-width: 260px;
+        max-width: 340px;
+        z-index: 1050;
+        text-align: left;
+        font-size: 0.78rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+        pointer-events: none;
+        white-space: normal;
+        color: #eee;
+        font-weight: normal;
+        text-transform: none;
+    }
+
+    .tooltip-strat-name {
+        font-weight: bold;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        color: #f0c040;
+    }
+
+    .tooltip-strat-meta { font-size: 0.72rem; color: #aaa; margin: 2px 0 6px; }
+
+    .tooltip-strat-divider { border: none; border-top: 1px solid #333; margin: 4px 0 6px; }
+
+    .tooltip-strat-desc { line-height: 1.5; }
+
+    .cp-badge {
+        background: rgba(0,0,0,0.3);
+        border-radius: 3px;
+        padding: 1px 4px;
+        font-size: 0.62rem;
+        font-weight: 800;
+    }
+
+    .strat-blue  { background: rgba(41,128,185,0.25);  border-color: rgba(41,128,185,0.5); }
+    .strat-red   { background: rgba(192,57,43,0.25);   border-color: rgba(192,57,43,0.5);  }
+    .strat-green { background: rgba(46,204,113,0.2);   border-color: rgba(46,204,113,0.4); }
 </style>

@@ -9,6 +9,7 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject FactionStateService FactionState
+@inject StratagemService StratagemSvc
 @implements IDisposable
 
 
@@ -121,18 +122,10 @@ else
                 }
 
                 @{
-                    var unitStrats = GetStratagemsForUnit(unit.Name);
-                    // Resolve objects
-                    var resolvedStrats = unitStrats
-                    .Select(name => AllStratagemsDetailed.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
-                    .OfType<StratagemModelWithDetachment>()
-                    .ToList();
-
-                    // Sort: Your Turn (Blue) -> Opponent (Red) -> Either (Green)
-                    var sortedStrats = resolvedStrats
-                    .OrderBy(s => GetStratSortOrder(s))
-                    .ThenBy(s => s.Name)
-                    .ToList();
+                    var sortedStrats = StratagemSvc.GetStratagemsForUnit(unit.Name, DetachmentName)
+                        .OrderBy(s => GetStratSortOrder(s))
+                        .ThenBy(s => s.Name)
+                        .ToList();
                 }
 
                 @if (sortedStrats.Any())
@@ -411,15 +404,8 @@ else
     private string DetachmentName = "";
     private Rule? DetachmentRule;
 
-    private List<StratagemModelWithDetachment> AllStratagemsDetailed = new();
-    private Dictionary<string, List<string>> UnitStratagemMap = new();
     private bool isLoadingStrats = true;
     private StratagemModel? SelectedStratagem;
-
-    public class StratagemModelWithDetachment : StratagemModel
-    {
-        public string Detachment { get; set; } = "";
-    }
 
     // Setup Scroll Listener
     protected override async Task OnInitializedAsync()
@@ -448,7 +434,9 @@ else
                 if (!string.IsNullOrEmpty(faction))
                     FactionState.SetFaction(Side!, faction);
                 FindDetachmentRules();
-                await LoadStratagemDatabase();
+                isLoadingStrats = true;
+                await StratagemSvc.EnsureLoadedAsync();
+                isLoadingStrats = false;
             }
         }
         catch { }
@@ -487,92 +475,6 @@ else
             }
             catch { }
         }
-    }
-
-    private async Task LoadStratagemDatabase()
-    {
-        var filePath = Path.Combine(Env.WebRootPath, "data", "Stratagems.json");
-        if (!File.Exists(filePath)) { isLoadingStrats = false; return; }
-
-        try
-        {
-            var jsonString = await File.ReadAllTextAsync(filePath);
-            using var doc = JsonDocument.Parse(jsonString);
-            var root = doc.RootElement;
-
-            if (root.TryGetProperty("data", out var data))
-            {
-                AllStratagemsDetailed.Clear();
-                if (data.TryGetProperty("stratagems", out var stratsArray))
-                {
-                    foreach (var s in stratsArray.EnumerateArray())
-                    {
-                        var strat = new StratagemModelWithDetachment
-                        {
-                            Name = GetProp(s, "name"),
-                            Cost = GetProp(s, "cp_cost"),
-                            Type = GetProp(s, "type"),
-                            Turn = GetProp(s, "turn"),
-                            Phase = GetProp(s, "phase"),
-                            Description = GetProp(s, "description"),
-                            FactionId = GetProp(s, "faction_id"),
-                            Detachment = GetProp(s, "detachment")
-                        };
-                        AllStratagemsDetailed.Add(strat);
-                    }
-                }
-
-                UnitStratagemMap.Clear();
-                if (data.TryGetProperty("units", out var unitsArray))
-                {
-                    foreach (var u in unitsArray.EnumerateArray())
-                    {
-                        var uName = GetProp(u, "name");
-                        var sList = GetProp(u, "stratagems");
-                        if (!string.IsNullOrEmpty(uName) && !string.IsNullOrEmpty(sList))
-                        {
-                            var stratNames = sList.Split('|').Select(x => x.Trim()).ToList();
-                            UnitStratagemMap[uName.ToLower()] = stratNames;
-                        }
-                    }
-                }
-            }
-        }
-        catch (Exception ex) { Console.WriteLine(ex.Message); }
-        isLoadingStrats = false;
-    }
-
-    private List<string> GetStratagemsForUnit(string unitName)
-    {
-        if (string.IsNullOrEmpty(unitName)) return new List<string>();
-
-        List<string>? possibleStrats;
-        if (!UnitStratagemMap.TryGetValue(unitName.ToLower(), out possibleStrats))
-        {
-            var key = UnitStratagemMap.Keys.FirstOrDefault(k => k.Contains(unitName.ToLower()) || unitName.ToLower().Contains(k));
-            possibleStrats = key != null ? UnitStratagemMap[key] : new List<string>();
-        }
-
-        if (!possibleStrats.Any()) return new List<string>();
-
-        var filteredList = new List<string>();
-        foreach (var stratName in possibleStrats)
-        {
-            var stratObj = AllStratagemsDetailed.FirstOrDefault(s => s.Name.Equals(stratName, StringComparison.OrdinalIgnoreCase));
-            if (stratObj != null)
-            {
-                // NO CORE
-                if (string.IsNullOrEmpty(stratObj.FactionId)) continue;
-
-                // DETACHMENT MATCH
-                bool matchesDetachment = string.IsNullOrEmpty(stratObj.Detachment) ||
-                                         DetachmentName.Contains(stratObj.Detachment, StringComparison.OrdinalIgnoreCase) ||
-                                         stratObj.Detachment.Contains(DetachmentName, StringComparison.OrdinalIgnoreCase);
-
-                if (matchesDetachment) filteredList.Add(stratName);
-            }
-        }
-        return filteredList;
     }
 
     private int GetStratSortOrder(StratagemModelWithDetachment strat)
@@ -644,7 +546,7 @@ else
     };
 
     // Utilities
-    private void ShowStratagem(string stratName) => SelectedStratagem = AllStratagemsDetailed.FirstOrDefault(s => s.Name.Equals(stratName, StringComparison.OrdinalIgnoreCase));
+    private void ShowStratagem(string stratName) => SelectedStratagem = StratagemSvc.GetByName(stratName);
     private void CloseModal() => SelectedStratagem = null;
     private string GetProp(JsonElement el, string prop) => el.TryGetProperty(prop, out var p) ? p.GetString() ?? "" : "";
     private IEnumerable<Selection> GetUnits() { if (rosterData?.Roster?.Forces?.FirstOrDefault() == null) return Enumerable.Empty<Selection>(); return rosterData.Roster.Forces.First().Selections?.Where(s => s.Name != "Configuration" && s.Name != "Battle Size" && s.Name != "Detachment" && s.Name != "Show/Hide Options").ToList() ?? new List<Selection>(); }
