@@ -1,4 +1,4 @@
-@* @using Warhammer.Services
+@using Warhammer.Services
 @inject GameStateService GameState
 @inject FactionStateService FactionState
 @implements IDisposable
@@ -98,10 +98,13 @@
         gap: 0.75rem;
         padding: 0.4rem 1.25rem;
         background: var(--s-3, #242424);
-        border-bottom: 1px solid var(--b-default, #3d3d3d);
-        position: sticky;
-        top: 0;
-        z-index: 20;
+        border-top: 1px solid var(--b-default, #3d3d3d);
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
         flex-shrink: 0;
         flex-wrap: wrap;
     }
@@ -245,5 +248,12 @@
             border-color: var(--b-strong, #555555);
             color: var(--t-primary, #e8e8e8);
         }
+
+    /* On desktop, offset the bar to the right of the fixed sidebar */
+    @@media (min-width: 641px) {
+        .gsb-bar {
+            left: var(--sidebar-w, 280px);
+            width: calc(100% - var(--sidebar-w, 280px));
+        }
+    }
 </style>
- *@
