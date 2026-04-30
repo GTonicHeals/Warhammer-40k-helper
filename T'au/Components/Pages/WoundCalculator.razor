@@ -121,6 +121,13 @@
             <!-- ── VS COL ──────────────────────────────── -->
             <div class="wc-vs-col">
                 <div class="wc-vs-badge">VS</div>
+                <button class="wc-swap-btn"
+                        title="Swap Attacker and Defender"
+                        disabled="@(SelectedAttacker == null && SelectedDefender == null)"
+                        @onclick="SwapRoles">
+                    <i class="bi bi-arrow-left-right"></i>
+                    <span class="wc-swap-label">SWAP</span>
+                </button>
                 @if (WoundRoll != null)
                 {
                     <div class="wc-mini-result @GetResultClass(WoundRoll)">
@@ -364,6 +371,41 @@
     {
         SelectedDefender = null;
         DefenderToughness = null;
+        Recalculate();
+    }
+
+    private void SwapRoles()
+    {
+        var oldAttacker       = SelectedAttacker;
+        var oldDefender       = SelectedDefender;
+        var oldAttackerFilter = AttackerPlayerFilter;
+        var oldDefenderFilter = DefenderPlayerFilter;
+
+        // Cross the player filters
+        AttackerPlayerFilter = oldDefenderFilter;
+        DefenderPlayerFilter = oldAttackerFilter;
+
+        // Old Defender → new Attacker (weapon selection reset; user must pick one)
+        SelectedAttacker     = oldDefender;
+        _selectedWeaponName  = null;
+        SelectedWeapon       = null;
+        WeaponStrength       = null;
+        SelectedWeaponMeta   = "";
+        AttackerWeapons      = oldDefender != null ? GetAllWeapons(oldDefender.Unit) : new();
+
+        // Old Attacker → new Defender (re-derive T from unit profile)
+        SelectedDefender = oldAttacker;
+        if (oldAttacker != null)
+        {
+            var unitProfile = GetAllProfilesRecursive(oldAttacker.Unit, "Unit").FirstOrDefault();
+            var tVal = GetChar(unitProfile, "T");
+            DefenderToughness = int.TryParse(tVal, out var t) ? t : null;
+        }
+        else
+        {
+            DefenderToughness = null;
+        }
+
         Recalculate();
     }
 
@@ -806,6 +848,38 @@
         width: 100%;
         text-align: center;
     }
+
+    .wc-swap-btn {
+        width: 100%;
+        background: #1e1e1e;
+        border: 1px solid #444;
+        color: #888;
+        border-radius: 4px;
+        padding: 7px 6px;
+        cursor: pointer;
+        font-family: 'Oswald', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+
+    .wc-swap-btn:hover:not(:disabled) {
+        border-color: #ffc107;
+        color: #ffc107;
+        background: rgba(255, 193, 7, 0.08);
+    }
+
+    .wc-swap-btn:disabled {
+        opacity: 0.25;
+        cursor: not-allowed;
+    }
+
+    .wc-swap-label { font-size: 0.68rem; }
 
     /* Mini result in VS column */
     .wc-mini-result {
