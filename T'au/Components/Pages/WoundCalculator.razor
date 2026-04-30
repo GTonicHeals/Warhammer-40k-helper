@@ -30,7 +30,7 @@
             var bannerClass = GetResultClass(FinalSaveRoll ?? WoundRoll);
             <div class="wc-full-result @bannerClass">
                 <div class="wc-fr-title">
-                    <span class="wc-fr-weapon">@(_selectedWeaponName ?? "Weapon")</span>
+                    <span class="wc-fr-weapon">@(GetCleanWeaponName(_selectedWeaponName ?? "Weapon"))</span>
                     @if (SelectedDefender != null)
                     {
                         <span class="wc-fr-sep">vs</span>
@@ -76,7 +76,7 @@
                     {
                         <span class="wc-header-unit">— @SelectedAttacker.Unit.Name</span>
                         <button class="wc-info-btn" title="View Datasheet" @onclick="() => ShowUnitDetails(SelectedAttacker)" @onclick:stopPropagation="true">
-                            <i class="bi bi-info-circle"></i>
+                            <i class="bi bi-card-list me-1"></i> DATASHEET
                         </button>
                     }
                 </div>
@@ -127,7 +127,7 @@
                                 <div class="wc-wtile @(sel ? "wc-tile-atk-on" : "")"
                                      @onclick="() => SelectWeapon(w)">
                                     <span class="wc-wtype @(wt == "RNG" ? "wt-rng" : "wt-mel")">@wt</span>
-                                    <span class="wc-wname">@w.Name</span>
+                                    <span class="wc-wname">@GetCleanWeaponName(w.Name)</span>
                                     <span class="wc-ws">S@(sVal)</span>
                                 </div>
                             }
@@ -233,6 +233,27 @@
                         </div>
                     }
 
+                    <!-- Attacker Abilities -->
+                    @if (AttackerAbilities.Any())
+                    {
+                        <div class="wc-mods-section">
+                            <div class="wc-mods-label"><i class="bi bi-lightning-fill me-1"></i>Abilities</div>
+                            <div class="wc-ability-list">
+                                @foreach (var rule in AttackerAbilities)
+                                {
+                                    var r = rule;
+                                    <span class="kw-tag-wrapper">
+                                        <button class="wc-ability-btn" @onclick="() => ShowRule(r)">@r.Name</button>
+                                        <div class="kw-tooltip">
+                                            <div class="kw-tooltip-title">@r.Name</div>
+                                            <div class="kw-tooltip-body">@((MarkupString)FormatText(r.Description))</div>
+                                        </div>
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    }
+
                 </div>
             </div>
 
@@ -289,7 +310,7 @@
                     {
                         <span class="wc-header-unit">— @SelectedDefender.Unit.Name</span>
                         <button class="wc-info-btn" title="View Datasheet" @onclick="() => ShowUnitDetails(SelectedDefender)" @onclick:stopPropagation="true">
-                            <i class="bi bi-info-circle"></i>
+                            <i class="bi bi-card-list me-1"></i> DATASHEET
                         </button>
                     }
                 </div>
@@ -408,6 +429,27 @@
                         </div>
                     }
 
+                    <!-- Defender Abilities -->
+                    @if (DefenderAbilities.Any())
+                    {
+                        <div class="wc-mods-section">
+                            <div class="wc-mods-label"><i class="bi bi-lightning-fill me-1"></i>Abilities</div>
+                            <div class="wc-ability-list">
+                                @foreach (var rule in DefenderAbilities)
+                                {
+                                    var r = rule;
+                                    <span class="kw-tag-wrapper">
+                                        <button class="wc-ability-btn" @onclick="() => ShowRule(r)">@r.Name</button>
+                                        <div class="kw-tooltip">
+                                            <div class="kw-tooltip-title">@r.Name</div>
+                                            <div class="kw-tooltip-body">@((MarkupString)FormatText(r.Description))</div>
+                                        </div>
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    }
+
                 </div>
             </div>
 
@@ -436,6 +478,24 @@
                     <div class="small">
                         @((MarkupString)SelectedStratagem.Description)
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (SelectedRule != null)
+{
+    <div class="modal-backdrop fade show" style="cursor:pointer" @onclick="CloseRuleModal"></div>
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" @onclick="CloseRuleModal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-secondary text-light" @onclick:stopPropagation="true">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title" style="color:#c084fc">@SelectedRule.Name</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseRuleModal"></button>
+                </div>
+                <div class="modal-body small" style="line-height:1.6">
+                    @((MarkupString)FormatText(SelectedRule.Description))
                 </div>
             </div>
         </div>
@@ -667,6 +727,9 @@
     private List<StratagemModelWithDetachment> DefenderStratagems = new();
     private StratagemModelWithDetachment? SelectedStratagem;
     private UnitEntry? ModalUnit;
+    private List<Rule> AttackerAbilities = new();
+    private List<Rule> DefenderAbilities = new();
+    private Rule? SelectedRule;
 
     private IEnumerable<(string Id, int Index)> LoadedPlayers =>
         AllUnits.Select(u => (u.PlayerId, u.PlayerIndex))
@@ -764,6 +827,7 @@
             .Where(s => s.Turn.Contains("your", StringComparison.OrdinalIgnoreCase))
             .OrderBy(s => s.Phase).ThenBy(s => s.Name)
             .ToList();
+        AttackerAbilities = GetAbilities(entry.Unit);
         Recalculate();
     }
 
@@ -823,6 +887,7 @@
             .Where(s => s.Turn.Contains("opponent", StringComparison.OrdinalIgnoreCase))
             .OrderBy(s => s.Phase).ThenBy(s => s.Name)
             .ToList();
+        DefenderAbilities = GetAbilities(entry.Unit);
 
         Recalculate();
     }
@@ -832,6 +897,7 @@
         SelectedAttacker = null;
         AttackerWeapons = new();
         AttackerStratagems = new();
+        AttackerAbilities = new();
         ClearWeapon();
     }
 
@@ -861,6 +927,7 @@
         _invulnSave       = 0;
         _autoInvulnSave   = null;
         DefenderStratagems = new();
+        DefenderAbilities = new();
         Recalculate();
     }
 
@@ -919,12 +986,14 @@
                 .Where(s => s.Turn.Contains("your", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(s => s.Phase).ThenBy(s => s.Name).ToList()
             : new();
+        AttackerAbilities = SelectedAttacker != null ? GetAbilities(SelectedAttacker.Unit) : new();
 
         DefenderStratagems = SelectedDefender != null
             ? StratagemSvc.GetStratagemsForUnit(SelectedDefender.Unit.Name, SelectedDefender.DetachmentName)
                 .Where(s => s.Turn.Contains("opponent", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(s => s.Phase).ThenBy(s => s.Name).ToList()
             : new();
+        DefenderAbilities = SelectedDefender != null ? GetAbilities(SelectedDefender.Unit) : new();
 
         Recalculate();
     }
@@ -998,6 +1067,9 @@
     {
         return int.TryParse(roll.TrimEnd('+'), out var n) ? n : 4;
     }
+
+    private static string GetCleanWeaponName(string raw) =>
+        Regex.Replace(raw, @"\s*\[.*?\]\s*", "").Trim();
 
     private int? ParseInvulnSave(Selection unit)
     {
@@ -1114,6 +1186,9 @@
     private void ShowUnitDetails(UnitEntry entry) => ModalUnit = entry;
     private void CloseUnitDetails() => ModalUnit = null;
 
+    private void ShowRule(Rule rule) => SelectedRule = rule;
+    private void CloseRuleModal() => SelectedRule = null;
+
     private List<Rule> GetAbilities(Selection unit)
     {
         var list = new List<Rule>();
@@ -1124,7 +1199,12 @@
             list.Add(new Rule { Name = p.Name, Description = desc });
         }
         list.AddRange(CollectRules(unit));
-        return list.DistinctBy(r => r.Name).OrderBy(r => r.Name).ToList();
+        return list
+            .Where(r => !KeywordGlossary.ContainsKey(r.Name) &&
+                        !r.Name.StartsWith("Anti-", StringComparison.OrdinalIgnoreCase))
+            .DistinctBy(r => r.Name)
+            .OrderBy(r => r.Name)
+            .ToList();
     }
 
     private List<string> GetKeywords(Selection unit) =>
@@ -1760,8 +1840,7 @@
         display: none;
         position: absolute;
         bottom: calc(100% + 6px);
-        left: 50%;
-        transform: translateX(-50%);
+        left: -5px;
         background: #12122a;
         border: 1px solid #555;
         border-radius: 5px;
@@ -1888,6 +1967,35 @@
         background: rgba(255, 193, 7, 0.08) !important;
     }
 
+    /* ── Ability buttons ────────────────────────────────────────────────── */
+    .wc-ability-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+
+    .wc-ability-btn {
+        background: rgba(192, 132, 252, 0.1);
+        border: 1px solid rgba(192, 132, 252, 0.35);
+        color: #c084fc;
+        border-radius: 3px;
+        padding: 3px 8px;
+        cursor: pointer;
+        font-family: 'Oswald', sans-serif;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        transition: background 0.12s, border-color 0.12s, color 0.12s;
+        user-select: none;
+    }
+
+    .wc-ability-btn:hover {
+        background: rgba(192, 132, 252, 0.22);
+        border-color: rgba(192, 132, 252, 0.7);
+        color: #d8b4fe;
+    }
+
     /* ── Stratagem section ──────────────────────────────────────────────── */
     .wc-strat-section { margin-top: 10px; }
 
@@ -1935,21 +2043,29 @@
 
     /* ── Info button (in card headers) ─────────────────────────────────── */
     .wc-info-btn {
-        background: transparent;
-        border: 1px solid rgba(255,255,255,0.2);
-        color: rgba(255,255,255,0.5);
-        border-radius: 3px;
-        padding: 1px 5px;
+        background: rgba(255,255,255,0.15);
+        border: 1px solid rgba(255,255,255,0.35);
+        color: #ffffff;
+        border-radius: 4px;
+        padding: 4px 10px;
         cursor: pointer;
-        font-size: 0.75rem;
+        font-family: 'Oswald', sans-serif;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
         line-height: 1.4;
         margin-left: auto;
-        transition: border-color 0.15s, color 0.15s;
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+        transition: background 0.15s, border-color 0.15s;
     }
 
     .wc-info-btn:hover {
-        border-color: rgba(255,255,255,0.6);
-        color: #fff;
+        background: rgba(255,255,255,0.28);
+        border-color: rgba(255,255,255,0.7);
+        color: #ffffff;
     }
 
     /* ── Unit Details modal ─────────────────────────────────────────────── */
