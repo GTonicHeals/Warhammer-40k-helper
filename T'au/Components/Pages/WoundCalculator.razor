@@ -75,6 +75,9 @@
                     @if (SelectedAttacker != null)
                     {
                         <span class="wc-header-unit">— @SelectedAttacker.Unit.Name</span>
+                        <button class="wc-info-btn" title="View Datasheet" @onclick="() => ShowUnitDetails(SelectedAttacker)" @onclick:stopPropagation="true">
+                            <i class="bi bi-info-circle"></i>
+                        </button>
                     }
                 </div>
                 <div class="wc-card-body">
@@ -285,6 +288,9 @@
                     @if (SelectedDefender != null)
                     {
                         <span class="wc-header-unit">— @SelectedDefender.Unit.Name</span>
+                        <button class="wc-info-btn" title="View Datasheet" @onclick="() => ShowUnitDetails(SelectedDefender)" @onclick:stopPropagation="true">
+                            <i class="bi bi-info-circle"></i>
+                        </button>
                     }
                 </div>
                 <div class="wc-card-body">
@@ -436,6 +442,185 @@
     </div>
 }
 
+@if (ModalUnit != null)
+{
+    var mu         = ModalUnit.Unit;
+    var muProfiles = GetAllProfilesRecursive(mu, "Unit").DistinctBy(p => p.Name).ToList();
+    var muRanged   = GetAllProfilesRecursive(mu, "Ranged Weapons").DistinctBy(w => w.Name).ToList();
+    var muMelee    = GetAllProfilesRecursive(mu, "Melee Weapons").DistinctBy(w => w.Name).ToList();
+    var muAbils    = GetAbilities(mu);
+    var muKws      = GetKeywords(mu);
+    <div class="modal-backdrop fade show" style="cursor:pointer" @onclick="CloseUnitDetails"></div>
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" @onclick="CloseUnitDetails">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content wc-ds-modal" @onclick:stopPropagation="true">
+
+                <div class="wc-ds-header">
+                    <h5 class="wc-ds-title">@mu.Name</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseUnitDetails"></button>
+                </div>
+
+                <div class="modal-body wc-ds-body">
+
+                    @foreach (var profile in muProfiles)
+                    {
+                        @if (muProfiles.Count > 1)
+                        {
+                            <div class="ds-profile-name">@profile.Name</div>
+                        }
+                        <div class="ds-stats-strip">
+                            @if (profile.Characteristics != null)
+                            {
+                                @foreach (var stat in profile.Characteristics)
+                                {
+                                    <div class="ds-stat-cell">
+                                        <span class="ds-stat-label">@stat.Name</span>
+                                        <span class="ds-stat-value">@stat.Value</span>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
+
+                    @if (muRanged.Any())
+                    {
+                        <div class="ds-section-header"><i class="bi bi-crosshair2 me-2"></i>Ranged Weapons</div>
+                        <table class="ds-weapon-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:40%">Weapon</th>
+                                    <th class="text-center">Range</th>
+                                    <th class="text-center">A</th>
+                                    <th class="text-center">BS</th>
+                                    <th class="text-center">S</th>
+                                    <th class="text-center">AP</th>
+                                    <th class="text-center">D</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var w in muRanged)
+                                {
+                                    <tr>
+                                        <td class="ds-weapon-name">
+                                            @w.Name
+                                            <div class="ds-weapon-keywords">
+                                                @foreach (var kw in ParseWeaponKeywords(GetChar(w, "Keywords")))
+                                                {
+                                                    @if (kw.Definition != null)
+                                                    {
+                                                        <span class="kw-tag-wrapper">
+                                                            <span class="wc-kw-tag kw-tag-glossary">[@kw.Raw]</span>
+                                                            <div class="kw-tooltip">
+                                                                <div class="kw-tooltip-title">@kw.Raw</div>
+                                                                <div class="kw-tooltip-body">@kw.Definition</div>
+                                                            </div>
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="wc-kw-tag">[@kw.Raw]</span>
+                                                    }
+                                                }
+                                            </div>
+                                        </td>
+                                        <td class="text-center">@GetChar(w, "Range")</td>
+                                        <td class="text-center">@GetChar(w, "A")</td>
+                                        <td class="text-center">@GetChar(w, "BS")</td>
+                                        <td class="text-center">@GetChar(w, "S")</td>
+                                        <td class="text-center">@GetChar(w, "AP")</td>
+                                        <td class="text-center">@GetChar(w, "D")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+
+                    @if (muMelee.Any())
+                    {
+                        <div class="ds-section-header ds-section-header-mt"><i class="bi bi-hammer me-2"></i>Melee Weapons</div>
+                        <table class="ds-weapon-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:40%">Weapon</th>
+                                    <th class="text-center">Range</th>
+                                    <th class="text-center">A</th>
+                                    <th class="text-center">WS</th>
+                                    <th class="text-center">S</th>
+                                    <th class="text-center">AP</th>
+                                    <th class="text-center">D</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var w in muMelee)
+                                {
+                                    <tr>
+                                        <td class="ds-weapon-name">
+                                            @w.Name
+                                            <div class="ds-weapon-keywords">
+                                                @foreach (var kw in ParseWeaponKeywords(GetChar(w, "Keywords")))
+                                                {
+                                                    @if (kw.Definition != null)
+                                                    {
+                                                        <span class="kw-tag-wrapper">
+                                                            <span class="wc-kw-tag kw-tag-glossary">[@kw.Raw]</span>
+                                                            <div class="kw-tooltip">
+                                                                <div class="kw-tooltip-title">@kw.Raw</div>
+                                                                <div class="kw-tooltip-body">@kw.Definition</div>
+                                                            </div>
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="wc-kw-tag">[@kw.Raw]</span>
+                                                    }
+                                                }
+                                            </div>
+                                        </td>
+                                        <td class="text-center">@GetChar(w, "Range")</td>
+                                        <td class="text-center">@GetChar(w, "A")</td>
+                                        <td class="text-center">@GetChar(w, "WS")</td>
+                                        <td class="text-center">@GetChar(w, "S")</td>
+                                        <td class="text-center">@GetChar(w, "AP")</td>
+                                        <td class="text-center">@GetChar(w, "D")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+
+                    @if (muAbils.Any())
+                    {
+                        <div class="ds-section-header ds-section-header-mt">Abilities & Rules</div>
+                        <div class="ds-abilities-box">
+                            @foreach (var rule in muAbils)
+                            {
+                                <div class="ds-ability-row">
+                                    <span class="ds-ability-name">@rule.Name:</span>
+                                    <span class="ds-ability-desc">@FormatText(rule.Description)</span>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (muKws.Any())
+                    {
+                        <div class="ds-footer">
+                            <span class="ds-footer-label">KEYWORDS:</span>
+                            <div class="ds-keyword-list">
+                                @foreach (var k in muKws)
+                                {
+                                    <span class="ds-kw">@k</span>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private record UnitEntry(string Key, string Label, string PlayerId, int PlayerIndex, Selection Unit, string DetachmentName);
 
@@ -481,6 +666,7 @@
     private List<StratagemModelWithDetachment> AttackerStratagems = new();
     private List<StratagemModelWithDetachment> DefenderStratagems = new();
     private StratagemModelWithDetachment? SelectedStratagem;
+    private UnitEntry? ModalUnit;
 
     private IEnumerable<(string Id, int Index)> LoadedPlayers =>
         AllUnits.Select(u => (u.PlayerId, u.PlayerIndex))
@@ -924,6 +1110,35 @@
 
     private void ShowStratagem(StratagemModelWithDetachment strat) => SelectedStratagem = strat;
     private void CloseModal() => SelectedStratagem = null;
+
+    private void ShowUnitDetails(UnitEntry entry) => ModalUnit = entry;
+    private void CloseUnitDetails() => ModalUnit = null;
+
+    private List<Rule> GetAbilities(Selection unit)
+    {
+        var list = new List<Rule>();
+        var abilityProfiles = GetAllProfilesRecursive(unit, "Abilities");
+        foreach (var p in abilityProfiles)
+        {
+            var desc = p.Characteristics?.FirstOrDefault(c => c.Name == "Description")?.Value ?? "";
+            list.Add(new Rule { Name = p.Name, Description = desc });
+        }
+        list.AddRange(CollectRules(unit));
+        return list.DistinctBy(r => r.Name).OrderBy(r => r.Name).ToList();
+    }
+
+    private List<string> GetKeywords(Selection unit) =>
+        unit.Categories?.Where(c => c.Name != "Configuration" && c.Name != "Uncategorized")
+            .Select(c => c.Name).ToList() ?? new List<string>();
+
+    private static MarkupString FormatText(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return new MarkupString("");
+        text = text.Replace("^^", "");
+        text = Regex.Replace(text, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+        text = text.Replace("\n", "<br/>");
+        return new MarkupString(text);
+    }
 
     private static string StratClass(StratagemModelWithDetachment s)
     {
@@ -1717,4 +1932,203 @@
     .modal-backdrop.show { opacity: 0.7; }
     .modal-title { font-weight: 800; text-transform: uppercase; }
     .border-warning { border-color: #ffc107 !important; }
+
+    /* ── Info button (in card headers) ─────────────────────────────────── */
+    .wc-info-btn {
+        background: transparent;
+        border: 1px solid rgba(255,255,255,0.2);
+        color: rgba(255,255,255,0.5);
+        border-radius: 3px;
+        padding: 1px 5px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        line-height: 1.4;
+        margin-left: auto;
+        transition: border-color 0.15s, color 0.15s;
+    }
+
+    .wc-info-btn:hover {
+        border-color: rgba(255,255,255,0.6);
+        color: #fff;
+    }
+
+    /* ── Unit Details modal ─────────────────────────────────────────────── */
+    .wc-ds-modal {
+        background: #1c1c1c;
+        border: 1px solid #444;
+        color: #e0e0e0;
+        font-family: 'Oswald', sans-serif;
+    }
+
+    .wc-ds-header {
+        background: linear-gradient(135deg, #5c2c00 0%, #3a1800 100%);
+        border-bottom: 3px solid #d35400;
+        padding: 10px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+
+    .wc-ds-title {
+        margin: 0;
+        font-size: 1.4rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #fff;
+    }
+
+    .wc-ds-body {
+        padding: 0;
+        max-height: 78vh;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #444 #1c1c1c;
+    }
+
+    .wc-ds-body::-webkit-scrollbar { width: 5px; }
+    .wc-ds-body::-webkit-scrollbar-track { background: #1c1c1c; }
+    .wc-ds-body::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+
+    /* Stats strip */
+    .ds-profile-name {
+        background: #2a2a2a;
+        color: #d35400;
+        padding: 4px 15px;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        font-weight: bold;
+        border-bottom: 1px solid #444;
+    }
+
+    .ds-stats-strip {
+        display: flex;
+        background: #333;
+        border-bottom: 1px solid #555;
+    }
+
+    .ds-stat-cell {
+        flex: 1;
+        text-align: center;
+        padding: 6px 0;
+        border-right: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .ds-stat-cell:last-child { border-right: none; }
+
+    .ds-stat-label {
+        display: block;
+        font-size: 0.65rem;
+        font-weight: bold;
+        color: #aaa;
+    }
+
+    .ds-stat-value {
+        font-size: 1.5rem;
+        font-weight: 900;
+        color: #fff;
+    }
+
+    /* Section headers inside modal body */
+    .ds-section-header {
+        background: #2e2e2e;
+        color: #ccc;
+        padding: 5px 15px;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid #444;
+    }
+
+    .ds-section-header-mt { margin-top: 8px; }
+
+    /* Weapon table */
+    .ds-weapon-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.85rem;
+        background: #242424;
+        color: #ddd;
+    }
+
+    .ds-weapon-table th {
+        background: #1a1a1a;
+        color: #d35400;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        padding: 4px 6px;
+        border-bottom: 1px solid #444;
+    }
+
+    .ds-weapon-table td {
+        padding: 6px 6px;
+        border-bottom: 1px solid #333;
+        overflow: visible;
+    }
+
+    .ds-weapon-table tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+
+    .ds-weapon-name { font-weight: bold; }
+
+    .ds-weapon-keywords {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+        margin-top: 3px;
+    }
+
+    /* Abilities */
+    .ds-abilities-box {
+        padding: 10px 15px;
+        font-size: 0.85rem;
+        background: #1e1e1e;
+    }
+
+    .ds-ability-row {
+        margin-bottom: 8px;
+        line-height: 1.4;
+        border-bottom: 1px solid #2e2e2e;
+        padding-bottom: 6px;
+    }
+
+    .ds-ability-row:last-child { border-bottom: none; }
+
+    .ds-ability-name {
+        font-weight: bold;
+        color: #d35400;
+        margin-right: 5px;
+    }
+
+    .ds-ability-desc { color: #bbb; }
+
+    /* Keywords footer */
+    .ds-footer {
+        background: #161616;
+        padding: 8px 15px;
+        border-top: 1px solid #333;
+        font-size: 0.72rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .ds-footer-label {
+        font-weight: bold;
+        text-transform: uppercase;
+        color: #555;
+    }
+
+    .ds-keyword-list { display: flex; flex-wrap: wrap; gap: 5px; }
+
+    .ds-kw {
+        text-transform: uppercase;
+        font-weight: bold;
+        color: #888;
+    }
 </style>
