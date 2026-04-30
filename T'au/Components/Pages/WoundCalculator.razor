@@ -1,6 +1,7 @@
 @page "/woundcalc"
 @rendermode InteractiveServer
 @using System.Text.Json
+@using System.Text.RegularExpressions
 @using Warhammer.Models
 @using System.IO
 @inject IWebHostEnvironment Env
@@ -21,19 +22,44 @@
     }
     else
     {
-        <!-- Full-width result (pinned above the arena when active) -->
-        @if (WoundRoll != null && WeaponStrength.HasValue && DefenderToughness.HasValue)
+        <!-- Full-width attack sequence banner -->
+        @if (SelectedWeapon != null)
         {
-            <div class="wc-full-result @GetResultClass(WoundRoll)">
-                <div class="wc-fr-left">
+            var bannerClass = GetResultClass(FinalSaveRoll ?? WoundRoll);
+            <div class="wc-full-result @bannerClass">
+                <div class="wc-fr-title">
                     <span class="wc-fr-weapon">@(_selectedWeaponName ?? "Weapon")</span>
-                    <span class="wc-fr-sep">vs</span>
-                    <span class="wc-fr-defender">@(SelectedDefender?.Unit.Name ?? "Target")</span>
+                    @if (SelectedDefender != null)
+                    {
+                        <span class="wc-fr-sep">vs</span>
+                        <span class="wc-fr-defender">@SelectedDefender.Unit.Name</span>
+                    }
                 </div>
-                <div class="wc-fr-center">
-                    <span class="wc-fr-annotation">S@(WeaponStrength) vs T@(DefenderToughness)</span>
-                    <span class="wc-fr-roll">@WoundRoll</span>
-                    <span class="wc-fr-annotation">to wound</span>
+                <div class="wc-sequence">
+                    <div class="wc-seq-step">
+                        <span class="wc-seq-label">
+                            HIT@(NetHitMod > 0 ? " ▲" : NetHitMod < 0 ? " ▼" : "")
+                        </span>
+                        <span class="wc-seq-roll seq-hit">@(EffectiveHitRoll ?? "—")</span>
+                    </div>
+                    @if (EffectiveWoundRoll != null)
+                    {
+                        <span class="wc-seq-arrow">→</span>
+                        <div class="wc-seq-step">
+                            <span class="wc-seq-label">
+                                WOUND@(NetWoundMod > 0 ? " ▲" : NetWoundMod < 0 ? " ▼" : "")
+                            </span>
+                            <span class="wc-seq-roll seq-wound">@EffectiveWoundRoll</span>
+                        </div>
+                    }
+                    @if (FinalSaveRoll != null)
+                    {
+                        <span class="wc-seq-arrow">→</span>
+                        <div class="wc-seq-step">
+                            <span class="wc-seq-label">SAVE@((_hasCover || _defReduceAp || _invulnSave > 0) ? " ✦" : "")</span>
+                            <span class="wc-seq-roll seq-save">@FinalSaveRoll</span>
+                        </div>
+                    }
                 </div>
             </div>
         }
@@ -104,14 +130,54 @@
                     }
 
                     <!-- Weapon stat bar -->
-                    @if (WeaponStrength.HasValue && SelectedWeapon != null)
+                    @if (SelectedWeapon != null)
                     {
                         <div class="wc-statbar atk-statbar">
-                            <div class="wc-sb-stat">
-                                <span class="wc-sb-lbl">S</span>
-                                <span class="wc-sb-val">@WeaponStrength</span>
+                            @if (HitRoll != null)
+                            {
+                                <div class="wc-sb-stat">
+                                    <span class="wc-sb-lbl">@(SelectedWeapon.TypeName == "Ranged Weapons" ? "BS" : "WS")</span>
+                                    <span class="wc-sb-val wc-sb-hit">@HitRoll</span>
+                                </div>
+                                <div class="wc-sb-divider"></div>
+                            }
+                            @if (WeaponStrength.HasValue)
+                            {
+                                <div class="wc-sb-stat">
+                                    <span class="wc-sb-lbl">S</span>
+                                    <span class="wc-sb-val">@WeaponStrength</span>
+                                </div>
+                            }
+                            @if (WeaponAp.HasValue)
+                            {
+                                <div class="wc-sb-divider"></div>
+                                <div class="wc-sb-stat">
+                                    <span class="wc-sb-lbl">AP</span>
+                                    <span class="wc-sb-val wc-sb-ap">@WeaponAp</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(SelectedWeaponMeta))
+                            {
+                                <span class="wc-sb-meta">@SelectedWeaponMeta</span>
+                            }
+                        </div>
+                    }
+
+                    <!-- Attacker modifiers -->
+                    @if (SelectedWeapon != null)
+                    {
+                        <div class="wc-mods-section">
+                            <div class="wc-mods-label">Modifiers</div>
+                            <div class="wc-mods-row">
+                                <button class="wc-mod-btn @(_atkPlusOneHit ? "wc-mod-on" : "")"
+                                        @onclick="() => { _atkPlusOneHit = !_atkPlusOneHit; Recalculate(); }">
+                                    <i class="bi bi-arrow-up-circle"></i> +1 HIT
+                                </button>
+                                <button class="wc-mod-btn @(_atkPlusOneWound ? "wc-mod-on" : "")"
+                                        @onclick="() => { _atkPlusOneWound = !_atkPlusOneWound; Recalculate(); }">
+                                    <i class="bi bi-arrow-up-circle"></i> +1 WOUND
+                                </button>
                             </div>
-                            <span class="wc-sb-meta">@SelectedWeaponMeta</span>
                         </div>
                     }
 
@@ -128,12 +194,15 @@
                     <i class="bi bi-arrow-left-right"></i>
                     <span class="wc-swap-label">SWAP</span>
                 </button>
-                @if (WoundRoll != null)
+                @if (EffectiveWoundRoll != null)
                 {
-                    <div class="wc-mini-result @GetResultClass(WoundRoll)">
-                        <div class="wc-mr-label">needs</div>
-                        <div class="wc-mr-roll">@WoundRoll</div>
-                        <div class="wc-mr-label">to wound</div>
+                    <div class="wc-mini-result @GetResultClass(EffectiveWoundRoll)">
+                        <div class="wc-mr-label">wound</div>
+                        <div class="wc-mr-roll">@EffectiveWoundRoll</div>
+                        @if (FinalSaveRoll != null)
+                        {
+                            <div class="wc-mr-label">save @FinalSaveRoll</div>
+                        }
                     </div>
                 }
                 <!-- Quick reference table -->
@@ -203,13 +272,66 @@
                         }
                     </div>
 
-                    <!-- Toughness stat bar -->
+                    <!-- Defender stat bar + cover toggle -->
                     @if (DefenderToughness.HasValue)
                     {
                         <div class="wc-statbar def-statbar">
                             <div class="wc-sb-stat">
                                 <span class="wc-sb-lbl">T</span>
                                 <span class="wc-sb-val">@DefenderToughness</span>
+                            </div>
+                            @if (DefenderSave.HasValue)
+                            {
+                                <div class="wc-sb-divider"></div>
+                                <div class="wc-sb-stat">
+                                    <span class="wc-sb-lbl">Sv</span>
+                                    <span class="wc-sb-val wc-sb-sv">@(DefenderSave)@("+")</span>
+                                </div>
+                            }
+                        </div>
+                        <button class="wc-cover-btn @(_hasCover ? "wc-cover-on" : "")"
+                                @onclick="ToggleCover">
+                            <i class="bi @(_hasCover ? "bi-tree-fill" : "bi-tree") me-1"></i>
+                            IN COVER @(_hasCover ? "(+1 Sv)" : "")
+                        </button>
+
+                        <!-- Defender modifiers -->
+                        <div class="wc-mods-section">
+                            <div class="wc-mods-label">Modifiers</div>
+                            <div class="wc-mods-row">
+                                <button class="wc-mod-btn @(_defMinusOneHit ? "wc-mod-on" : "")"
+                                        @onclick="() => { _defMinusOneHit = !_defMinusOneHit; Recalculate(); }">
+                                    <i class="bi bi-arrow-down-circle"></i> -1 vs HIT
+                                </button>
+                                <button class="wc-mod-btn @(_defMinusOneWound ? "wc-mod-on" : "")"
+                                        @onclick="() => { _defMinusOneWound = !_defMinusOneWound; Recalculate(); }">
+                                    <i class="bi bi-arrow-down-circle"></i> -1 vs WND
+                                </button>
+                                <button class="wc-mod-btn @(_defReduceAp ? "wc-mod-on" : "")"
+                                        @onclick="() => { _defReduceAp = !_defReduceAp; Recalculate(); }">
+                                    <i class="bi bi-shield-plus"></i> AP -1
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Invulnerable save -->
+                        <div class="wc-mods-section">
+                            <div class="wc-mods-label">
+                                Invuln Save
+                                @if (_autoInvulnSave.HasValue)
+                                {
+                                    <span class="wc-auto-badge">auto @(_autoInvulnSave)@("+")</span>
+                                }
+                            </div>
+                            <div class="wc-mods-row">
+                                <button class="wc-fbtn @(_invulnSave == 0 ? "wc-fbtn-on" : "")"
+                                        @onclick="() => { _invulnSave = 0; Recalculate(); }">None</button>
+                                @foreach (var inv in new[] { 3, 4, 5, 6 })
+                                {
+                                    <button class="wc-fbtn @(_invulnSave == inv ? "wc-fbtn-on" : "")"
+                                            style="@(_invulnSave == inv ? "--pbtn-color:#a855f7;" : "")"
+                                            @onclick="() => { _invulnSave = inv; Recalculate(); }">@(inv)@("+")</button>
+                                }
                             </div>
                         </div>
                     }
@@ -236,9 +358,29 @@
     private Profile? SelectedWeapon;
 
     private int? WeaponStrength;
+    private int? WeaponAp;
+    private string? HitRoll;
     private int? DefenderToughness;
+    private int? DefenderSave;
+    private bool _hasCover;
     private string? WoundRoll;
+    private string? FinalSaveRoll;
     private string SelectedWeaponMeta = "";
+
+    // Modifier toggles
+    private bool _atkPlusOneHit;
+    private bool _atkPlusOneWound;
+    private bool _defMinusOneHit;
+    private bool _defMinusOneWound;
+    private bool _defReduceAp;
+    private int  _invulnSave;       // 0 = None, else 3/4/5/6
+    private int? _autoInvulnSave;   // detected from unit profile
+
+    // Effective display rolls (post-modifier)
+    private int    NetHitMod;
+    private int    NetWoundMod;
+    private string? EffectiveHitRoll;
+    private string? EffectiveWoundRoll;
 
     private IEnumerable<(string Id, int Index)> LoadedPlayers =>
         AllUnits.Select(u => (u.PlayerId, u.PlayerIndex))
@@ -319,6 +461,8 @@
         SelectedWeapon = null;
         WeaponStrength = null;
         SelectedWeaponMeta = "";
+        _atkPlusOneHit = false;
+        _atkPlusOneWound = false;
         AttackerWeapons = GetAllWeapons(entry.Unit);
         Recalculate();
     }
@@ -329,14 +473,28 @@
 
         _selectedWeaponName = w.Name;
         SelectedWeapon = w;
+
         var sVal = GetChar(w, "S");
         WeaponStrength = int.TryParse(sVal, out var s) ? s : null;
 
+        var apVal = GetChar(w, "AP");
+        WeaponAp = int.TryParse(apVal, out var ap) ? ap : null;
+
+        var skillStat = w.TypeName == "Ranged Weapons" ? "BS" : "WS";
+        var skillRaw  = GetChar(w, skillStat);
+        if (skillRaw == "N/A" || skillRaw == "-")
+        {
+            HitRoll = "AUTO";
+        }
+        else
+        {
+            HitRoll = skillRaw; // stored as-is e.g. "3+"
+        }
+
         var range   = GetChar(w, "Range");
         var attacks = GetChar(w, "A");
-        var ap      = GetChar(w, "AP");
         var dmg     = GetChar(w, "D");
-        SelectedWeaponMeta = $"{range}  A:{attacks}  AP:{ap}  D:{dmg}";
+        SelectedWeaponMeta = $"{range}  A:{attacks}  D:{dmg}";
         Recalculate();
     }
 
@@ -345,9 +503,20 @@
         if (SelectedDefender?.Key == entry.Key) { ClearDefender(); return; }
 
         SelectedDefender = entry;
+        _hasCover        = false;
+        _defMinusOneHit  = false;
+        _defMinusOneWound = false;
+        _defReduceAp     = false;
+
         var unitProfile = GetAllProfilesRecursive(entry.Unit, "Unit").FirstOrDefault();
-        var tVal = GetChar(unitProfile, "T");
-        DefenderToughness = int.TryParse(tVal, out var t) ? t : null;
+        var tVal  = GetChar(unitProfile, "T");
+        var svVal = GetChar(unitProfile, "SV");
+        DefenderToughness = int.TryParse(tVal, out var t)  ? t  : null;
+        DefenderSave      = int.TryParse(svVal.TrimEnd('+'), out var sv) ? sv : null;
+
+        _autoInvulnSave = ParseInvulnSave(entry.Unit);
+        _invulnSave     = _autoInvulnSave ?? 0;
+
         Recalculate();
     }
 
@@ -363,14 +532,23 @@
         SelectedWeapon = null;
         _selectedWeaponName = null;
         WeaponStrength = null;
+        WeaponAp = null;
+        HitRoll = null;
         SelectedWeaponMeta = "";
         Recalculate();
     }
 
     private void ClearDefender()
     {
-        SelectedDefender = null;
+        SelectedDefender  = null;
         DefenderToughness = null;
+        DefenderSave      = null;
+        _hasCover         = false;
+        _defMinusOneHit   = false;
+        _defMinusOneWound = false;
+        _defReduceAp      = false;
+        _invulnSave       = 0;
+        _autoInvulnSave   = null;
         Recalculate();
     }
 
@@ -386,24 +564,39 @@
         DefenderPlayerFilter = oldAttackerFilter;
 
         // Old Defender → new Attacker (weapon selection reset; user must pick one)
-        SelectedAttacker     = oldDefender;
-        _selectedWeaponName  = null;
-        SelectedWeapon       = null;
-        WeaponStrength       = null;
-        SelectedWeaponMeta   = "";
-        AttackerWeapons      = oldDefender != null ? GetAllWeapons(oldDefender.Unit) : new();
+        SelectedAttacker    = oldDefender;
+        _selectedWeaponName = null;
+        SelectedWeapon      = null;
+        WeaponStrength      = null;
+        WeaponAp            = null;
+        HitRoll             = null;
+        SelectedWeaponMeta  = "";
+        _atkPlusOneHit      = false;
+        _atkPlusOneWound    = false;
+        AttackerWeapons     = oldDefender != null ? GetAllWeapons(oldDefender.Unit) : new();
 
-        // Old Attacker → new Defender (re-derive T from unit profile)
-        SelectedDefender = oldAttacker;
+        // Old Attacker → new Defender (re-derive T, Sv, invuln)
+        SelectedDefender  = oldAttacker;
+        _hasCover         = false;
+        _defMinusOneHit   = false;
+        _defMinusOneWound = false;
+        _defReduceAp      = false;
         if (oldAttacker != null)
         {
             var unitProfile = GetAllProfilesRecursive(oldAttacker.Unit, "Unit").FirstOrDefault();
-            var tVal = GetChar(unitProfile, "T");
+            var tVal  = GetChar(unitProfile, "T");
+            var svVal = GetChar(unitProfile, "Save"); if (svVal == "-") svVal = GetChar(unitProfile, "Sv");
             DefenderToughness = int.TryParse(tVal, out var t) ? t : null;
+            DefenderSave      = int.TryParse(svVal.TrimEnd('+'), out var sv) ? sv : null;
+            _autoInvulnSave   = ParseInvulnSave(oldAttacker.Unit);
+            _invulnSave       = _autoInvulnSave ?? 0;
         }
         else
         {
             DefenderToughness = null;
+            DefenderSave      = null;
+            _autoInvulnSave   = null;
+            _invulnSave       = 0;
         }
 
         Recalculate();
@@ -411,19 +604,110 @@
 
     private void Recalculate()
     {
-        if (!WeaponStrength.HasValue || !DefenderToughness.HasValue) { WoundRoll = null; return; }
-        int s = WeaponStrength.Value, t = DefenderToughness.Value;
-        WoundRoll = s >= t * 2 ? "2+" :
-                    s > t      ? "3+" :
-                    s == t     ? "4+" :
-                    s * 2 <= t ? "6+" :
-                                 "5+";
+        // ── Net modifiers (10th Ed: capped at [-1, +1]) ───────────────────
+        NetHitMod   = Math.Clamp((_atkPlusOneHit  ? 1 : 0) - (_defMinusOneHit   ? 1 : 0), -1, 1);
+        NetWoundMod = Math.Clamp((_atkPlusOneWound ? 1 : 0) - (_defMinusOneWound ? 1 : 0), -1, 1);
+
+        // ── Effective AP (AP reduction: makes AP less severe, floor at 0) ─
+        int effectiveAp = WeaponAp.HasValue
+            ? (_defReduceAp ? Math.Min(WeaponAp.Value + 1, 0) : WeaponAp.Value)
+            : 0;
+
+        // ── Base wound roll ───────────────────────────────────────────────
+        if (WeaponStrength.HasValue && DefenderToughness.HasValue)
+        {
+            int s = WeaponStrength.Value, t = DefenderToughness.Value;
+            WoundRoll = s >= t * 2 ? "2+" :
+                        s > t      ? "3+" :
+                        s == t     ? "4+" :
+                        s * 2 <= t ? "6+" :
+                                     "5+";
+        }
+        else { WoundRoll = null; }
+
+        // ── Effective hit roll (with modifier) ────────────────────────────
+        if (HitRoll != null && HitRoll != "AUTO")
+        {
+            int baseHit = ParseRollNum(HitRoll);
+            int eff     = Math.Clamp(baseHit - NetHitMod, 2, 7);
+            EffectiveHitRoll = eff <= 6 ? $"{eff}+" : "N/A";
+        }
+        else { EffectiveHitRoll = HitRoll; }
+
+        // ── Effective wound roll (with modifier) ──────────────────────────
+        if (WoundRoll != null)
+        {
+            int baseWound = ParseRollNum(WoundRoll);
+            int eff       = Math.Clamp(baseWound - NetWoundMod, 2, 7);
+            EffectiveWoundRoll = eff <= 6 ? $"{eff}+" : "N/A";
+        }
+        else { EffectiveWoundRoll = null; }
+
+        // ── Final save: armour vs invuln, take the better ─────────────────
+        if (DefenderSave.HasValue && WeaponAp.HasValue)
+        {
+            int rawArmour   = DefenderSave.Value + Math.Abs(effectiveAp);
+            int adjustedArmour = rawArmour - (_hasCover ? 1 : 0);
+            int armourSave  = Math.Max(adjustedArmour, DefenderSave.Value); // cover can't beat base
+
+            int finalSaveNum;
+            if (_invulnSave > 0)
+                finalSaveNum = armourSave <= 6 ? Math.Min(armourSave, _invulnSave) : _invulnSave;
+            else
+                finalSaveNum = armourSave;
+
+            FinalSaveRoll = finalSaveNum <= 6 ? $"{finalSaveNum}+" : "N/A";
+        }
+        else if (_invulnSave > 0 && WeaponAp.HasValue)
+        {
+            FinalSaveRoll = $"{_invulnSave}+";
+        }
+        else { FinalSaveRoll = null; }
+    }
+
+    private void ToggleCover() { _hasCover = !_hasCover; Recalculate(); }
+
+    private static int ParseRollNum(string roll)
+    {
+        return int.TryParse(roll.TrimEnd('+'), out var n) ? n : 4;
+    }
+
+    private int? ParseInvulnSave(Selection unit)
+    {
+        // Look for a profile named "Invulnerable Save" (or containing "Invulnerable")
+        var abilityProfiles = GetAllProfilesRecursive(unit, "Abilities");
+        foreach (var p in abilityProfiles)
+        {
+            if (!p.Name.Contains("Invulnerable", StringComparison.OrdinalIgnoreCase)) continue;
+            var desc = p.Characteristics?.FirstOrDefault(c => c.Name == "Description")?.Value ?? p.Name;
+            var m = Regex.Match(desc, @"\b([2-6])\+");
+            if (m.Success && int.TryParse(m.Groups[1].Value, out int inv)) return inv;
+        }
+
+        // Fall back: scan all rules text for "invulnerable ... X+"
+        var rules = CollectRules(unit);
+        foreach (var r in rules)
+        {
+            var text = r.Name + " " + r.Description;
+            if (!text.Contains("invulnerable", StringComparison.OrdinalIgnoreCase)) continue;
+            var m = Regex.Match(text, @"\b([2-6])\+");
+            if (m.Success && int.TryParse(m.Groups[1].Value, out int inv)) return inv;
+        }
+        return null;
+    }
+
+    private List<Rule> CollectRules(Selection sel)
+    {
+        var list = new List<Rule>();
+        if (sel.Rules != null) list.AddRange(sel.Rules);
+        if (sel.Selections != null) foreach (var child in sel.Selections) list.AddRange(CollectRules(child));
+        return list;
     }
 
     private string GetResultClass(string? roll) => roll switch
     {
         "2+" => "wfr-2", "3+" => "wfr-3", "4+" => "wfr-4",
-        "5+" => "wfr-5", "6+" => "wfr-6", _ => ""
+        "5+" => "wfr-5", "6+" => "wfr-6", "N/A" => "wfr-na", _ => ""
     };
 
     private List<Profile> GetAllWeapons(Selection unit)
@@ -946,4 +1230,167 @@
     .roll-4 { color: #3498db; }
     .roll-5 { color: #e67e22; }
     .roll-6 { color: #e74c3c; }
+
+    /* ── Result banner N/A state ────────────────────────────────────────── */
+    .wfr-na { border-color: #555; background: rgba(100,100,100,0.06); }
+
+    /* ── Attack sequence banner layout ─────────────────────────────────── */
+    .wc-full-result {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .wc-fr-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .wc-sequence {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .wc-seq-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1px;
+        min-width: 54px;
+    }
+
+    .wc-seq-label {
+        font-size: 0.58rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #666;
+        line-height: 1;
+    }
+
+    .wc-seq-roll {
+        font-size: 1.6rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .seq-hit   { color: #aaccff; }
+    .seq-wound { color: #ffc107; }
+    .seq-save  { color: #2ecc71; }
+
+    .wc-seq-arrow {
+        font-size: 1rem;
+        color: #444;
+        margin-bottom: 4px;
+    }
+
+    /* ── Stat bar additions ─────────────────────────────────────────────── */
+    .wc-sb-divider {
+        width: 1px;
+        height: 28px;
+        background: rgba(255,255,255,0.08);
+        flex-shrink: 0;
+    }
+
+    .wc-sb-hit { color: #aaccff; }
+    .wc-sb-ap  { color: #e74c3c; }
+    .wc-sb-sv  { color: #2ecc71; }
+
+    /* ── Cover toggle button ────────────────────────────────────────────── */
+    .wc-cover-btn {
+        margin-top: 8px;
+        width: 100%;
+        background: #1a1a1a;
+        border: 1px dashed #3a3a3a;
+        color: #666;
+        border-radius: 4px;
+        padding: 6px 10px;
+        cursor: pointer;
+        font-family: 'Oswald', sans-serif;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+
+    .wc-cover-btn:hover {
+        border-color: #2ecc71;
+        color: #2ecc71;
+    }
+
+    .wc-cover-on {
+        border: 1px solid #2ecc71 !important;
+        color: #2ecc71 !important;
+        background: rgba(46, 204, 113, 0.08) !important;
+    }
+
+    /* ── Modifier section ───────────────────────────────────────────────── */
+    .wc-mods-section {
+        margin-top: 10px;
+    }
+
+    .wc-mods-label {
+        font-size: 0.62rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #555;
+        margin-bottom: 5px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .wc-auto-badge {
+        background: rgba(168, 85, 247, 0.15);
+        border: 1px solid rgba(168, 85, 247, 0.4);
+        color: #c084fc;
+        font-size: 0.58rem;
+        padding: 1px 5px;
+        border-radius: 3px;
+        letter-spacing: 0.5px;
+    }
+
+    .wc-mods-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+
+    /* ── Modifier toggle buttons ────────────────────────────────────────── */
+    .wc-mod-btn {
+        background: #1e1e1e;
+        border: 1px solid #3a3a3a;
+        color: #666;
+        border-radius: 3px;
+        padding: 4px 9px;
+        cursor: pointer;
+        font-family: 'Oswald', sans-serif;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        transition: border-color 0.12s, color 0.12s, background 0.12s;
+        user-select: none;
+    }
+
+    .wc-mod-btn:hover {
+        border-color: #666;
+        color: #bbb;
+        background: #272727;
+    }
+
+    .wc-mod-on {
+        border-color: #ffc107 !important;
+        color: #ffc107 !important;
+        background: rgba(255, 193, 7, 0.08) !important;
+    }
 </style>
