@@ -1,0 +1,282 @@
+/* =============================================================
+   WARHAMMER SHARED STYLES
+   Classes used across multiple pages — loaded globally via App.razor.
+   ============================================================= */
+
+
+/* ── Section header ───────────────────────────────────────── */
+.section-header {
+    background-color: #3b3b3b;
+    color: white;
+    padding: 4px 10px;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    margin-bottom: 0;
+}
+
+
+/* ── Weapon table ─────────────────────────────────────────── */
+.weapon-table {
+    width: 100%;
+    border-collapse: separate; /* prevent table stacking context from clipping abs. tooltip children */
+    border-spacing: 0;
+    font-size: 0.9rem;
+    background: #2a2a2a;
+    color: #ddd;
+}
+
+    .weapon-table th {
+        background: #1a1a1a;
+        color: #d35400;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        padding: 4px;
+        border-bottom: 1px solid #444;
+    }
+
+    .weapon-table td {
+        padding: 6px 4px;
+        border-bottom: 1px solid #444;
+        overflow: visible;
+    }
+
+    .weapon-table tr:nth-child(even) {
+        background-color: rgba(255,255,255,0.03);
+    }
+
+.weapon-name {
+    font-weight: bold;
+}
+
+.weapon-keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 2px;
+}
+
+
+/* ── Weapon keyword badges and tooltips ───────────────────── */
+.kw-tag {
+    font-size: 0.68rem;
+    color: #d35400;
+    font-style: italic;
+    white-space: nowrap;
+}
+
+.kw-tag-glossary {
+    text-decoration: underline dotted rgba(211,84,0,0.5);
+    cursor: help;
+}
+
+.kw-tag-wrapper {
+    position: relative;
+    display: inline-block;
+    z-index: 0;
+}
+
+    .kw-tag-wrapper:hover {
+        z-index: 1200;
+    }
+
+    .kw-tag-wrapper:hover .kw-tooltip {
+        display: block;
+    }
+
+.kw-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: -5px;
+    background: #12122a;
+    border: 1px solid #555;
+    border-radius: 5px;
+    padding: 8px 10px;
+    min-width: 220px;
+    max-width: 300px;
+    z-index: 1100;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.8);
+    pointer-events: none;
+    white-space: normal;
+    text-align: left;
+    font-style: normal;
+    font-weight: normal;
+}
+
+.kw-tooltip-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #d35400;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+}
+
+.kw-tooltip-body {
+    font-size: 0.72rem;
+    color: #ddd;
+    line-height: 1.4;
+}
+
+
+/* ── Stratagem list and badges ────────────────────────────── */
+.strat-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.strat-badge {
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-family: 'Oswald', sans-serif;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #1e1e1e;
+    transition: filter 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+    .strat-badge:hover {
+        filter: brightness(1.2);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    }
+
+    .strat-badge:hover .strat-hover-tooltip {
+        display: block;
+    }
+
+.strat-hover-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a2e;
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 10px 12px;
+    min-width: 260px;
+    max-width: 340px;
+    z-index: 1050;
+    text-align: left;
+    font-size: 0.78rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+    pointer-events: none;
+    white-space: normal;
+    color: #eee;
+    font-weight: normal;
+    text-transform: none;
+}
+
+.tooltip-strat-name {
+    font-weight: bold;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: #f0c040;
+    margin-bottom: 4px;
+}
+
+.tooltip-strat-meta {
+    font-size: 0.72rem;
+    color: #aaa;
+    margin-bottom: 6px;
+}
+
+.tooltip-strat-divider {
+    border-color: #444;
+    margin: 6px 0;
+}
+
+.tooltip-strat-desc {
+    line-height: 1.5;
+    color: #ddd;
+}
+
+.strat-blue  { background: rgba(41,128,185,0.25);  border-color: rgba(41,128,185,0.5); }
+.strat-red   { background: rgba(192,57,43,0.25);   border-color: rgba(192,57,43,0.5);  }
+.strat-green { background: rgba(46,204,113,0.2);   border-color: rgba(46,204,113,0.4); }
+
+.cp-badge {
+    background: rgba(0,0,0,0.3);
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 0.7rem;
+    font-family: monospace;
+}
+
+
+/* ── Modal utilities ──────────────────────────────────────── */
+.modal-backdrop.show { opacity: 0.7; }
+.modal-title         { font-weight: 800; text-transform: uppercase; }
+.border-warning      { border-color: #d35400 !important; }
+
+
+/* ── Abilities box ────────────────────────────────────────── */
+.abilities-box {
+    padding: 10px 0;
+    font-size: 0.9rem;
+}
+
+.ability-row {
+    margin-bottom: 8px;
+    line-height: 1.4;
+    border-bottom: 1px solid #333;
+    padding-bottom: 5px;
+}
+
+    .ability-row:last-child {
+        border-bottom: none;
+    }
+
+.ability-name {
+    font-weight: bold;
+    color: #d35400;
+    margin-right: 5px;
+}
+
+.ability-desc {
+    color: #ccc;
+}
+
+
+/* ── Keywords footer ──────────────────────────────────────── */
+.datasheet-footer {
+    background-color: #1a1a1a;
+    color: #888;
+    padding: 8px 15px;
+    border-top: 1px solid #444;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.footer-label {
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #555;
+}
+
+.keyword-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.kw {
+    text-transform: uppercase;
+    font-weight: bold;
+    color: #aaa;
+}

@@ -1,0 +1,71 @@
+@using Warhammer.Models
+@using Warhammer.Helpers
+
+@if (Weapons.Any())
+{
+    <div class="section-header @(AddTopMargin ? "mt-3" : "")">
+        <span>
+            @if (!string.IsNullOrEmpty(SectionIcon))
+            {
+                <i class="bi @SectionIcon me-2"></i>
+            }
+            @SectionTitle
+        </span>
+    </div>
+    <table class="weapon-table">
+        <thead>
+            <tr>
+                <th style="width: 40%">Weapon</th>
+                <th class="text-center">Range</th>
+                <th class="text-center">A</th>
+                <th class="text-center">@SkillHeader</th>
+                <th class="text-center">S</th>
+                <th class="text-center">AP</th>
+                <th class="text-center">D</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var w in Weapons)
+            {
+                <tr>
+                    <td class="weapon-name">
+                        @w.Name
+                        <div class="weapon-keywords">
+                            @foreach (var kw in RosterHelper.ParseWeaponKeywords(RosterHelper.GetChar(w, "Keywords")))
+                            {
+                                @if (kw.Definition != null)
+                                {
+                                    <span class="kw-tag-wrapper">
+                                        <span class="kw-tag kw-tag-glossary">[@kw.Raw]</span>
+                                        <div class="kw-tooltip">
+                                            <div class="kw-tooltip-title">@kw.Raw</div>
+                                            <div class="kw-tooltip-body">@kw.Definition</div>
+                                        </div>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="kw-tag">[@kw.Raw]</span>
+                                }
+                            }
+                        </div>
+                    </td>
+                    <td class="text-center">@RosterHelper.GetChar(w, "Range")</td>
+                    <td class="text-center">@RosterHelper.GetChar(w, "A")</td>
+                    <td class="text-center">@RosterHelper.GetChar(w, SkillHeader)</td>
+                    <td class="text-center">@RosterHelper.GetChar(w, "S")</td>
+                    <td class="text-center">@RosterHelper.GetChar(w, "AP")</td>
+                    <td class="text-center">@RosterHelper.GetChar(w, "D")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<Profile> Weapons { get; set; } = new();
+    [Parameter, EditorRequired] public string SectionTitle { get; set; } = "";
+    [Parameter] public string SkillHeader { get; set; } = "BS";
+    [Parameter] public string? SectionIcon { get; set; }
+    [Parameter] public bool AddTopMargin { get; set; }
+}

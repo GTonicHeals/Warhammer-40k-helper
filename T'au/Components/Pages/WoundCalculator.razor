@@ -544,119 +544,23 @@
 
                     @if (muRanged.Any())
                     {
-                        <div class="ds-section-header"><i class="bi bi-crosshair2 me-2"></i>Ranged Weapons</div>
-                        <table class="ds-weapon-table">
-                            <thead>
-                                <tr>
-                                    <th style="width:40%">Weapon</th>
-                                    <th class="text-center">Range</th>
-                                    <th class="text-center">A</th>
-                                    <th class="text-center">BS</th>
-                                    <th class="text-center">S</th>
-                                    <th class="text-center">AP</th>
-                                    <th class="text-center">D</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var w in muRanged)
-                                {
-                                    <tr>
-                                        <td class="ds-weapon-name">
-                                            @w.Name
-                                            <div class="ds-weapon-keywords">
-                                                @foreach (var kw in ParseWeaponKeywords(GetChar(w, "Keywords")))
-                                                {
-                                                    @if (kw.Definition != null)
-                                                    {
-                                                        <span class="kw-tag-wrapper">
-                                                            <span class="wc-kw-tag kw-tag-glossary">[@kw.Raw]</span>
-                                                            <div class="kw-tooltip">
-                                                                <div class="kw-tooltip-title">@kw.Raw</div>
-                                                                <div class="kw-tooltip-body">@kw.Definition</div>
-                                                            </div>
-                                                        </span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="wc-kw-tag">[@kw.Raw]</span>
-                                                    }
-                                                }
-                                            </div>
-                                        </td>
-                                        <td class="text-center">@GetChar(w, "Range")</td>
-                                        <td class="text-center">@GetChar(w, "A")</td>
-                                        <td class="text-center">@GetChar(w, "BS")</td>
-                                        <td class="text-center">@GetChar(w, "S")</td>
-                                        <td class="text-center">@GetChar(w, "AP")</td>
-                                        <td class="text-center">@GetChar(w, "D")</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                        <WeaponTable Weapons="muRanged" SectionTitle="Ranged Weapons" SectionIcon="bi-crosshair2" SkillHeader="BS" />
                     }
 
                     @if (muMelee.Any())
                     {
-                        <div class="ds-section-header ds-section-header-mt"><i class="bi bi-hammer me-2"></i>Melee Weapons</div>
-                        <table class="ds-weapon-table">
-                            <thead>
-                                <tr>
-                                    <th style="width:40%">Weapon</th>
-                                    <th class="text-center">Range</th>
-                                    <th class="text-center">A</th>
-                                    <th class="text-center">WS</th>
-                                    <th class="text-center">S</th>
-                                    <th class="text-center">AP</th>
-                                    <th class="text-center">D</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var w in muMelee)
-                                {
-                                    <tr>
-                                        <td class="ds-weapon-name">
-                                            @w.Name
-                                            <div class="ds-weapon-keywords">
-                                                @foreach (var kw in ParseWeaponKeywords(GetChar(w, "Keywords")))
-                                                {
-                                                    @if (kw.Definition != null)
-                                                    {
-                                                        <span class="kw-tag-wrapper">
-                                                            <span class="wc-kw-tag kw-tag-glossary">[@kw.Raw]</span>
-                                                            <div class="kw-tooltip">
-                                                                <div class="kw-tooltip-title">@kw.Raw</div>
-                                                                <div class="kw-tooltip-body">@kw.Definition</div>
-                                                            </div>
-                                                        </span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="wc-kw-tag">[@kw.Raw]</span>
-                                                    }
-                                                }
-                                            </div>
-                                        </td>
-                                        <td class="text-center">@GetChar(w, "Range")</td>
-                                        <td class="text-center">@GetChar(w, "A")</td>
-                                        <td class="text-center">@GetChar(w, "WS")</td>
-                                        <td class="text-center">@GetChar(w, "S")</td>
-                                        <td class="text-center">@GetChar(w, "AP")</td>
-                                        <td class="text-center">@GetChar(w, "D")</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                        <WeaponTable Weapons="muMelee" SectionTitle="Melee Weapons" SectionIcon="bi-hammer" SkillHeader="WS" AddTopMargin="true" />
                     }
 
                     @if (muAbils.Any())
                     {
-                        <div class="ds-section-header ds-section-header-mt">Abilities & Rules</div>
-                        <div class="ds-abilities-box">
+                        <div class="section-header mt-2">Abilities & Rules</div>
+                        <div class="abilities-box" style="padding: 10px 15px;">
                             @foreach (var rule in muAbils)
                             {
-                                <div class="ds-ability-row">
-                                    <span class="ds-ability-name">@rule.Name:</span>
-                                    <span class="ds-ability-desc">@FormatText(rule.Description)</span>
+                                <div class="ability-row">
+                                    <span class="ability-name">@rule.Name:</span>
+                                    <span class="ability-desc">@FormatText(rule.Description)</span>
                                 </div>
                             }
                         </div>
@@ -664,12 +568,12 @@
 
                     @if (muKws.Any())
                     {
-                        <div class="ds-footer">
-                            <span class="ds-footer-label">KEYWORDS:</span>
-                            <div class="ds-keyword-list">
+                        <div class="datasheet-footer">
+                            <span class="footer-label">KEYWORDS:</span>
+                            <div class="keyword-list">
                                 @foreach (var k in muKws)
                                 {
-                                    <span class="ds-kw">@k</span>
+                                    <span class="kw">@k</span>
                                 }
                             </div>
                         </div>
@@ -857,7 +761,7 @@
 
         WeaponAttacks  = GetChar(w, "A");
         WeaponKeywords = GetChar(w, "Keywords");
-        SelectedWeaponKeywords = ParseWeaponKeywords(WeaponKeywords ?? "");
+        SelectedWeaponKeywords = RosterHelper.ParseWeaponKeywords(WeaponKeywords ?? "");
         var range = GetChar(w, "Range");
         var dmg   = GetChar(w, "D");
         SelectedWeaponMeta = $"{range}  D:{dmg}";
@@ -1068,8 +972,7 @@
         return int.TryParse(roll.TrimEnd('+'), out var n) ? n : 4;
     }
 
-    private static string GetCleanWeaponName(string raw) =>
-        Regex.Replace(raw, @"\s*\[.*?\]\s*", "").Trim();
+    private static string GetCleanWeaponName(string raw) => RosterHelper.GetCleanWeaponName(raw);
 
     private int? ParseInvulnSave(Selection unit)
     {
@@ -1095,61 +998,7 @@
         return null;
     }
 
-    private List<Rule> CollectRules(Selection sel)
-    {
-        var list = new List<Rule>();
-        if (sel.Rules != null) list.AddRange(sel.Rules);
-        if (sel.Selections != null) foreach (var child in sel.Selections) list.AddRange(CollectRules(child));
-        return list;
-    }
-
-    // ── Weapon Keyword Glossary ───────────────────────────────────────────────
-    private static readonly Dictionary<string, string> KeywordGlossary =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["ASSAULT"]           = "Can be used to make attacks even if the bearer Advanced this turn.",
-            ["HEAVY"]             = "If the bearer did not move this turn, add 1 to each Hit roll made with this weapon.",
-            ["RAPID FIRE"]        = "If the bearer did not move this turn, make [X] additional attacks with this weapon.",
-            ["PISTOL"]            = "Can be used in Engagement Range; must target the closest eligible enemy unit.",
-            ["TORRENT"]           = "Each attack made with this weapon automatically hits — no Hit roll required.",
-            ["BLAST"]             = "Add 1 attack for every 5 models (rounding down) in the target unit.",
-            ["LETHAL HITS"]       = "Each Critical Hit automatically wounds the target — no Wound roll required.",
-            ["SUSTAINED HITS"]    = "Each Critical Hit scores [X] additional hits.",
-            ["DEVASTATING WOUNDS"]= "Each Critical Wound causes mortal wounds equal to the weapon's Damage; the attack sequence then ends.",
-            ["MELTA"]             = "Add [X] to the Damage characteristic when the target is within half the weapon's Range.",
-            ["INDIRECT FIRE"]     = "Can target units not visible to the bearer. Attacks against non-visible units have −1 to Hit.",
-            ["LANCE"]             = "If the bearer charged this turn, improve Armour Penetration by 1.",
-            ["ANTI"]              = "Wound rolls of [X]+ automatically succeed against the specified keyword target.",
-            ["HAZARDOUS"]         = "After shooting, roll 1D6 per Hazardous weapon fired: on a 1, the bearer's unit suffers 3 mortal wounds.",
-            ["ONE SHOT"]          = "This weapon can only be used once per battle.",
-            ["PRECISION"]         = "On a Critical Hit, the attack can be allocated to a CHARACTER model in the target unit.",
-            ["PSYCHIC"]           = "Bearer must be a PSYKER. On an unmodified Hit roll of 6, the attack inflicts 1 additional mortal wound.",
-            ["TWIN-LINKED"]       = "You may re-roll the Wound roll for each attack made with this weapon.",
-            ["IGNORES COVER"]     = "Attacks made with this weapon ignore the benefits of cover.",
-            ["EXTRA ATTACKS"]     = "Each time the bearer fights, make this many additional attacks with this weapon.",
-        };
-
-    private record KeywordToken(string Raw, string? Definition);
-
-    private List<KeywordToken> ParseWeaponKeywords(string raw)
-    {
-        var result = new List<KeywordToken>();
-        if (string.IsNullOrEmpty(raw) || raw == "-") return result;
-
-        foreach (var part in raw.Split(',', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var keyword = part.Trim();
-            if (string.IsNullOrEmpty(keyword)) continue;
-
-            var baseKey = Regex.Replace(keyword, @"\s+\d+[+]?\s*$", "").Trim();
-            if (baseKey.StartsWith("Anti", StringComparison.OrdinalIgnoreCase))
-                baseKey = "ANTI";
-
-            KeywordGlossary.TryGetValue(baseKey, out var def);
-            result.Add(new KeywordToken(keyword, def));
-        }
-        return result;
-    }
+    private List<Rule> CollectRules(Selection sel) => RosterHelper.CollectRules(sel);
 
     // ─────────────────────────────────────────────────────────────────────────
     private string GetResultClass(string? roll) => roll switch
@@ -1165,20 +1014,9 @@
         return ranged.Concat(melee).DistinctBy(w => w.Name).ToList();
     }
 
-    private List<Profile> GetAllProfilesRecursive(Selection? current, string typeName)
-    {
-        var found = new List<Profile>();
-        if (current == null) return found;
-        if (current.Profiles != null)
-            found.AddRange(current.Profiles.Where(p => p.TypeName == typeName));
-        if (current.Selections != null)
-            foreach (var child in current.Selections)
-                found.AddRange(GetAllProfilesRecursive(child, typeName));
-        return found;
-    }
+    private List<Profile> GetAllProfilesRecursive(Selection? current, string typeName) => RosterHelper.GetAllProfilesRecursive(current, typeName);
 
-    private string GetChar(Profile? p, string statName) =>
-        p?.Characteristics?.FirstOrDefault(c => c.Name == statName)?.Value ?? "-";
+    private string GetChar(Profile? p, string statName) => RosterHelper.GetChar(p, statName);
 
     private void ShowStratagem(StratagemModelWithDetachment strat) => SelectedStratagem = strat;
     private void CloseModal() => SelectedStratagem = null;
@@ -1189,36 +1027,11 @@
     private void ShowRule(Rule rule) => SelectedRule = rule;
     private void CloseRuleModal() => SelectedRule = null;
 
-    private List<Rule> GetAbilities(Selection unit)
-    {
-        var list = new List<Rule>();
-        var abilityProfiles = GetAllProfilesRecursive(unit, "Abilities");
-        foreach (var p in abilityProfiles)
-        {
-            var desc = p.Characteristics?.FirstOrDefault(c => c.Name == "Description")?.Value ?? "";
-            list.Add(new Rule { Name = p.Name, Description = desc });
-        }
-        list.AddRange(CollectRules(unit));
-        return list
-            .Where(r => !KeywordGlossary.ContainsKey(r.Name) &&
-                        !r.Name.StartsWith("Anti-", StringComparison.OrdinalIgnoreCase))
-            .DistinctBy(r => r.Name)
-            .OrderBy(r => r.Name)
-            .ToList();
-    }
+    private List<Rule> GetAbilities(Selection unit) => RosterHelper.GetAbilities(unit, filterWeaponKeywords: true);
 
-    private List<string> GetKeywords(Selection unit) =>
-        unit.Categories?.Where(c => c.Name != "Configuration" && c.Name != "Uncategorized")
-            .Select(c => c.Name).ToList() ?? new List<string>();
+    private List<string> GetKeywords(Selection unit) => RosterHelper.GetKeywords(unit);
 
-    private static MarkupString FormatText(string text)
-    {
-        if (string.IsNullOrEmpty(text)) return new MarkupString("");
-        text = text.Replace("^^", "");
-        text = Regex.Replace(text, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
-        text = text.Replace("\n", "<br/>");
-        return new MarkupString(text);
-    }
+    private static MarkupString FormatText(string text) => RosterHelper.FormatText(text);
 
     private static string StratClass(StratagemModelWithDetachment s)
     {
@@ -1817,60 +1630,6 @@
         border-radius: 3px;
     }
 
-    .kw-tag-glossary {
-        text-decoration: underline dotted rgba(243,156,18,0.5);
-        cursor: help;
-    }
-
-    .kw-tag-wrapper {
-        position: relative;
-        display: inline-block;
-        z-index: 0;
-    }
-
-        .kw-tag-wrapper:hover {
-            z-index: 1200;
-        }
-
-        .kw-tag-wrapper:hover .kw-tooltip {
-            display: block;
-        }
-
-    .kw-tooltip {
-        display: none;
-        position: absolute;
-        bottom: calc(100% + 6px);
-        left: -5px;
-        background: #12122a;
-        border: 1px solid #555;
-        border-radius: 5px;
-        padding: 8px 10px;
-        min-width: 220px;
-        max-width: 300px;
-        z-index: 1100;
-        box-shadow: 0 4px 14px rgba(0,0,0,0.8);
-        pointer-events: none;
-        white-space: normal;
-        text-align: left;
-        font-style: normal;
-        font-weight: normal;
-    }
-
-    .kw-tooltip-title {
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: #f39c12;
-        margin-bottom: 4px;
-        letter-spacing: 0.5px;
-    }
-
-    .kw-tooltip-body {
-        font-size: 0.72rem;
-        color: #ddd;
-        line-height: 1.4;
-    }
-
     /* ── Cover toggle button ────────────────────────────────────────────── */
     .wc-cover-btn {
         margin-top: 8px;
@@ -1999,48 +1758,6 @@
     /* ── Stratagem section ──────────────────────────────────────────────── */
     .wc-strat-section { margin-top: 10px; }
 
-    .strat-list { display: flex; flex-wrap: wrap; gap: 5px; }
-
-    .strat-badge {
-        border: 1px solid rgba(255,255,255,0.2);
-        color: white;
-        padding: 4px 8px;
-        font-size: 0.72rem;
-        border-radius: 4px;
-        cursor: pointer;
-        text-transform: uppercase;
-        font-weight: bold;
-        transition: filter 0.2s, transform 0.2s, box-shadow 0.2s;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-family: 'Oswald', sans-serif;
-        background: #1e1e1e;
-    }
-
-    .strat-badge:hover {
-        filter: brightness(1.2);
-        transform: translateY(-1px);
-        box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-    }
-
-    .cp-badge {
-        background: rgba(0,0,0,0.3);
-        border-radius: 3px;
-        padding: 1px 4px;
-        font-size: 0.62rem;
-        font-weight: 800;
-    }
-
-    .strat-blue  { background: rgba(41,128,185,0.25);  border-color: rgba(41,128,185,0.5); }
-    .strat-red   { background: rgba(192,57,43,0.25);   border-color: rgba(192,57,43,0.5);  }
-    .strat-green { background: rgba(46,204,113,0.2);   border-color: rgba(46,204,113,0.4); }
-
-    /* ── Stratagem modal ────────────────────────────────────────────────── */
-    .modal-backdrop.show { opacity: 0.7; }
-    .modal-title { font-weight: 800; text-transform: uppercase; }
-    .border-warning { border-color: #ffc107 !important; }
-
     /* ── Info button (in card headers) ─────────────────────────────────── */
     .wc-info-btn {
         background: rgba(255,255,255,0.15);
@@ -2147,104 +1864,5 @@
         color: #fff;
     }
 
-    /* Section headers inside modal body */
-    .ds-section-header {
-        background: #2e2e2e;
-        color: #ccc;
-        padding: 5px 15px;
-        font-size: 0.82rem;
-        text-transform: uppercase;
-        font-weight: bold;
-        display: flex;
-        align-items: center;
-        border-bottom: 1px solid #444;
-    }
 
-    .ds-section-header-mt { margin-top: 8px; }
-
-    /* Weapon table */
-    .ds-weapon-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-        font-size: 0.85rem;
-        background: #242424;
-        color: #ddd;
-    }
-
-    .ds-weapon-table th {
-        background: #1a1a1a;
-        color: #d35400;
-        font-size: 0.68rem;
-        text-transform: uppercase;
-        padding: 4px 6px;
-        border-bottom: 1px solid #444;
-    }
-
-    .ds-weapon-table td {
-        padding: 6px 6px;
-        border-bottom: 1px solid #333;
-        overflow: visible;
-    }
-
-    .ds-weapon-table tr:nth-child(even) { background: rgba(255,255,255,0.02); }
-
-    .ds-weapon-name { font-weight: bold; }
-
-    .ds-weapon-keywords {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 3px;
-        margin-top: 3px;
-    }
-
-    /* Abilities */
-    .ds-abilities-box {
-        padding: 10px 15px;
-        font-size: 0.85rem;
-        background: #1e1e1e;
-    }
-
-    .ds-ability-row {
-        margin-bottom: 8px;
-        line-height: 1.4;
-        border-bottom: 1px solid #2e2e2e;
-        padding-bottom: 6px;
-    }
-
-    .ds-ability-row:last-child { border-bottom: none; }
-
-    .ds-ability-name {
-        font-weight: bold;
-        color: #d35400;
-        margin-right: 5px;
-    }
-
-    .ds-ability-desc { color: #bbb; }
-
-    /* Keywords footer */
-    .ds-footer {
-        background: #161616;
-        padding: 8px 15px;
-        border-top: 1px solid #333;
-        font-size: 0.72rem;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-
-    .ds-footer-label {
-        font-weight: bold;
-        text-transform: uppercase;
-        color: #555;
-    }
-
-    .ds-keyword-list { display: flex; flex-wrap: wrap; gap: 5px; }
-
-    .ds-kw {
-        text-transform: uppercase;
-        font-weight: bold;
-        color: #888;
-    }
 </style>
