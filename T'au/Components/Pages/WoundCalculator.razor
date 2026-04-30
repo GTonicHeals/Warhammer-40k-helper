@@ -158,11 +158,28 @@
                                     <span class="wc-sb-val wc-sb-ap">@WeaponAp</span>
                                 </div>
                             }
+                            @if (!string.IsNullOrEmpty(WeaponAttacks) && WeaponAttacks != "-")
+                            {
+                                <div class="wc-sb-divider"></div>
+                                <div class="wc-sb-stat">
+                                    <span class="wc-sb-lbl">A</span>
+                                    <span class="wc-sb-val wc-sb-atk">@WeaponAttacks</span>
+                                </div>
+                            }
                             @if (!string.IsNullOrEmpty(SelectedWeaponMeta))
                             {
                                 <span class="wc-sb-meta">@SelectedWeaponMeta</span>
                             }
                         </div>
+                        @if (!string.IsNullOrEmpty(WeaponKeywords) && WeaponKeywords != "-")
+                        {
+                            <div class="wc-kw-row">
+                                @foreach (var kw in WeaponKeywords.Split(','))
+                                {
+                                    <span class="wc-kw-tag">@kw.Trim()</span>
+                                }
+                            </div>
+                        }
                     }
 
                     <!-- Attacker modifiers -->
@@ -191,15 +208,9 @@
                             <div class="strat-list">
                                 @foreach (var s in AttackerStratagems)
                                 {
-                                    <button class="strat-badge @StratClass(s)">
+                                    <button class="strat-badge @StratClass(s)" @onclick="() => ShowStratagem(s)">
                                         <span class="strat-name-text">@s.Name</span>
                                         <span class="cp-badge">@s.Cost CP</span>
-                                        <div class="strat-hover-tooltip">
-                                            <div class="tooltip-strat-name">@s.Name</div>
-                                            <div class="tooltip-strat-meta">@s.Turn · @s.Phase · @s.Cost CP</div>
-                                            <hr class="tooltip-strat-divider" />
-                                            <div class="tooltip-strat-desc">@((MarkupString)s.Description)</div>
-                                        </div>
                                     </button>
                                 }
                             </div>
@@ -369,15 +380,9 @@
                             <div class="strat-list">
                                 @foreach (var s in DefenderStratagems)
                                 {
-                                    <button class="strat-badge @StratClass(s)">
+                                    <button class="strat-badge @StratClass(s)" @onclick="() => ShowStratagem(s)">
                                         <span class="strat-name-text">@s.Name</span>
                                         <span class="cp-badge">@s.Cost CP</span>
-                                        <div class="strat-hover-tooltip">
-                                            <div class="tooltip-strat-name">@s.Name</div>
-                                            <div class="tooltip-strat-meta">@s.Turn · @s.Phase · @s.Cost CP</div>
-                                            <hr class="tooltip-strat-divider" />
-                                            <div class="tooltip-strat-desc">@((MarkupString)s.Description)</div>
-                                        </div>
                                     </button>
                                 }
                             </div>
@@ -390,6 +395,33 @@
         </div>
     }
 </div>
+
+@if (SelectedStratagem != null)
+{
+    <div class="modal-backdrop fade show" style="cursor:pointer"></div>
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" @onclick="CloseModal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-warning text-light" @onclick:stopPropagation="true">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning">@SelectedStratagem.Name</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="badge bg-secondary">@SelectedStratagem.Type</span>
+                        <span class="badge bg-danger">@SelectedStratagem.Cost CP</span>
+                    </div>
+                    <p><strong>WHEN:</strong> @SelectedStratagem.Turn</p>
+                    <p><strong>PHASE:</strong> @SelectedStratagem.Phase</p>
+                    <hr class="border-secondary" />
+                    <div class="small">
+                        @((MarkupString)SelectedStratagem.Description)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     private record UnitEntry(string Key, string Label, string PlayerId, int PlayerIndex, Selection Unit, string DetachmentName);
@@ -414,6 +446,8 @@
     private string? WoundRoll;
     private string? FinalSaveRoll;
     private string SelectedWeaponMeta = "";
+    private string? WeaponAttacks;
+    private string? WeaponKeywords;
 
     // Modifier toggles
     private bool _atkPlusOneHit;
@@ -432,6 +466,7 @@
 
     private List<StratagemModelWithDetachment> AttackerStratagems = new();
     private List<StratagemModelWithDetachment> DefenderStratagems = new();
+    private StratagemModelWithDetachment? SelectedStratagem;
 
     private IEnumerable<(string Id, int Index)> LoadedPlayers =>
         AllUnits.Select(u => (u.PlayerId, u.PlayerIndex))
@@ -519,6 +554,8 @@
         SelectedWeapon = null;
         WeaponStrength = null;
         SelectedWeaponMeta = "";
+        WeaponAttacks = null;
+        WeaponKeywords = null;
         _atkPlusOneHit = false;
         _atkPlusOneWound = false;
         AttackerWeapons = GetAllWeapons(entry.Unit);
@@ -553,10 +590,11 @@
             HitRoll = skillRaw; // stored as-is e.g. "3+"
         }
 
-        var range   = GetChar(w, "Range");
-        var attacks = GetChar(w, "A");
-        var dmg     = GetChar(w, "D");
-        SelectedWeaponMeta = $"{range}  A:{attacks}  D:{dmg}";
+        WeaponAttacks  = GetChar(w, "A");
+        WeaponKeywords = GetChar(w, "Keywords");
+        var range = GetChar(w, "Range");
+        var dmg   = GetChar(w, "D");
+        SelectedWeaponMeta = $"{range}  D:{dmg}";
         Recalculate();
     }
 
@@ -603,6 +641,8 @@
         WeaponAp = null;
         HitRoll = null;
         SelectedWeaponMeta = "";
+        WeaponAttacks = null;
+        WeaponKeywords = null;
         Recalculate();
     }
 
@@ -640,6 +680,8 @@
         WeaponAp            = null;
         HitRoll             = null;
         SelectedWeaponMeta  = "";
+        WeaponAttacks       = null;
+        WeaponKeywords      = null;
         _atkPlusOneHit      = false;
         _atkPlusOneWound    = false;
         AttackerWeapons     = oldDefender != null ? GetAllWeapons(oldDefender.Unit) : new();
@@ -812,6 +854,9 @@
 
     private string GetChar(Profile? p, string statName) =>
         p?.Characteristics?.FirstOrDefault(c => c.Name == statName)?.Value ?? "-";
+
+    private void ShowStratagem(StratagemModelWithDetachment strat) => SelectedStratagem = strat;
+    private void CloseModal() => SelectedStratagem = null;
 
     private static string StratClass(StratagemModelWithDetachment s)
     {
@@ -1387,6 +1432,27 @@
     .wc-sb-hit { color: #aaccff; }
     .wc-sb-ap  { color: #e74c3c; }
     .wc-sb-sv  { color: #2ecc71; }
+    .wc-sb-atk { color: #f39c12; }
+
+    /* ── Weapon keyword badges ──────────────────────────────────────────── */
+    .wc-kw-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 7px;
+    }
+
+    .wc-kw-tag {
+        background: rgba(243,156,18,0.12);
+        border: 1px solid rgba(243,156,18,0.35);
+        color: #f39c12;
+        font-size: 0.62rem;
+        font-weight: 800;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
 
     /* ── Cover toggle button ────────────────────────────────────────────── */
     .wc-cover-btn {
@@ -1495,14 +1561,13 @@
         padding: 4px 8px;
         font-size: 0.72rem;
         border-radius: 4px;
-        cursor: default;
+        cursor: pointer;
         text-transform: uppercase;
         font-weight: bold;
         transition: filter 0.2s, transform 0.2s, box-shadow 0.2s;
         display: flex;
         align-items: center;
         gap: 6px;
-        position: relative;
         font-family: 'Oswald', sans-serif;
         background: #1e1e1e;
     }
@@ -1512,44 +1577,6 @@
         transform: translateY(-1px);
         box-shadow: 0 2px 5px rgba(0,0,0,0.5);
     }
-
-    .strat-badge:hover .strat-hover-tooltip { display: block; }
-
-    .strat-hover-tooltip {
-        display: none;
-        position: absolute;
-        bottom: calc(100% + 8px);
-        left: 0;
-        transform: translateY(-5px);
-        background: #1a1a2e;
-        border: 1px solid #555;
-        border-radius: 6px;
-        padding: 10px 12px;
-        min-width: 260px;
-        max-width: 340px;
-        z-index: 1050;
-        text-align: left;
-        font-size: 0.78rem;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.7);
-        pointer-events: none;
-        white-space: normal;
-        color: #eee;
-        font-weight: normal;
-        text-transform: none;
-    }
-
-    .tooltip-strat-name {
-        font-weight: bold;
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        color: #f0c040;
-    }
-
-    .tooltip-strat-meta { font-size: 0.72rem; color: #aaa; margin: 2px 0 6px; }
-
-    .tooltip-strat-divider { border: none; border-top: 1px solid #333; margin: 4px 0 6px; }
-
-    .tooltip-strat-desc { line-height: 1.5; }
 
     .cp-badge {
         background: rgba(0,0,0,0.3);
@@ -1562,4 +1589,9 @@
     .strat-blue  { background: rgba(41,128,185,0.25);  border-color: rgba(41,128,185,0.5); }
     .strat-red   { background: rgba(192,57,43,0.25);   border-color: rgba(192,57,43,0.5);  }
     .strat-green { background: rgba(46,204,113,0.2);   border-color: rgba(46,204,113,0.4); }
+
+    /* ── Stratagem modal ────────────────────────────────────────────────── */
+    .modal-backdrop.show { opacity: 0.7; }
+    .modal-title { font-weight: 800; text-transform: uppercase; }
+    .border-warning { border-color: #ffc107 !important; }
 </style>
