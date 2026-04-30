@@ -171,12 +171,25 @@
                                 <span class="wc-sb-meta">@SelectedWeaponMeta</span>
                             }
                         </div>
-                        @if (!string.IsNullOrEmpty(WeaponKeywords) && WeaponKeywords != "-")
+                        @if (SelectedWeaponKeywords.Any())
                         {
                             <div class="wc-kw-row">
-                                @foreach (var kw in WeaponKeywords.Split(','))
+                                @foreach (var kw in SelectedWeaponKeywords)
                                 {
-                                    <span class="wc-kw-tag">@kw.Trim()</span>
+                                    @if (kw.Definition != null)
+                                    {
+                                        <span class="kw-tag-wrapper">
+                                            <span class="wc-kw-tag kw-tag-glossary">@kw.Raw</span>
+                                            <div class="kw-tooltip">
+                                                <div class="kw-tooltip-title">@kw.Raw</div>
+                                                <div class="kw-tooltip-body">@kw.Definition</div>
+                                            </div>
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="wc-kw-tag">@kw.Raw</span>
+                                    }
                                 }
                             </div>
                         }
@@ -448,6 +461,7 @@
     private string SelectedWeaponMeta = "";
     private string? WeaponAttacks;
     private string? WeaponKeywords;
+    private List<KeywordToken> SelectedWeaponKeywords = new();
 
     // Modifier toggles
     private bool _atkPlusOneHit;
@@ -556,6 +570,7 @@
         SelectedWeaponMeta = "";
         WeaponAttacks = null;
         WeaponKeywords = null;
+        SelectedWeaponKeywords = new();
         _atkPlusOneHit = false;
         _atkPlusOneWound = false;
         AttackerWeapons = GetAllWeapons(entry.Unit);
@@ -592,6 +607,7 @@
 
         WeaponAttacks  = GetChar(w, "A");
         WeaponKeywords = GetChar(w, "Keywords");
+        SelectedWeaponKeywords = ParseWeaponKeywords(WeaponKeywords ?? "");
         var range = GetChar(w, "Range");
         var dmg   = GetChar(w, "D");
         SelectedWeaponMeta = $"{range}  D:{dmg}";
@@ -643,6 +659,7 @@
         SelectedWeaponMeta = "";
         WeaponAttacks = null;
         WeaponKeywords = null;
+        SelectedWeaponKeywords = new();
         Recalculate();
     }
 
@@ -682,6 +699,7 @@
         SelectedWeaponMeta  = "";
         WeaponAttacks       = null;
         WeaponKeywords      = null;
+        SelectedWeaponKeywords = new();
         _atkPlusOneHit      = false;
         _atkPlusOneWound    = false;
         AttackerWeapons     = oldDefender != null ? GetAllWeapons(oldDefender.Unit) : new();
@@ -827,6 +845,55 @@
         return list;
     }
 
+    // ── Weapon Keyword Glossary ───────────────────────────────────────────────
+    private static readonly Dictionary<string, string> KeywordGlossary =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ASSAULT"]           = "Can be used to make attacks even if the bearer Advanced this turn.",
+            ["HEAVY"]             = "If the bearer did not move this turn, add 1 to each Hit roll made with this weapon.",
+            ["RAPID FIRE"]        = "If the bearer did not move this turn, make [X] additional attacks with this weapon.",
+            ["PISTOL"]            = "Can be used in Engagement Range; must target the closest eligible enemy unit.",
+            ["TORRENT"]           = "Each attack made with this weapon automatically hits — no Hit roll required.",
+            ["BLAST"]             = "Add 1 attack for every 5 models (rounding down) in the target unit.",
+            ["LETHAL HITS"]       = "Each Critical Hit automatically wounds the target — no Wound roll required.",
+            ["SUSTAINED HITS"]    = "Each Critical Hit scores [X] additional hits.",
+            ["DEVASTATING WOUNDS"]= "Each Critical Wound causes mortal wounds equal to the weapon's Damage; the attack sequence then ends.",
+            ["MELTA"]             = "Add [X] to the Damage characteristic when the target is within half the weapon's Range.",
+            ["INDIRECT FIRE"]     = "Can target units not visible to the bearer. Attacks against non-visible units have −1 to Hit.",
+            ["LANCE"]             = "If the bearer charged this turn, improve Armour Penetration by 1.",
+            ["ANTI"]              = "Wound rolls of [X]+ automatically succeed against the specified keyword target.",
+            ["HAZARDOUS"]         = "After shooting, roll 1D6 per Hazardous weapon fired: on a 1, the bearer's unit suffers 3 mortal wounds.",
+            ["ONE SHOT"]          = "This weapon can only be used once per battle.",
+            ["PRECISION"]         = "On a Critical Hit, the attack can be allocated to a CHARACTER model in the target unit.",
+            ["PSYCHIC"]           = "Bearer must be a PSYKER. On an unmodified Hit roll of 6, the attack inflicts 1 additional mortal wound.",
+            ["TWIN-LINKED"]       = "You may re-roll the Wound roll for each attack made with this weapon.",
+            ["IGNORES COVER"]     = "Attacks made with this weapon ignore the benefits of cover.",
+            ["EXTRA ATTACKS"]     = "Each time the bearer fights, make this many additional attacks with this weapon.",
+        };
+
+    private record KeywordToken(string Raw, string? Definition);
+
+    private List<KeywordToken> ParseWeaponKeywords(string raw)
+    {
+        var result = new List<KeywordToken>();
+        if (string.IsNullOrEmpty(raw) || raw == "-") return result;
+
+        foreach (var part in raw.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var keyword = part.Trim();
+            if (string.IsNullOrEmpty(keyword)) continue;
+
+            var baseKey = Regex.Replace(keyword, @"\s+\d+[+]?\s*$", "").Trim();
+            if (baseKey.StartsWith("Anti", StringComparison.OrdinalIgnoreCase))
+                baseKey = "ANTI";
+
+            KeywordGlossary.TryGetValue(baseKey, out var def);
+            result.Add(new KeywordToken(keyword, def));
+        }
+        return result;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     private string GetResultClass(string? roll) => roll switch
     {
         "2+" => "wfr-2", "3+" => "wfr-3", "4+" => "wfr-4",
@@ -986,6 +1053,7 @@
         background: #1e1e1e;
         border: 1px solid #333;
         border-radius: 6px;
+        overflow: visible;
     }
 
     .wc-card-header {
@@ -1452,6 +1520,61 @@
         text-transform: uppercase;
         padding: 2px 6px;
         border-radius: 3px;
+    }
+
+    .kw-tag-glossary {
+        text-decoration: underline dotted rgba(243,156,18,0.5);
+        cursor: help;
+    }
+
+    .kw-tag-wrapper {
+        position: relative;
+        display: inline-block;
+        z-index: 0;
+    }
+
+        .kw-tag-wrapper:hover {
+            z-index: 1200;
+        }
+
+        .kw-tag-wrapper:hover .kw-tooltip {
+            display: block;
+        }
+
+    .kw-tooltip {
+        display: none;
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: #12122a;
+        border: 1px solid #555;
+        border-radius: 5px;
+        padding: 8px 10px;
+        min-width: 220px;
+        max-width: 300px;
+        z-index: 1100;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.8);
+        pointer-events: none;
+        white-space: normal;
+        text-align: left;
+        font-style: normal;
+        font-weight: normal;
+    }
+
+    .kw-tooltip-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #f39c12;
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+    }
+
+    .kw-tooltip-body {
+        font-size: 0.72rem;
+        color: #ddd;
+        line-height: 1.4;
     }
 
     /* ── Cover toggle button ────────────────────────────────────────────── */
