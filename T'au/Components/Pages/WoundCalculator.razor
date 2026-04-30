@@ -1,0 +1,875 @@
+@page "/woundcalc"
+@rendermode InteractiveServer
+@using System.Text.Json
+@using Warhammer.Models
+@using System.IO
+@inject IWebHostEnvironment Env
+
+<div class="wc-page">
+
+    <div class="wc-header">
+        <h2 class="wc-title"><i class="bi bi-crosshair me-2"></i>WOUND CALCULATOR</h2>
+        <p class="wc-subtitle">Warhammer 40,000 — 10th Edition</p>
+    </div>
+
+    @if (!AllUnits.Any())
+    {
+        <div class="wc-loading">
+            <div class="spinner-border text-warning" role="status"></div>
+            <p class="mt-2 text-muted">Loading roster data...</p>
+        </div>
+    }
+    else
+    {
+        <!-- Full-width result (pinned above the arena when active) -->
+        @if (WoundRoll != null && WeaponStrength.HasValue && DefenderToughness.HasValue)
+        {
+            <div class="wc-full-result @GetResultClass(WoundRoll)">
+                <div class="wc-fr-left">
+                    <span class="wc-fr-weapon">@(_selectedWeaponName ?? "Weapon")</span>
+                    <span class="wc-fr-sep">vs</span>
+                    <span class="wc-fr-defender">@(SelectedDefender?.Unit.Name ?? "Target")</span>
+                </div>
+                <div class="wc-fr-center">
+                    <span class="wc-fr-annotation">S@(WeaponStrength) vs T@(DefenderToughness)</span>
+                    <span class="wc-fr-roll">@WoundRoll</span>
+                    <span class="wc-fr-annotation">to wound</span>
+                </div>
+            </div>
+        }
+
+        <div class="wc-arena">
+
+            <!-- ── ATTACKER ───────────────────────────── -->
+            <div class="wc-card">
+                <div class="wc-card-header attacker-header">
+                    <i class="bi bi-crosshair2"></i> ATTACKER
+                    @if (SelectedAttacker != null)
+                    {
+                        <span class="wc-header-unit">— @SelectedAttacker.Unit.Name</span>
+                    }
+                </div>
+                <div class="wc-card-body">
+
+                    <!-- Player filter -->
+                    <div class="wc-player-filter">
+                        <button class="wc-fbtn @(AttackerPlayerFilter == null ? "wc-fbtn-on" : "")"
+                                @onclick="() => SetAttackerFilter(null)">All</button>
+                        @foreach (var p in LoadedPlayers)
+                        {
+                            var active = AttackerPlayerFilter == p.Id;
+                            <button class="wc-fbtn @(active ? "wc-fbtn-on" : "")"
+                                    style="@(active ? $"--pbtn-color:{GetPlayerColor(p.Id)};" : "")"
+                                    @onclick="() => SetAttackerFilter(p.Id)">P@(p.Index)</button>
+                        }
+                    </div>
+
+                    <!-- Unit grid -->
+                    <div class="wc-grid-label">Unit</div>
+                    <div class="wc-unit-grid">
+                        @foreach (var entry in FilteredAttackerUnits)
+                        {
+                            var sel = SelectedAttacker?.Key == entry.Key;
+                            <div class="wc-tile @(sel ? "wc-tile-atk-on" : "")"
+                                 @onclick="() => SelectAttackerUnit(entry)">
+                                <div class="wc-tile-top">
+                                    <i class="bi bi-person-fill wc-tile-ico"></i>
+                                    <span class="wc-tile-name">@entry.Unit.Name</span>
+                                </div>
+                                <div class="wc-tile-foot">
+                                    <span class="wc-tile-pid" style="color:@GetPlayerColor(entry.PlayerId)">P@(entry.PlayerIndex)</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Weapon grid (only after unit selected) -->
+                    @if (AttackerWeapons.Any())
+                    {
+                        <div class="wc-grid-label mt-2">Weapon</div>
+                        <div class="wc-weapon-grid">
+                            @foreach (var w in AttackerWeapons)
+                            {
+                                var sel = _selectedWeaponName == w.Name;
+                                var sVal = GetChar(w, "S");
+                                var wt  = w.TypeName == "Ranged Weapons" ? "RNG" : "MEL";
+                                <div class="wc-wtile @(sel ? "wc-tile-atk-on" : "")"
+                                     @onclick="() => SelectWeapon(w)">
+                                    <span class="wc-wtype @(wt == "RNG" ? "wt-rng" : "wt-mel")">@wt</span>
+                                    <span class="wc-wname">@w.Name</span>
+                                    <span class="wc-ws">S@(sVal)</span>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <!-- Weapon stat bar -->
+                    @if (WeaponStrength.HasValue && SelectedWeapon != null)
+                    {
+                        <div class="wc-statbar atk-statbar">
+                            <div class="wc-sb-stat">
+                                <span class="wc-sb-lbl">S</span>
+                                <span class="wc-sb-val">@WeaponStrength</span>
+                            </div>
+                            <span class="wc-sb-meta">@SelectedWeaponMeta</span>
+                        </div>
+                    }
+
+                </div>
+            </div>
+
+            <!-- ── VS COL ──────────────────────────────── -->
+            <div class="wc-vs-col">
+                <div class="wc-vs-badge">VS</div>
+                @if (WoundRoll != null)
+                {
+                    <div class="wc-mini-result @GetResultClass(WoundRoll)">
+                        <div class="wc-mr-label">needs</div>
+                        <div class="wc-mr-roll">@WoundRoll</div>
+                        <div class="wc-mr-label">to wound</div>
+                    </div>
+                }
+                <!-- Quick reference table -->
+                <div class="wc-reference">
+                    <table class="wc-ref-table">
+                        <tbody>
+                            <tr class="@(WoundRoll == "2+" ? "wc-ref-on" : "")">
+                                <td>S≥2T</td><td class="roll-2">2+</td>
+                            </tr>
+                            <tr class="@(WoundRoll == "3+" ? "wc-ref-on" : "")">
+                                <td>S&gt;T</td><td class="roll-3">3+</td>
+                            </tr>
+                            <tr class="@(WoundRoll == "4+" ? "wc-ref-on" : "")">
+                                <td>S=T</td><td class="roll-4">4+</td>
+                            </tr>
+                            <tr class="@(WoundRoll == "5+" ? "wc-ref-on" : "")">
+                                <td>S&lt;T</td><td class="roll-5">5+</td>
+                            </tr>
+                            <tr class="@(WoundRoll == "6+" ? "wc-ref-on" : "")">
+                                <td>S≤½T</td><td class="roll-6">6+</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ── DEFENDER ───────────────────────────── -->
+            <div class="wc-card">
+                <div class="wc-card-header defender-header">
+                    <i class="bi bi-shield-fill"></i> DEFENDER
+                    @if (SelectedDefender != null)
+                    {
+                        <span class="wc-header-unit">— @SelectedDefender.Unit.Name</span>
+                    }
+                </div>
+                <div class="wc-card-body">
+
+                    <!-- Player filter -->
+                    <div class="wc-player-filter">
+                        <button class="wc-fbtn @(DefenderPlayerFilter == null ? "wc-fbtn-on" : "")"
+                                @onclick="() => SetDefenderFilter(null)">All</button>
+                        @foreach (var p in LoadedPlayers)
+                        {
+                            var active = DefenderPlayerFilter == p.Id;
+                            <button class="wc-fbtn @(active ? "wc-fbtn-on" : "")"
+                                    style="@(active ? $"--pbtn-color:{GetPlayerColor(p.Id)};" : "")"
+                                    @onclick="() => SetDefenderFilter(p.Id)">P@(p.Index)</button>
+                        }
+                    </div>
+
+                    <!-- Unit grid -->
+                    <div class="wc-grid-label">Unit</div>
+                    <div class="wc-unit-grid">
+                        @foreach (var entry in FilteredDefenderUnits)
+                        {
+                            var sel = SelectedDefender?.Key == entry.Key;
+                            <div class="wc-tile @(sel ? "wc-tile-def-on" : "")"
+                                 @onclick="() => SelectDefenderUnit(entry)">
+                                <div class="wc-tile-top">
+                                    <i class="bi bi-shield-fill wc-tile-ico"></i>
+                                    <span class="wc-tile-name">@entry.Unit.Name</span>
+                                </div>
+                                <div class="wc-tile-foot">
+                                    <span class="wc-tile-pid" style="color:@GetPlayerColor(entry.PlayerId)">P@(entry.PlayerIndex)</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Toughness stat bar -->
+                    @if (DefenderToughness.HasValue)
+                    {
+                        <div class="wc-statbar def-statbar">
+                            <div class="wc-sb-stat">
+                                <span class="wc-sb-lbl">T</span>
+                                <span class="wc-sb-val">@DefenderToughness</span>
+                            </div>
+                        </div>
+                    }
+
+                </div>
+            </div>
+
+        </div>
+    }
+</div>
+
+@code {
+    private record UnitEntry(string Key, string Label, string PlayerId, int PlayerIndex, Selection Unit);
+
+    private List<UnitEntry> AllUnits = new();
+    private List<Profile> AttackerWeapons = new();
+
+    private string? AttackerPlayerFilter;
+    private string? DefenderPlayerFilter;
+
+    private UnitEntry? SelectedAttacker;
+    private UnitEntry? SelectedDefender;
+    private string? _selectedWeaponName;
+    private Profile? SelectedWeapon;
+
+    private int? WeaponStrength;
+    private int? DefenderToughness;
+    private string? WoundRoll;
+    private string SelectedWeaponMeta = "";
+
+    private IEnumerable<(string Id, int Index)> LoadedPlayers =>
+        AllUnits.Select(u => (u.PlayerId, u.PlayerIndex))
+                .DistinctBy(x => x.Item1)
+                .OrderBy(x => x.Item2);
+
+    private IEnumerable<UnitEntry> FilteredAttackerUnits =>
+        AttackerPlayerFilter == null
+            ? AllUnits
+            : AllUnits.Where(u => u.PlayerId == AttackerPlayerFilter);
+
+    private IEnumerable<UnitEntry> FilteredDefenderUnits =>
+        DefenderPlayerFilter == null
+            ? AllUnits
+            : AllUnits.Where(u => u.PlayerId == DefenderPlayerFilter);
+
+    protected override async Task OnInitializedAsync()
+    {
+        int playerIndex = 1;
+        while (true)
+        {
+            string playerId = $"p{playerIndex}";
+            var filePath = Path.Combine(Env.WebRootPath, $"{playerId}.json");
+            if (!File.Exists(filePath)) break;
+
+            try
+            {
+                var jsonString = await File.ReadAllTextAsync(filePath);
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var data = JsonSerializer.Deserialize<RosterRoot>(jsonString, options);
+                var force = data?.Roster?.Forces?.FirstOrDefault();
+                if (force == null) { playerIndex++; continue; }
+
+                var units = force.Selections
+                    .Where(s => s.Name != "Configuration" &&
+                                s.Name != "Battle Size" &&
+                                s.Name != "Detachment" &&
+                                s.Name != "Show/Hide Options")
+                    .ToList();
+
+                foreach (var unit in units.DistinctBy(u => u.Name))
+                {
+                    AllUnits.Add(new UnitEntry(
+                        $"{playerId}_{unit.Name}",
+                        unit.Name,
+                        playerId,
+                        playerIndex,
+                        unit
+                    ));
+                }
+            }
+            catch { }
+
+            playerIndex++;
+        }
+    }
+
+    private void SetAttackerFilter(string? playerId)
+    {
+        AttackerPlayerFilter = playerId;
+        if (SelectedAttacker != null && playerId != null && SelectedAttacker.PlayerId != playerId)
+            ClearAttacker();
+    }
+
+    private void SetDefenderFilter(string? playerId)
+    {
+        DefenderPlayerFilter = playerId;
+        if (SelectedDefender != null && playerId != null && SelectedDefender.PlayerId != playerId)
+            ClearDefender();
+    }
+
+    private void SelectAttackerUnit(UnitEntry entry)
+    {
+        if (SelectedAttacker?.Key == entry.Key) { ClearAttacker(); return; }
+
+        SelectedAttacker = entry;
+        _selectedWeaponName = null;
+        SelectedWeapon = null;
+        WeaponStrength = null;
+        SelectedWeaponMeta = "";
+        AttackerWeapons = GetAllWeapons(entry.Unit);
+        Recalculate();
+    }
+
+    private void SelectWeapon(Profile w)
+    {
+        if (_selectedWeaponName == w.Name) { ClearWeapon(); return; }
+
+        _selectedWeaponName = w.Name;
+        SelectedWeapon = w;
+        var sVal = GetChar(w, "S");
+        WeaponStrength = int.TryParse(sVal, out var s) ? s : null;
+
+        var range   = GetChar(w, "Range");
+        var attacks = GetChar(w, "A");
+        var ap      = GetChar(w, "AP");
+        var dmg     = GetChar(w, "D");
+        SelectedWeaponMeta = $"{range}  A:{attacks}  AP:{ap}  D:{dmg}";
+        Recalculate();
+    }
+
+    private void SelectDefenderUnit(UnitEntry entry)
+    {
+        if (SelectedDefender?.Key == entry.Key) { ClearDefender(); return; }
+
+        SelectedDefender = entry;
+        var unitProfile = GetAllProfilesRecursive(entry.Unit, "Unit").FirstOrDefault();
+        var tVal = GetChar(unitProfile, "T");
+        DefenderToughness = int.TryParse(tVal, out var t) ? t : null;
+        Recalculate();
+    }
+
+    private void ClearAttacker()
+    {
+        SelectedAttacker = null;
+        AttackerWeapons = new();
+        ClearWeapon();
+    }
+
+    private void ClearWeapon()
+    {
+        SelectedWeapon = null;
+        _selectedWeaponName = null;
+        WeaponStrength = null;
+        SelectedWeaponMeta = "";
+        Recalculate();
+    }
+
+    private void ClearDefender()
+    {
+        SelectedDefender = null;
+        DefenderToughness = null;
+        Recalculate();
+    }
+
+    private void Recalculate()
+    {
+        if (!WeaponStrength.HasValue || !DefenderToughness.HasValue) { WoundRoll = null; return; }
+        int s = WeaponStrength.Value, t = DefenderToughness.Value;
+        WoundRoll = s >= t * 2 ? "2+" :
+                    s > t      ? "3+" :
+                    s == t     ? "4+" :
+                    s * 2 <= t ? "6+" :
+                                 "5+";
+    }
+
+    private string GetResultClass(string? roll) => roll switch
+    {
+        "2+" => "wfr-2", "3+" => "wfr-3", "4+" => "wfr-4",
+        "5+" => "wfr-5", "6+" => "wfr-6", _ => ""
+    };
+
+    private List<Profile> GetAllWeapons(Selection unit)
+    {
+        var ranged = GetAllProfilesRecursive(unit, "Ranged Weapons");
+        var melee  = GetAllProfilesRecursive(unit, "Melee Weapons");
+        return ranged.Concat(melee).DistinctBy(w => w.Name).ToList();
+    }
+
+    private List<Profile> GetAllProfilesRecursive(Selection? current, string typeName)
+    {
+        var found = new List<Profile>();
+        if (current == null) return found;
+        if (current.Profiles != null)
+            found.AddRange(current.Profiles.Where(p => p.TypeName == typeName));
+        if (current.Selections != null)
+            foreach (var child in current.Selections)
+                found.AddRange(GetAllProfilesRecursive(child, typeName));
+        return found;
+    }
+
+    private string GetChar(Profile? p, string statName) =>
+        p?.Characteristics?.FirstOrDefault(c => c.Name == statName)?.Value ?? "-";
+
+    private string GetPlayerColor(string playerId) => playerId switch
+    {
+        "p2" => "#5dade2",
+        "p3" => "#2ecc71",
+        "p4" => "#a855f7",
+        "p5" => "#e74c3c",
+        "p6" => "#f39c12",
+        _    => "#ffc107"
+    };
+}
+
+<style>
+    /* ── Page shell ─────────────────────────────────────────────────────── */
+    .wc-page {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 20px 14px 80px;
+        font-family: 'Oswald', sans-serif;
+        color: #e0e0e0;
+    }
+
+    .wc-header { text-align: center; margin-bottom: 20px; }
+
+    .wc-title {
+        font-size: 1.9rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        color: #ffc107;
+        margin: 0;
+    }
+
+    .wc-subtitle {
+        color: #666;
+        font-size: 0.78rem;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin: 3px 0 0;
+    }
+
+    .wc-loading { text-align: center; padding: 60px; color: #666; }
+
+    /* ── Full-width result banner ───────────────────────────────────────── */
+    .wc-full-result {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        border-radius: 6px;
+        border: 1px solid #444;
+        background: #1a1a1a;
+        padding: 14px 20px;
+        margin-bottom: 16px;
+        transition: border-color 0.2s, background 0.2s;
+    }
+
+    .wfr-2 { border-color: #f1c40f; background: rgba(241,196,15,0.07); }
+    .wfr-3 { border-color: #2ecc71; background: rgba(46,204,113,0.07); }
+    .wfr-4 { border-color: #3498db; background: rgba(52,152,219,0.07); }
+    .wfr-5 { border-color: #e67e22; background: rgba(230,126,34,0.07); }
+    .wfr-6 { border-color: #e74c3c; background: rgba(231,76,60,0.07);  }
+
+    .wc-fr-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .wc-fr-weapon {
+        font-weight: 700;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        color: #ffddaa;
+    }
+
+    .wc-fr-sep { color: #555; font-size: 0.75rem; }
+
+    .wc-fr-defender {
+        font-weight: 700;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        color: #aaccff;
+    }
+
+    .wc-fr-center {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .wc-fr-annotation { font-size: 0.78rem; color: #777; }
+
+    .wc-fr-roll {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #ffc107;
+        line-height: 1;
+    }
+
+    /* ── Three-column arena ─────────────────────────────────────────────── */
+    .wc-arena {
+        display: grid;
+        grid-template-columns: 1fr 120px 1fr;
+        gap: 12px;
+        align-items: start;
+    }
+
+    @@media (max-width: 700px) {
+        .wc-arena { grid-template-columns: 1fr; }
+        .wc-vs-col { flex-direction: row; justify-content: center; flex-wrap: wrap; }
+    }
+
+    /* ── Cards ──────────────────────────────────────────────────────────── */
+    .wc-card {
+        background: #1e1e1e;
+        border: 1px solid #333;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .wc-card-header {
+        padding: 9px 14px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .attacker-header {
+        background: linear-gradient(135deg, #5c1212 0%, #3a0a0a 100%);
+        border-bottom: 2px solid #c0392b;
+        color: #ffbbbb;
+    }
+
+    .defender-header {
+        background: linear-gradient(135deg, #0e2240 0%, #071428 100%);
+        border-bottom: 2px solid #2980b9;
+        color: #aad4ff;
+    }
+
+    .wc-header-unit {
+        font-size: 0.7rem;
+        font-weight: 400;
+        letter-spacing: 0;
+        opacity: 0.8;
+        text-transform: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 160px;
+    }
+
+    .wc-card-body { padding: 12px; }
+
+    /* ── Player filter buttons ──────────────────────────────────────────── */
+    .wc-player-filter {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+
+    .wc-fbtn {
+        background: #252525;
+        border: 1px solid #3a3a3a;
+        color: #777;
+        border-radius: 3px;
+        padding: 3px 10px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        cursor: pointer;
+        font-family: 'Oswald', sans-serif;
+        transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+
+    .wc-fbtn:hover { border-color: #666; color: #ccc; background: #2e2e2e; }
+
+    .wc-fbtn-on {
+        border-color: var(--pbtn-color, #e0e0e0) !important;
+        color: var(--pbtn-color, #e0e0e0) !important;
+        background: rgba(255,255,255,0.05) !important;
+    }
+
+    /* ── Grid labels ────────────────────────────────────────────────────── */
+    .wc-grid-label {
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #555;
+        margin-bottom: 6px;
+    }
+
+    .mt-2 { margin-top: 10px; }
+
+    /* ── Unit tile grid ─────────────────────────────────────────────────── */
+    .wc-unit-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 5px;
+        max-height: 290px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #3a3a3a #1a1a1a;
+        padding-right: 2px;
+    }
+
+    .wc-unit-grid::-webkit-scrollbar { width: 4px; }
+    .wc-unit-grid::-webkit-scrollbar-track { background: #1a1a1a; }
+    .wc-unit-grid::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 2px; }
+
+    .wc-tile {
+        background: #242424;
+        border: 1px solid #333;
+        border-radius: 4px;
+        padding: 7px 8px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-height: 50px;
+        transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
+        user-select: none;
+    }
+
+    .wc-tile:hover { background: #2c2c2c; border-color: #555; }
+
+    .wc-tile-atk-on {
+        border-color: #c0392b !important;
+        background: rgba(192,57,43,0.14) !important;
+        box-shadow: 0 0 0 1px #c0392b inset;
+    }
+
+    .wc-tile-def-on {
+        border-color: #2980b9 !important;
+        background: rgba(41,128,185,0.14) !important;
+        box-shadow: 0 0 0 1px #2980b9 inset;
+    }
+
+    .wc-tile-top {
+        display: flex;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    .wc-tile-ico {
+        font-size: 0.65rem;
+        color: #555;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .wc-tile-name {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #d0d0d0;
+        line-height: 1.25;
+        word-break: break-word;
+    }
+
+    .wc-tile-foot { display: flex; justify-content: flex-end; }
+
+    .wc-tile-pid {
+        font-size: 0.6rem;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+    }
+
+    /* ── Weapon tile grid ───────────────────────────────────────────────── */
+    .wc-weapon-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 5px;
+        max-height: 200px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #3a3a3a #1a1a1a;
+        padding-right: 2px;
+    }
+
+    .wc-weapon-grid::-webkit-scrollbar { width: 4px; }
+    .wc-weapon-grid::-webkit-scrollbar-track { background: #1a1a1a; }
+    .wc-weapon-grid::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 2px; }
+
+    .wc-wtile {
+        background: #202020;
+        border: 1px solid #333;
+        border-radius: 4px;
+        padding: 6px 8px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
+        user-select: none;
+    }
+
+    .wc-wtile:hover { background: #2a2a2a; border-color: #555; }
+
+    .wc-wtype {
+        font-size: 0.58rem;
+        font-weight: 800;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        line-height: 1;
+    }
+
+    .wt-rng { color: #5dade2; }
+    .wt-mel { color: #e74c3c; }
+
+    .wc-wname {
+        font-size: 0.75rem;
+        color: #c8c8c8;
+        line-height: 1.25;
+        word-break: break-word;
+    }
+
+    .wc-ws {
+        font-size: 0.88rem;
+        font-weight: 800;
+        color: #ffc107;
+        align-self: flex-end;
+        line-height: 1;
+        margin-top: 2px;
+    }
+
+    /* ── Stat bar (S / T display) ───────────────────────────────────────── */
+    .wc-statbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 10px;
+        padding: 8px 12px;
+        border-radius: 4px;
+    }
+
+    .atk-statbar {
+        background: rgba(192,57,43,0.12);
+        border: 1px solid rgba(192,57,43,0.4);
+    }
+
+    .def-statbar {
+        background: rgba(41,128,185,0.12);
+        border: 1px solid rgba(41,128,185,0.4);
+    }
+
+    .wc-sb-stat {
+        display: flex;
+        align-items: baseline;
+        gap: 5px;
+    }
+
+    .wc-sb-lbl {
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 1px;
+        opacity: 0.65;
+    }
+
+    .wc-sb-val {
+        font-size: 1.8rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .wc-sb-meta {
+        font-size: 0.72rem;
+        color: #777;
+        letter-spacing: 0.3px;
+    }
+
+    /* ── VS column ──────────────────────────────────────────────────────── */
+    .wc-vs-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        padding-top: 48px;
+    }
+
+    .wc-vs-badge {
+        background: #1a1a1a;
+        border: 2px solid #333;
+        color: #555;
+        font-weight: 800;
+        font-size: 0.9rem;
+        letter-spacing: 3px;
+        padding: 5px 10px;
+        border-radius: 4px;
+        width: 100%;
+        text-align: center;
+    }
+
+    /* Mini result in VS column */
+    .wc-mini-result {
+        text-align: center;
+        padding: 10px 8px;
+        border-radius: 6px;
+        border: 1px solid #333;
+        background: #181818;
+        width: 100%;
+        transition: border-color 0.2s;
+    }
+
+    .wc-mini-result.wfr-2 { border-color: #f1c40f; }
+    .wc-mini-result.wfr-3 { border-color: #2ecc71; }
+    .wc-mini-result.wfr-4 { border-color: #3498db; }
+    .wc-mini-result.wfr-5 { border-color: #e67e22; }
+    .wc-mini-result.wfr-6 { border-color: #e74c3c; }
+
+    .wc-mr-label {
+        font-size: 0.62rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #555;
+    }
+
+    .wc-mr-roll {
+        font-size: 2.4rem;
+        font-weight: 800;
+        color: #ffc107;
+        line-height: 1;
+    }
+
+    /* Quick reference table */
+    .wc-reference {
+        background: #161616;
+        border: 1px solid #2a2a2a;
+        border-radius: 4px;
+        padding: 8px 10px;
+        width: 100%;
+    }
+
+    .wc-ref-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.78rem;
+    }
+
+    .wc-ref-table td {
+        padding: 3px 4px;
+        border-bottom: 1px solid #222;
+        color: #555;
+    }
+
+    .wc-ref-table td:last-child {
+        text-align: right;
+        font-weight: 800;
+        font-size: 0.85rem;
+    }
+
+    .wc-ref-on td { color: #d0d0d0 !important; background: rgba(255,193,7,0.06); }
+
+    .roll-2 { color: #f1c40f; }
+    .roll-3 { color: #2ecc71; }
+    .roll-4 { color: #3498db; }
+    .roll-5 { color: #e67e22; }
+    .roll-6 { color: #e74c3c; }
+</style>
