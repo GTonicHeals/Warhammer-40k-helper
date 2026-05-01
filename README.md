@@ -5,12 +5,12 @@ A Blazor Server web application for Warhammer 40,000 10th Edition gameplay. Pars
 ## Features
 
 ### Roster Viewer
-- Dual-army support — loads `roster.json` (Player 1) and `enemy.json` (Player 2) simultaneously
+- Multi-army support — loads `p1.json` (Player 1), `p2.json` (Player 2) and `p{n}.json` (Player n) simultaneously
 - Unit datasheet cards with stats, weapon profiles, and abilities
 - Per-unit wound tracking with +/- buttons and destroyed state
 - Battle-Shock status indicators
 - Points totals and limits display
-- Color-coded theme per player (orange for P1, blue for P2)
+- Color-coded theme per player (orange for P1, blue for P2, etc)
 - Detachment rule display in context
 
 ### Wound Calculator
