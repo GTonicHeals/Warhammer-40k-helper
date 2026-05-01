@@ -1,97 +1,123 @@
 # Warhammer 40k: Tactical Dashboard
 
-A specialized Blazor Web Application designed to visualize Warhammer 40,000 10th Edition rosters and rules. This system parses JSON data to create a high-performance, game-ready dashboard with dynamic rule filtering and interactive reference tools.
-Core Features
-Interactive Roster Viewer
+A Blazor Server web application for Warhammer 40,000 10th Edition gameplay. Parses army roster exports to provide an interactive game-day companion with wound tracking, stratagem lookup, damage calculation, objective scoring, and faction rules reference.
 
-    Dual-Army Support: Parallel processing for roster.json and enemy.json to manage both friendly and opposing forces.
+## Features
 
-    Automated Stratagem Mapping: Dynamically links unit names to specific Stratagems using keyword-based string parsing.
+### Roster Viewer
+- Dual-army support — loads `roster.json` (Player 1) and `enemy.json` (Player 2) simultaneously
+- Unit datasheet cards with stats, weapon profiles, and abilities
+- Per-unit wound tracking with +/- buttons and destroyed state
+- Battle-Shock status indicators
+- Points totals and limits display
+- Color-coded theme per player (orange for P1, blue for P2)
+- Detachment rule display in context
 
-    Detachment Logic: Filters out illegal Stratagems based on the roster's selected Detachment and Faction ID.
+### Wound Calculator
+- Hit roll, wound roll, armor save, and invulnerable save resolution
+- Strength vs. Toughness wound table
+- Modifiers for Lethal Hits, Devastating Wounds, AP, and mortal wounds
+- Visual attack sequence flow
+- Select a unit from your roster to pre-fill weapon profiles
 
-    Theme Switching: Context-aware styling (Orange for Player 1, Blue for Player 2) to maintain visual clarity during gameplay.
+### Stratagem Management
+- Database of 1,300+ stratagems loaded from `wwwroot/data/Stratagems.json`
+- Keyword-based unit-to-stratagem matching
+- Faction and detachment filtering (illegal stratagems removed automatically)
+- Grouped by turn availability: Your Turn / Opponent's Turn / Either
 
-Stratagem Management
+### Tactical Objectives Tracker
+- Dual-player scoring with separate states
+- Primary objective scoring across 4 rounds (capped at 50 VP)
+- Secondary objective VP counter (capped at 40 VP)
+- 15-card objective deck: draw, activate, and score missions
+- Automated total calculation per 10th Edition rules
 
-    Database Integration: Loads a central library of over 1,300 Stratagems from an external JSON source.
+### Game State Bar
+- Persistent header bar showing current battle round (1–5)
+- Per-player Command Points counter with +/- controls
+- Global reset for all game state
 
-    Contextual UI: Automatically groups and color-codes Stratagems by turn availability (Your Turn, Opponent's Turn, or Either Turn).
+### Quick Reference
+- Full 10th Edition turn sequence (Command → Movement → Shooting → Charge → Fight → Morale)
+- Searchable keyword glossary for 30+ universal special rules (LETHAL HITS, BLAST, ANTI, etc.)
+- Real-time text highlighting via regex
 
-    Modal Overlay: Detailed rule descriptions are accessible via a popup system to preserve datasheet screen space.
+### Faction Rules
+Dedicated reference pages for supported factions:
+- T'au Empire
+- Space Marines
+- Black Templars
+- Necrons
+- Orks
+- Tyranids
 
-Rules Engine & Quick Reference
+Navigation links appear dynamically based on which factions are loaded in the active rosters.
 
-    Turn Sequence: Step-by-step documentation of 10th Edition phases.
+### Scenarios
+Battle scenario reference for matched and crusade play.
 
-    Wound Calculator: Logic-driven tool that calculates required wound rolls based on Strength and Toughness inputs.
+---
 
-    Keyword Glossary: Searchable database of Universal Special Rules with real-time text highlighting via Regular Expressions.
+## Tech Stack
 
-Technical Stack
+| Layer | Technology |
+|---|---|
+| Framework | ASP.NET Core Blazor (Interactive Server) |
+| Language | C# / .NET 10.0 |
+| Frontend | Bootstrap 5, Custom CSS3 |
+| Data | System.Text.Json |
+| Interop | JavaScript Runtime (DOM, smooth scroll) |
 
-    Framework: ASP.NET Core Blazor (Interactive Server Mode)
+---
 
-    Language: C# 12 / .NET 8
+## Setup
 
-    Data Management: System.Text.Json for high-speed serialization
+**Prerequisites:** .NET 10.0 SDK
 
-    Frontend: Bootstrap 5 and Custom CSS3
+1. Clone the repository.
+2. Place your BattleScribe-exported roster files in `T'au/wwwroot/`:
+   - `roster.json` — Player 1 army
+   - `enemy.json` — Player 2 army (optional)
+3. Verify `wwwroot/data/Stratagems.json` is present (included in repo).
 
-    Interop: JavaScript Runtime for DOM manipulation and smooth scroll fragments
-
-Installation and Setup
-Prerequisites
-
-    .NET 8.0 SDK
-
-Environment Configuration
-
-    Clone the repository to your local machine.
-
-    Place your exported roster files in the following directory:
-
-        wwwroot/roster.json
-
-        wwwroot/enemy.json
-
-    Ensure the rules database is present at:
-
-        wwwroot/data/Stratagems.json
-
-Deployment
-
-Execute the following command in the project root:
-Bash
-
+**Run:**
+```bash
+cd "T'au"
 dotnet watch run
+```
 
-The application will be hosted locally, typically at https://localhost:7197.
-Data Schema Reference
-Stratagem Unit Mapping
+The app will be available at `https://localhost:7000` (or the port shown in terminal output).
 
-The system identifies usable rules by splitting the stratagems string attribute within the units array:
-JSON
+---
 
-    {
-      "data": {
-        "units": [
-          {
-            "name": "Hellblaster Squad",
-            "stratagems": "COMMAND RE-ROLL|GO TO GROUND|FIRE OVERWATCH"
-          }
-        ]
+## Roster Format
+
+Rosters are BattleScribe JSON exports. The stratagem mapper reads the `stratagems` field on each unit entry to build the per-unit stratagem list:
+
+```json
+{
+  "data": {
+    "units": [
+      {
+        "name": "Hellblaster Squad",
+        "stratagems": "COMMAND RE-ROLL|GO TO GROUND|FIRE OVERWATCH"
       }
-    }
+    ]
+  }
+}
+```
 
-Development Roadmap
+---
 
-    Implementation of a global search bar for the Roster view.
+## Roadmap
 
-    Development of a probability calculator (MathHammer) for damage output analysis.
+- Global search bar in the Roster view
+- MathHammer probability calculator for damage output analysis
+- Browser-based roster file upload (replace static JSON dependency)
 
-    Migration to browser-based file uploads to replace static JSON file dependencies.
+---
 
-Disclaimer
+## Disclaimer
 
-This project is for personal use and educational purposes. Warhammer 40,000 is a trademark of Games Workshop. This application is not affiliated with or endorsed by Games Workshop.
+This project is for personal and educational use. Warhammer 40,000 is a trademark of Games Workshop. This application is not affiliated with or endorsed by Games Workshop.
