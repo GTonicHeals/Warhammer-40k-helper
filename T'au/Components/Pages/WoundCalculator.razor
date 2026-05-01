@@ -212,6 +212,19 @@
                                         @onclick="() => { _atkPlusOneWound = !_atkPlusOneWound; Recalculate(); }">
                                     <i class="bi bi-arrow-up-circle"></i> +1 WOUND
                                 </button>
+                                @if (CanApplyBgnt())
+                                {
+                                    <span class="kw-tag-wrapper">
+                                        <button class="wc-mod-btn @(_bgntPenalty ? "wc-mod-on" : "")"
+                                                @onclick="() => { _bgntPenalty = !_bgntPenalty; Recalculate(); }">
+                                            <i class="bi bi-truck"></i> BGNT (-1 HIT)
+                                        </button>
+                                        <div class="kw-tooltip">
+                                            <div class="kw-tooltip-title">Big Guns Never Tire</div>
+                                            <div class="kw-tooltip-body">Vehicles and Monsters suffer a -1 to Hit penalty when firing Ranged weapons (excluding Pistols) while within Engagement Range of enemy units, or when targeted by Ranged weapons while in Engagement Range.</div>
+                                        </div>
+                                    </span>
+                                }
                             </div>
                         </div>
                     }
@@ -637,6 +650,7 @@
     // Modifier toggles
     private bool _atkPlusOneHit;
     private bool _atkPlusOneWound;
+    private bool _bgntPenalty;
     private bool _defMinusOneHit;
     private bool _defMinusOneWound;
     private bool _defReduceAp;
@@ -755,6 +769,7 @@
         SelectedWeaponKeywords = new();
         _atkPlusOneHit = false;
         _atkPlusOneWound = false;
+        _bgntPenalty = false;
         AttackerWeapons = GetAllWeapons(entry.Unit);
         AttackerStratagems = StratagemSvc.GetStratagemsForUnit(entry.Unit.Name, entry.DetachmentName)
             .Where(s => s.Turn.Contains("your", StringComparison.OrdinalIgnoreCase))
@@ -834,6 +849,7 @@
         AttackerStratagems = new();
         AttackerAbilities = new();
         AttackerDetachmentRule = null;
+        _bgntPenalty = false;
         ClearWeapon();
     }
 
@@ -848,6 +864,7 @@
         WeaponAttacks = null;
         WeaponKeywords = null;
         SelectedWeaponKeywords = new();
+        _bgntPenalty = false;
         Recalculate();
     }
 
@@ -892,6 +909,7 @@
         SelectedWeaponKeywords = new();
         _atkPlusOneHit      = false;
         _atkPlusOneWound    = false;
+        _bgntPenalty        = false;
         AttackerWeapons     = oldDefender != null ? GetAllWeapons(oldDefender.Unit) : new();
 
         // Old Attacker → new Defender (re-derive T, Sv, invuln)
@@ -940,7 +958,9 @@
     private void Recalculate()
     {
         // ── Net modifiers (10th Ed: capped at [-1, +1]) ───────────────────
-        NetHitMod   = Math.Clamp((_atkPlusOneHit  ? 1 : 0) - (_defMinusOneHit   ? 1 : 0), -1, 1);
+        // BGNT applies only when legally possible (ranged, non-Pistol, Vehicle/Monster involved)
+        bool appliesBgnt = _bgntPenalty && CanApplyBgnt();
+        NetHitMod   = Math.Clamp((_atkPlusOneHit  ? 1 : 0) - (_defMinusOneHit ? 1 : 0) - (appliesBgnt ? 1 : 0), -1, 1);
         NetWoundMod = Math.Clamp((_atkPlusOneWound ? 1 : 0) - (_defMinusOneWound ? 1 : 0), -1, 1);
 
         // ── Effective AP (AP reduction: makes AP less severe, floor at 0) ─
@@ -1065,6 +1085,19 @@
     private List<Rule> GetAbilities(Selection unit) => RosterHelper.GetAbilities(unit, filterWeaponKeywords: true);
 
     private List<string> GetKeywords(Selection unit) => RosterHelper.GetKeywords(unit);
+
+    private bool CanApplyBgnt()
+    {
+        if (SelectedWeapon == null || SelectedWeapon.TypeName != "Ranged Weapons") return false;
+        if (SelectedWeaponKeywords.Any(k => k.Raw.Contains("PISTOL", StringComparison.OrdinalIgnoreCase))) return false;
+
+        bool attackerBig = SelectedAttacker != null && GetKeywords(SelectedAttacker.Unit)
+            .Any(k => k.Equals("VEHICLE", StringComparison.OrdinalIgnoreCase) || k.Equals("MONSTER", StringComparison.OrdinalIgnoreCase));
+        bool defenderBig = SelectedDefender != null && GetKeywords(SelectedDefender.Unit)
+            .Any(k => k.Equals("VEHICLE", StringComparison.OrdinalIgnoreCase) || k.Equals("MONSTER", StringComparison.OrdinalIgnoreCase));
+
+        return attackerBig || defenderBig;
+    }
 
     private static MarkupString FormatText(string text) => RosterHelper.FormatText(text);
 
