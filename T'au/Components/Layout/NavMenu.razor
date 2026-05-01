@@ -26,6 +26,20 @@
 <div class="nav-scrollable @(_navOpen ? "show" : "")" @onclick="CloseNav">
     <nav class="flex-column">
 
+        <!-- Primary Tool -->
+        <div class="nav-item px-3 mt-3 mb-1">
+            <span class="text-uppercase fw-bold text-white-50 small ps-3">Command Tools</span>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="woundcalc">
+                <span class="bi bi-calculator text-warning" aria-hidden="true"></span>
+                <span class="fw-bold text-white">Wound Calculator</span>
+            </NavLink>
+        </div>
+
+        <hr class="border-secondary mx-3 my-2" />
+
+        <!-- Reference Section -->
         <div class="nav-item px-3 mt-3 mb-1">
             <span class="text-uppercase fw-bold text-white-50 small ps-3">Reference</span>
         </div>
@@ -37,11 +51,6 @@
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="corestratagems">
                 <span class="bi bi-lightning-charge" aria-hidden="true"></span> Stratagems
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="woundcalc">
-                <span class="bi bi-calculator" aria-hidden="true"></span> Wound Calculator
             </NavLink>
         </div>
 
