@@ -1,4 +1,4 @@
-@page "/woundcalc"
+﻿@page "/woundcalc"
 @rendermode InteractiveServer
 @using System.Text.Json
 @using System.Text.RegularExpressions
@@ -138,6 +138,14 @@
                     @if (SelectedWeapon != null)
                     {
                         <div class="wc-statbar atk-statbar">
+                            @if (!string.IsNullOrEmpty(WeaponAttacks) && WeaponAttacks != "-")
+                            {
+                                <div class="wc-sb-stat">
+                                    <span class="wc-sb-lbl">A</span>
+                                    <span class="wc-sb-val wc-sb-atk">@WeaponAttacks</span>
+                                </div>
+                                <div class="wc-sb-divider"></div>
+                            }
                             @if (HitRoll != null)
                             {
                                 <div class="wc-sb-stat">
@@ -161,14 +169,7 @@
                                     <span class="wc-sb-val wc-sb-ap">@WeaponAp</span>
                                 </div>
                             }
-                            @if (!string.IsNullOrEmpty(WeaponAttacks) && WeaponAttacks != "-")
-                            {
-                                <div class="wc-sb-divider"></div>
-                                <div class="wc-sb-stat">
-                                    <span class="wc-sb-lbl">A</span>
-                                    <span class="wc-sb-val wc-sb-atk">@WeaponAttacks</span>
-                                </div>
-                            }
+                            
                             @if (!string.IsNullOrEmpty(SelectedWeaponMeta))
                             {
                                 <span class="wc-sb-meta">@SelectedWeaponMeta</span>
@@ -386,6 +387,36 @@
                                 <div class="wc-sb-stat">
                                     <span class="wc-sb-lbl">Sv</span>
                                     <span class="wc-sb-val wc-sb-sv">@(DefenderSave)@("+")</span>
+                                </div>
+                            }
+                            @if (DefenderWounds is { Count: > 0 })
+                            {
+                                var isMixed = DefenderWounds.Count > 1;
+                                <div class="wc-sb-divider"></div>
+                                <div class="wc-sb-stat @(isMixed ? "wc-w-help" : "")">
+                                    <span class="wc-sb-lbl">W</span>
+                                    @if (isMixed)
+                                    {
+                                        <div class="wc-w-tooltip">
+                                            <div class="wc-w-tooltip-title">Wounds per model</div>
+                                            <div class="wc-w-tooltip-body">For mixed units: <strong>count|wounds</strong>.<br/>e.g. <strong>1|2</strong> means 1 model with 2 wounds each.</div>
+                                        </div>
+                                    }
+                                    <span class="wc-sb-val">
+                                        @for (int i = 0; i < DefenderWounds.Count; i++)
+                                        {
+                                            var part = DefenderWounds[i];
+                                            if (i > 0)
+                                            {
+                                                <span class="wc-sb-w-sep">,&nbsp;</span>
+                                            }
+                                            if (part.Count.HasValue)
+                                            {
+                                                <span class="wc-sb-w-count">@part.Count|</span>
+                                            }
+                                            <span class="text-danger">@part.W</span>
+                                        }
+                                    </span>
                                 </div>
                             }
                         </div>
@@ -639,6 +670,7 @@
     private string? HitRoll;
     private int? DefenderToughness;
     private int? DefenderSave;
+    private List<(int? Count, string W)>? DefenderWounds;
     private bool _hasCover;
     private string? WoundRoll;
     private string? FinalSaveRoll;
@@ -825,9 +857,10 @@
 
         var unitProfile = GetAllProfilesRecursive(entry.Unit, "Unit").FirstOrDefault();
         var tVal  = GetChar(unitProfile, "T");
-        var svVal = GetChar(unitProfile, "SV"); 
+        var svVal = GetChar(unitProfile, "SV");
         DefenderToughness = int.TryParse(tVal, out var t)  ? t  : null;
         DefenderSave      = int.TryParse(svVal.TrimEnd('+'), out var sv) ? sv : null;
+        DefenderWounds    = BuildDefenderWounds(entry.Unit);
 
         _autoInvulnSave = ParseInvulnSave(entry.Unit);
         _invulnSave     = _autoInvulnSave ?? 0;
@@ -873,6 +906,7 @@
         SelectedDefender  = null;
         DefenderToughness = null;
         DefenderSave      = null;
+        DefenderWounds    = null;
         _hasCover         = false;
         _defMinusOneHit   = false;
         _defMinusOneWound = false;
@@ -925,6 +959,7 @@
             var svVal = GetChar(unitProfile, "SV");
             DefenderToughness = int.TryParse(tVal, out var t) ? t : null;
             DefenderSave      = int.TryParse(svVal.TrimEnd('+'), out var sv) ? sv : null;
+            DefenderWounds    = BuildDefenderWounds(oldAttacker.Unit);
             _autoInvulnSave   = ParseInvulnSave(oldAttacker.Unit);
             _invulnSave       = _autoInvulnSave ?? 0;
         }
@@ -932,6 +967,7 @@
         {
             DefenderToughness = null;
             DefenderSave      = null;
+            DefenderWounds    = null;
             _autoInvulnSave   = null;
             _invulnSave       = 0;
         }
@@ -1070,6 +1106,40 @@
     }
 
     private List<Profile> GetAllProfilesRecursive(Selection? current, string typeName) => RosterHelper.GetAllProfilesRecursive(current, typeName);
+
+    private static void CollectUnitModels(Selection? sel, List<(int Number, Profile Profile)> sink)
+    {
+        if (sel == null) return;
+        if (sel.Profiles != null)
+        {
+            foreach (var p in sel.Profiles.Where(p => p.TypeName == "Unit"))
+                sink.Add((Math.Max(1, sel.Number), p));
+        }
+        if (sel.Selections != null)
+            foreach (var child in sel.Selections)
+                CollectUnitModels(child, sink);
+    }
+
+    private List<(int? Count, string W)>? BuildDefenderWounds(Selection? unit)
+    {
+        if (unit == null) return null;
+        var models = new List<(int Number, Profile Profile)>();
+        CollectUnitModels(unit, models);
+
+        var order = new List<string>();
+        var totals = new Dictionary<string, int>();
+        foreach (var (n, p) in models)
+        {
+            var w = RosterHelper.GetChar(p, "W");
+            if (string.IsNullOrEmpty(w) || w == "-") continue;
+            if (!totals.ContainsKey(w)) order.Add(w);
+            totals[w] = totals.GetValueOrDefault(w) + n;
+        }
+
+        if (order.Count == 0) return null;
+        if (order.Count == 1) return new() { (null, order[0]) };
+        return order.Select(w => ((int?)totals[w], w)).ToList();
+    }
 
     private string GetChar(Profile? p, string statName) => RosterHelper.GetChar(p, statName);
 
@@ -1469,6 +1539,54 @@
         display: flex;
         align-items: baseline;
         gap: 5px;
+    }
+
+    .wc-w-help {
+        position: relative;
+        cursor: help;
+    }
+
+        .wc-w-help:hover {
+            z-index: 1200;
+        }
+
+        .wc-w-help:hover .wc-w-tooltip {
+            display: block;
+        }
+
+    .wc-w-tooltip {
+        display: none;
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: #12122a;
+        border: 1px solid #555;
+        border-radius: 5px;
+        padding: 8px 10px;
+        min-width: 220px;
+        max-width: 280px;
+        z-index: 1100;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.8);
+        pointer-events: none;
+        white-space: normal;
+        text-align: left;
+    }
+
+    .wc-w-tooltip-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #e74c3c;
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+    }
+
+    .wc-w-tooltip-body {
+        font-size: 0.72rem;
+        color: #ddd;
+        line-height: 1.4;
+        font-weight: normal;
     }
 
     .wc-sb-lbl {
