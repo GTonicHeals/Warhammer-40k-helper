@@ -7,6 +7,7 @@
 @using System.IO
 @inject IWebHostEnvironment Env
 @inject StratagemService StratagemSvc
+@inject WoundCalcStateService CalcState
 
 <div class="wc-page">
 
@@ -771,6 +772,35 @@
 
             playerIndex++;
         }
+
+        RestoreFromState();
+    }
+
+    private void RestoreFromState()
+    {
+        AttackerPlayerFilter = CalcState.AttackerFilter;
+        DefenderPlayerFilter = CalcState.DefenderFilter;
+
+        if (!string.IsNullOrEmpty(CalcState.AttackerUnitKey))
+        {
+            var atk = AllUnits.FirstOrDefault(u => u.Key == CalcState.AttackerUnitKey);
+            if (atk != null)
+            {
+                var savedWeapon = CalcState.WeaponName;
+                SelectAttackerUnit(atk);
+                if (!string.IsNullOrEmpty(savedWeapon))
+                {
+                    var w = AttackerWeapons.FirstOrDefault(x => x.Name == savedWeapon);
+                    if (w != null) SelectWeapon(w);
+                }
+            }
+        }
+
+        if (!string.IsNullOrEmpty(CalcState.DefenderUnitKey))
+        {
+            var def = AllUnits.FirstOrDefault(u => u.Key == CalcState.DefenderUnitKey);
+            if (def != null) SelectDefenderUnit(def);
+        }
     }
 
     private void SetAttackerFilter(string? playerId)
@@ -778,6 +808,7 @@
         AttackerPlayerFilter = playerId;
         if (SelectedAttacker != null && playerId != null && SelectedAttacker.PlayerId != playerId)
             ClearAttacker();
+        CalcState.AttackerFilter = AttackerPlayerFilter;
     }
 
     private void SetDefenderFilter(string? playerId)
@@ -785,6 +816,7 @@
         DefenderPlayerFilter = playerId;
         if (SelectedDefender != null && playerId != null && SelectedDefender.PlayerId != playerId)
             ClearDefender();
+        CalcState.DefenderFilter = DefenderPlayerFilter;
     }
 
     private void SelectAttackerUnit(UnitEntry entry)
@@ -809,6 +841,8 @@
             .ToList();
         AttackerAbilities = GetAbilities(entry.Unit);
         AttackerDetachmentRule = DetachmentRules.TryGetValue(entry.DetachmentName, out var adr) ? adr : null;
+        CalcState.AttackerUnitKey = entry.Key;
+        CalcState.WeaponName = null;
         Recalculate();
     }
 
@@ -842,6 +876,7 @@
         var range = GetChar(w, "Range");
         var dmg   = GetChar(w, "D");
         SelectedWeaponMeta = $"{range}  D:{dmg}";
+        CalcState.WeaponName = _selectedWeaponName;
         Recalculate();
     }
 
@@ -872,6 +907,7 @@
         DefenderAbilities = GetAbilities(entry.Unit);
         DefenderDetachmentRule = DetachmentRules.TryGetValue(entry.DetachmentName, out var ddr) ? ddr : null;
 
+        CalcState.DefenderUnitKey = entry.Key;
         Recalculate();
     }
 
@@ -883,6 +919,7 @@
         AttackerAbilities = new();
         AttackerDetachmentRule = null;
         _bgntPenalty = false;
+        CalcState.AttackerUnitKey = null;
         ClearWeapon();
     }
 
@@ -898,6 +935,7 @@
         WeaponKeywords = null;
         SelectedWeaponKeywords = new();
         _bgntPenalty = false;
+        CalcState.WeaponName = null;
         Recalculate();
     }
 
@@ -916,6 +954,7 @@
         DefenderStratagems = new();
         DefenderAbilities = new();
         DefenderDetachmentRule = null;
+        CalcState.DefenderUnitKey = null;
         Recalculate();
     }
 
@@ -987,6 +1026,12 @@
             : new();
         DefenderAbilities = SelectedDefender != null ? GetAbilities(SelectedDefender.Unit) : new();
         DefenderDetachmentRule = SelectedDefender != null && DetachmentRules.TryGetValue(SelectedDefender.DetachmentName, out var sddr) ? sddr : null;
+
+        CalcState.AttackerFilter = AttackerPlayerFilter;
+        CalcState.DefenderFilter = DefenderPlayerFilter;
+        CalcState.AttackerUnitKey = SelectedAttacker?.Key;
+        CalcState.DefenderUnitKey = SelectedDefender?.Key;
+        CalcState.WeaponName = null;
 
         Recalculate();
     }
