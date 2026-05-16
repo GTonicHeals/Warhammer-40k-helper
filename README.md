@@ -14,11 +14,18 @@ A Blazor Server web application for Warhammer 40,000 10th Edition gameplay. Pars
 - Detachment rule display in context
 
 ### Wound Calculator
-- Hit roll, wound roll, armor save, and invulnerable save resolution
-- Strength vs. Toughness wound table
-- Modifiers for Lethal Hits, Devastating Wounds, AP, and mortal wounds
-- Visual attack sequence flow
-- Select a unit from your roster to pre-fill weapon profiles
+- Three-column arena: Attacker | VS | Defender
+- Per-player filter buttons (All / P1 / P2 / …) on both sides; one-click attacker/defender swap
+- Unit tile grid — select attacker unit then choose a weapon; stat bar shows BS/WS, S, AP, A, Range, Damage
+- Weapon keyword badges with inline glossary tooltips (LETHAL HITS, BLAST, ANTI, PISTOL, etc.)
+- Strength vs. Toughness wound table (highlights active row)
+- Full HIT → WOUND → SAVE sequence banner, color-coded by difficulty
+- Attacker modifiers: +1 HIT, +1 WOUND, Big Guns Never Tire –1 HIT (shown only for VEHICLE/MONSTER units firing non-Pistol ranged weapons)
+- Defender modifiers: –1 vs HIT, –1 vs WOUND, AP –1 (reduces weapon AP by one step)
+- In Cover toggle (+1 Sv), auto-detected invulnerable save with manual 3+/4+/5+/6+ override
+- Inline stratagems for each side (attacker sees "your turn" stratagems; defender sees "opponent's turn" stratagems) — click to expand full stratagem detail modal
+- Inline unit abilities and detachment rule displayed as clickable buttons with hover tooltips
+- DATASHEET button opens a full modal with stats strip, ranged/melee weapon tables, abilities, and keywords
 
 ### Stratagem Management
 - Database of 1,300+ stratagems loaded from `wwwroot/data/Stratagems.json`
@@ -77,8 +84,9 @@ Battle scenario reference for matched and crusade play.
 
 1. Clone the repository.
 2. Place your BattleScribe-exported roster files in `T'au/wwwroot/`:
-   - `roster.json` — Player 1 army
-   - `enemy.json` — Player 2 army (optional)
+   - `p1.json` — Player 1 army
+   - `p2.json` — Player 2 army (optional)
+   - `p3.json`, `p4.json`, … — additional players (optional)
 3. Verify `wwwroot/data/Stratagems.json` is present (included in repo).
 
 **Run:**
