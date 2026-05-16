@@ -101,28 +101,13 @@ The app will be available at `https://localhost:7000` (or the port shown in term
 
 ## Roster Format
 
-Rosters are BattleScribe JSON exports. The stratagem mapper reads the `stratagems` field on each unit entry to build the per-unit stratagem list:
-
-```json
-{
-  "data": {
-    "units": [
-      {
-        "name": "Hellblaster Squad",
-        "stratagems": "COMMAND RE-ROLL|GO TO GROUND|FIRE OVERWATCH"
-      }
-    ]
-  }
-}
-```
+Rosters are New Recruit JSON exports.
 
 ---
 
 ## Roadmap
 
-- Global search bar in the Roster view
-- MathHammer probability calculator for damage output analysis
-- Browser-based roster file upload (replace static JSON dependency)
+- Nothing as for now
 
 ---
 
