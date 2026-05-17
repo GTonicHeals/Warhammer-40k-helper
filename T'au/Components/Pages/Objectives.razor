@@ -1,14 +1,15 @@
 ﻿@page "/objectives/{Side?}"
 @rendermode InteractiveServer
 @using Warhammer.Services
+@using Warhammer.Helpers
 @inject ObjectiveService ObjService
 @inject GameStateService GameState
 
 <div class="header-container">
     <div class="header-left">
-        <h3 style="color: @GetPlayerColor();">@GetPlayerLabel()</h3>
+        <h3 style="color: @PlayerTheme.GetColor(Side ?? "p1");">@PlayerTheme.GetLabel(Side ?? "p1") Objectives</h3>
     </div>
-    <div class="cp-badge" style="color: @GetPlayerColor();">
+    <div class="cp-badge" style="color: @PlayerTheme.GetColor(Side ?? "p1");">
         Cards in Deck: @CurrentState.Deck.Count
     </div>
 </div>
@@ -22,7 +23,7 @@
     <div class="total-score-row">
         <div>
             <div class="score-panel-label">Total Score</div>
-            <div class="total-score-value" style="color: @GetPlayerColor();">@CurrentState.TotalScore <span class="vp-unit">VP</span></div>
+            <div class="total-score-value" style="color: @PlayerTheme.GetColor(Side ?? "p1");">@CurrentState.TotalScore <span class="vp-unit">VP</span></div>
         </div>
         <div class="score-breakdown">
             <div class="breakdown-chip">
@@ -101,7 +102,7 @@
         @if (CurrentState.ActiveMissions.Count < 2)
         {
             <button class="btn btn-lg w-100 mb-2"
-                    style="border-color: @GetPlayerColor(); color: @GetPlayerColor();"
+                    style="border-color: @PlayerTheme.GetColor(Side ?? "p1"); color: @PlayerTheme.GetColor(Side ?? "p1");"
                     @onclick="DrawCard">
                 <i class="bi bi-stack me-2"></i>Draw Objective
             </button>
@@ -119,7 +120,7 @@
         @if (CurrentState.ActiveMissions.Count < 2)
         {
             <button class="btn btn-lg w-100 mb-2"
-                    style="border-color: @GetPlayerColor(); color: @GetPlayerColor();"
+                    style="border-color: @PlayerTheme.GetColor(Side ?? "p1"); color: @PlayerTheme.GetColor(Side ?? "p1");"
                     @onclick="DrawCard">
                 <i class="bi bi-stack me-2"></i>Draw Objective
             </button>
@@ -145,13 +146,13 @@
         @foreach (var mission in CurrentState.ActiveMissions)
         {
             <div class="mission-card">
-                <div class="mission-header" style="background-color: @GetPlayerColor();">
+                <div class="mission-header" style="background-color: @PlayerTheme.GetColor(Side ?? "p1");">
                     <span class="mission-title">@mission.Name</span>
                     <span class="mission-type">@mission.Type</span>
                 </div>
                 <div class="mission-body">
                     <p>@mission.Description</p>
-                    <div class="vp-box" style="color: @GetPlayerColor();">
+                    <div class="vp-box" style="color: @PlayerTheme.GetColor(Side ?? "p1");">
                         <strong>Reward:</strong> @mission.Reward
                     </div>
                 </div>
@@ -295,24 +296,6 @@
         return results.Distinct().OrderBy(v => v).ToList();
     }
 
-    // --- Dynamic Rendering Helpers ---
-
-    private string GetPlayerLabel()
-    {
-        if (string.IsNullOrEmpty(Side) || Side == "p1") return "Player 1 Objectives";
-        if (int.TryParse(Side.TrimStart('p', 'P'), out var n)) return $"Player {n} Objectives";
-        return $"{Side} Objectives";
-    }
-
-    private string GetPlayerColor() => (Side?.ToLower() ?? "p1") switch
-    {
-        "p2" => "#5dade2",
-        "p3" => "#2ecc71",
-        "p4" => "#a855f7",
-        "p5" => "#e74c3c",
-        "p6" => "#f39c12",
-        _ => "#d35400" // Fallback for P1 or unknown values
-    };
 }
 
 <style>

@@ -23,6 +23,17 @@ public static class PlayerTheme
         _    => "var(--c-accent, #f39c12)",
     };
 
+    // Mid-tone shade used for backgrounds (datasheet headers, bordered boxes)
+    public static string GetAccentColor(string playerId) => playerId.ToLowerInvariant() switch
+    {
+        "p1" => "#a04000",
+        "p2" => "#2e86c1",
+        "p3" => "#1e8449",
+        "p4" => "#7c3aed",
+        "p5" => "#c0392b",
+        _    => "#d68910",
+    };
+
     public static string GetGradientColor(string playerId) => playerId.ToLowerInvariant() switch
     {
         "p1" => "darkred",

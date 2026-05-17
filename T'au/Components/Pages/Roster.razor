@@ -16,7 +16,7 @@
 
 <div class="header-container">
     <div class="header-left">
-        <h3>@GetPlayerLabel()</h3>
+        <h3>@PlayerTheme.GetLabel(Side ?? "p1") Army</h3>
         @if (!string.IsNullOrEmpty(DetachmentName))
         {
             <div class="detachment-badge">
@@ -25,7 +25,7 @@
             </div>
         }
     </div>
-    <div class="points-badge" style="color: @GetPlayerColor()">
+    <div class="points-badge" style="color: @PlayerTheme.GetColor(Side ?? "p1")">
         @CurrentPoints <span class="text-muted">/</span> @LimitPoints <small>pts</small>
     </div>
 </div>
@@ -403,33 +403,6 @@ else
 
     }
 
-    private string GetPlayerLabel()
-    {
-        if (string.IsNullOrEmpty(Side) || Side == "p1") return "Player 1 Army";
-        if (int.TryParse(Side.TrimStart('p'), out var n)) return $"Player {n} Army";
-        return $"{Side} Army";
-    }
-
-    private string GetPlayerColor() => Side switch
-    {
-        "p2" => "#5dade2",
-        "p3" => "#2ecc71",
-        "p4" => "#a855f7",
-        "p5" => "#e74c3c",
-        "p6" => "#f39c12",
-        _    => "#d35400"
-    };
-
-    private string GetPlayerAccentColor() => Side switch
-    {
-        "p2" => "#2e86c1",
-        "p3" => "#1e8449",
-        "p4" => "#7c3aed",
-        "p5" => "#c0392b",
-        "p6" => "#d68910",
-        _    => "#a04000"
-    };
-
     // Utilities
     private void ShowStratagem(string stratName) => SelectedStratagem = StratagemSvc.GetByName(stratName);
     private void CloseModal() => SelectedStratagem = null;
@@ -460,17 +433,17 @@ else
 @if (!string.IsNullOrEmpty(Side) && Side != "p1")
 {
     <style>
-        .profile-name                       { color: @GetPlayerColor() !important; }
-        .datasheet-header                   { background-color: @GetPlayerAccentColor() !important;
-                                              border-bottom-color: @GetPlayerAccentColor() !important; }
-        .detachment-box                     { border-color: @GetPlayerAccentColor() !important;
-                                              border-left-color: @GetPlayerAccentColor() !important; }
-        h5.text-warning                     { color: @GetPlayerColor() !important; }
-        .detachment-badge span.text-warning { color: @GetPlayerColor() !important; }
+        .profile-name                       { color: @PlayerTheme.GetColor(Side ?? "p1") !important; }
+        .datasheet-header                   { background-color: @PlayerTheme.GetAccentColor(Side ?? "p1") !important;
+                                              border-bottom-color: @PlayerTheme.GetAccentColor(Side ?? "p1") !important; }
+        .detachment-box                     { border-color: @PlayerTheme.GetAccentColor(Side ?? "p1") !important;
+                                              border-left-color: @PlayerTheme.GetAccentColor(Side ?? "p1") !important; }
+        h5.text-warning                     { color: @PlayerTheme.GetColor(Side ?? "p1") !important; }
+        .detachment-badge span.text-warning { color: @PlayerTheme.GetColor(Side ?? "p1") !important; }
         .role-icon                          { color: white !important; }
-        .weapon-keywords                    { color: @GetPlayerColor() !important; }
-        .weapon-table th                    { color: @GetPlayerColor() !important; }
-        .ability-name                       { color: @GetPlayerColor() !important; }
+        .weapon-keywords                    { color: @PlayerTheme.GetColor(Side ?? "p1") !important; }
+        .weapon-table th                    { color: @PlayerTheme.GetColor(Side ?? "p1") !important; }
+        .ability-name                       { color: @PlayerTheme.GetColor(Side ?? "p1") !important; }
     </style>
 }
 
