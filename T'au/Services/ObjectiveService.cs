@@ -1,30 +1,56 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Text.Json;
+
+namespace Warhammer.Services;
 
 public class ObjectiveService
 {
-    public PlayerState P1State { get; set; } = new PlayerState();
-    public PlayerState P2State { get; set; } = new PlayerState();
-    public PlayerState GetState(string side)
+    private readonly List<Objective> _defaultDeck;
+
+    public PlayerState P1State { get; } = new();
+    public PlayerState P2State { get; } = new();
+
+    public ObjectiveService(IWebHostEnvironment env, ILogger<ObjectiveService> logger)
     {
-        return side == "p2" ? P2State : P1State;
+        _defaultDeck = LoadDeck(env, logger);
+        P1State.DefaultDeck = _defaultDeck;
+        P2State.DefaultDeck = _defaultDeck;
+    }
+
+    public PlayerState GetState(string side) => side == "p2" ? P2State : P1State;
+
+    private static List<Objective> LoadDeck(IWebHostEnvironment env, ILogger<ObjectiveService> logger)
+    {
+        var path = Path.Combine(env.WebRootPath, "data", "TacticalObjectives.json");
+        if (!File.Exists(path))
+        {
+            logger.LogWarning("TacticalObjectives.json not found at {Path}", path);
+            return new();
+        }
+        try
+        {
+            var json = File.ReadAllText(path);
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            return JsonSerializer.Deserialize<List<Objective>>(json, options) ?? new();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to load TacticalObjectives.json");
+            return new();
+        }
     }
 }
 
 public class PlayerState
 {
+    internal List<Objective> DefaultDeck { get; set; } = new();
+
     public List<Objective> Deck { get; set; } = new();
     public List<Objective> ActiveMissions { get; set; } = new();
     public List<Objective> ScoredMissions { get; set; } = new();
 
-    // Primary (Main Objective) VP — index 0-3 maps to Battle Rounds 2-5
     public int[] PrimaryScores { get; set; } = new int[4];
-
-    // Manual secondary VP counter (supplements the scored-card list)
     public int SecondaryVP { get; set; } = 0;
 
-    // Primary capped at 50, secondary capped at 40 per 10th-edition rules
     public int PrimaryTotal   => Math.Min(PrimaryScores.Sum(), 50);
     public int SecondaryTotal => Math.Min(SecondaryVP, 40);
     public int TotalScore     => PrimaryTotal + SecondaryTotal;
@@ -37,32 +63,22 @@ public class PlayerState
         SecondaryVP = 0;
         ActiveMissions.Clear();
         ScoredMissions.Clear();
-        Deck = new List<Objective>
-        {
-            new Objective("Assassination", "Purge the Enemy", "Score 5VP if one or more enemy CHARACTER models are destroyed this turn. Score 5VP if the enemy Warlord is destroyed.", "5VP"),
-            new Objective("Bring It Down", "Purge the Enemy", "Score 2VP for each enemy MONSTER or VEHICLE destroyed. Score 5VP if the target had Wounds 10+.", "2VP / 5VP"),
-            new Objective("Cleanse", "No Man's Land", "Select up to two units eligible to shoot. They cannot shoot or charge. At end of turn, score VP for each objective they control that is not in your deployment zone.", "2VP / 4VP"),
-            new Objective("Deploy Teleport Homers", "Battlefield Supremacy", "Select units in opponent's deployment zone or center. They cannot shoot/charge. Score VP at end of turn.", "2VP / 4VP"),
-            new Objective("Engage On All Fronts", "Battlefield Supremacy", "Score VP if you have units wholly within 3 or 4 different table quarters, and more than 3\" from center.", "2VP / 4VP"),
-            new Objective("Extend Battle Lines", "No Man's Land", "Score 5VP if you control your home objective and one or more No Man's Land objectives.", "5VP"),
-            new Objective("Investigate Signals", "No Man's Land", "Select units within 9\" of corners. They cannot shoot/charge. Score 2VP for each corner secured.", "2VP per corner"),
-            new Objective("No Prisoners", "Purge the Enemy", "Score 2VP if one enemy unit is destroyed. Score 5VP if two or more are destroyed.", "2VP / 5VP"),
-            new Objective("Overwhelming Force", "Purge the Enemy", "Score 3VP if an enemy unit on an objective is destroyed. Score 5VP if two or more are destroyed.", "3VP / 5VP"),
-            new Objective("Secure No Man's Land", "Battlefield Supremacy", "Score 2VP if you control 1 objective in No Man's Land. Score 5VP if you control 2+.", "2VP / 5VP"),
-            new Objective("Storm Hostile Objective", "Take and Hold", "Score 5VP if you control an objective that the enemy controlled at the start of the turn.", "5VP"),
-            new Objective("Area Denial", "Battlefield Supremacy", "Score 5VP if there are no enemy units wholly within 6\" of the center of the battlefield.", "5VP"),
-            new Objective("Capture Enemy Outpost", "Take and Hold", "Score 8VP if you control the objective marker in your opponent's deployment zone.", "8VP"),
-            new Objective("Defend Stronghold", "Take and Hold", "Score 3VP if you control your home objective. Score more if you hold more.", "3VP+"),
-            new Objective("A Tempting Target", "Take and Hold", "Opponent chooses one No Man's Land objective. Score 5VP if you control it at end of turn.", "5VP")
-        };
+        Deck = DefaultDeck
+            .Select(o => new Objective(o.Name, o.Type, o.Description, o.Reward))
+            .ToList();
     }
 }
 
 public class Objective
 {
-    public string Name { get; set; }
-    public string Type { get; set; }
-    public string Description { get; set; }
-    public string Reward { get; set; }
-    public Objective(string n, string t, string d, string r) { Name = n; Type = t; Description = d; Reward = r; }
+    public string Name        { get; set; } = "";
+    public string Type        { get; set; } = "";
+    public string Description { get; set; } = "";
+    public string Reward      { get; set; } = "";
+
+    public Objective() { }
+    public Objective(string name, string type, string description, string reward)
+    {
+        Name = name; Type = type; Description = description; Reward = reward;
+    }
 }

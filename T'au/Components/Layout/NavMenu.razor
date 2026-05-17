@@ -1,11 +1,10 @@
-@using System.Text.Json
 @using Warhammer.Models
 @using Warhammer.Services
-@using System.IO
+@using Warhammer.Helpers
 @using System.Text.RegularExpressions
-@inject IWebHostEnvironment Env
 @inject NavigationManager NavManager
 @inject FactionStateService FactionState
+@inject RosterLoadService RosterLoader
 @implements IDisposable
 
 <style>
@@ -176,24 +175,22 @@
         };
         FactionState.OnChange += _onFactionChange;
 
+        var playerIds = await RosterLoader.GetActivePlayerIdsAsync();
         int playerIndex = 1;
-        while (true)
+        foreach (var playerId in playerIds)
         {
-            string playerId = $"p{playerIndex}";
-            string fileName = $"{playerId}.json";
+            var roster = await RosterLoader.LoadRosterAsync(playerId);
+            var force = roster?.Roster?.Forces?.FirstOrDefault();
+            if (force == null) break;
 
-            var (units, faction) = await LoadPlayerData(fileName);
-
-            if (units == null || !units.Any()) break;
-
-            FactionState.SetFaction(playerId, faction);
+            FactionState.SetFaction(playerId, force.CatalogueName);
 
             Players.Add(new PlayerMenuData
             {
                 Id = playerId,
                 Label = $"Player {playerIndex}",
                 Color = GetPlayerColor(playerId),
-                Units = units
+                Units = RosterLoadService.GetPlayableUnits(roster).ToList()
             });
 
             playerIndex++;
@@ -223,52 +220,8 @@
         FactionState.OnChange -= _onFactionChange;
     }
 
-    private async Task<(List<Selection>? units, string faction)> LoadPlayerData(string fileName)
-    {
-        var filePath = Path.Combine(Env.WebRootPath, fileName);
-        if (!File.Exists(filePath)) return (null, "");
-
-        try
-        {
-            var jsonString = await File.ReadAllTextAsync(filePath);
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var data = JsonSerializer.Deserialize<RosterRoot>(jsonString, options);
-
-            var force = data?.Roster?.Forces?.FirstOrDefault();
-            if (force != null)
-            {
-                var units = force.Selections
-                    .Where(s => s.Name != "Configuration" &&
-                                s.Name != "Battle Size" &&
-                                s.Name != "Detachment" &&
-                                s.Name != "Show/Hide Options")
-                    .ToList();
-                return (units, force.CatalogueName);
-            }
-        }
-        catch { }
-        return (null, "");
-    }
-
     private string GetId(Selection unit) => unit.Name?.Replace(" ", "-").Replace("'", "").Replace("'", "") ?? "unknown";
 
-    private string GetPlayerColor(string side) => side switch
-    {
-        "p2" => "#5dade2",
-        "p3" => "#2ecc71",
-        "p4" => "#a855f7",
-        "p5" => "#e74c3c",
-        "p6" => "#f39c12",
-        _ => "#ffc107"
-    };
-
-    private string GetGradientColor(string side) => side switch
-    {
-        "p2" => "#154360",
-        "p3" => "#145a32",
-        "p4" => "#4a235a",
-        "p5" => "#641e16",
-        "p6" => "#7e5109",
-        _ => "darkred"
-    };
+    private static string GetPlayerColor(string side) => PlayerTheme.GetColor(side);
+    private static string GetGradientColor(string side) => PlayerTheme.GetGradientColor(side);
 }

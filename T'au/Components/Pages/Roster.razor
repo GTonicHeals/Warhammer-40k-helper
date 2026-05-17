@@ -3,13 +3,13 @@
 @using System.Text.Json
 @using Warhammer.Models
 @using Warhammer.Services
-@using System.IO
+@using Warhammer.Helpers
 @using System.Text.RegularExpressions
-@inject IWebHostEnvironment Env
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject FactionStateService FactionState
 @inject StratagemService StratagemSvc
+@inject RosterLoadService RosterLoader
 @implements IDisposable
 
 
@@ -316,30 +316,22 @@ else
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(Side)) Side = "p1";
-        var fileName = GetFileName();
-        var filePath = Path.Combine(Env.WebRootPath, fileName);
 
         rosterData = null;
         DetachmentName = "";
         DetachmentRule = null;
 
-        try
+        rosterData = await RosterLoader.LoadRosterAsync(Side);
+        if (rosterData != null)
         {
-            if (File.Exists(filePath))
-            {
-                var jsonString = await File.ReadAllTextAsync(filePath);
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                rosterData = JsonSerializer.Deserialize<RosterRoot>(jsonString, options);
-                var faction = rosterData?.Roster?.Forces?.FirstOrDefault()?.CatalogueName ?? "";
-                if (!string.IsNullOrEmpty(faction))
-                    FactionState.SetFaction(Side!, faction);
-                FindDetachmentRules();
-                isLoadingStrats = true;
-                await StratagemSvc.EnsureLoadedAsync();
-                isLoadingStrats = false;
-            }
+            var faction = rosterData.Roster?.Forces?.FirstOrDefault()?.CatalogueName ?? "";
+            if (!string.IsNullOrEmpty(faction))
+                FactionState.SetFaction(Side!, faction);
+            FindDetachmentRules();
         }
-        catch { }
+        isLoadingStrats = true;
+        await StratagemSvc.EnsureLoadedAsync();
+        isLoadingStrats = false;
     }
 
     // Scroll Logic
@@ -410,13 +402,6 @@ else
         }
 
     }
-
-    private string GetFileName() => Side switch
-    {
-        null or "" or "p1" => "p1.json",
-        "p2" => "p2.json",
-        _ => $"{Side}.json"
-    };
 
     private string GetPlayerLabel()
     {

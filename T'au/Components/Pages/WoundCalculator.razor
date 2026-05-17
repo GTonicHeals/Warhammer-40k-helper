@@ -1,13 +1,12 @@
 ﻿@page "/woundcalc"
 @rendermode InteractiveServer
-@using System.Text.Json
 @using System.Text.RegularExpressions
 @using Warhammer.Models
 @using Warhammer.Services
-@using System.IO
-@inject IWebHostEnvironment Env
+@using Warhammer.Helpers
 @inject StratagemService StratagemSvc
 @inject WoundCalcStateService CalcState
+@inject RosterLoadService RosterLoader
 
 <div class="wc-page">
 
@@ -726,49 +725,33 @@
     {
         await StratagemSvc.EnsureLoadedAsync();
 
+        var playerIds = await RosterLoader.GetActivePlayerIdsAsync();
         int playerIndex = 1;
-        while (true)
+        foreach (var playerId in playerIds)
         {
-            string playerId = $"p{playerIndex}";
-            var filePath = Path.Combine(Env.WebRootPath, $"{playerId}.json");
-            if (!File.Exists(filePath)) break;
+            var roster = await RosterLoader.LoadRosterAsync(playerId);
+            var force = roster?.Roster?.Forces?.FirstOrDefault();
+            if (force == null) { playerIndex++; continue; }
 
-            try
+            var detachmentSel = force.Selections
+                .FirstOrDefault(s => s.Name == "Detachment")
+                ?.Selections?.FirstOrDefault();
+            var detachment     = detachmentSel?.Name ?? "";
+            var detachmentRule = detachmentSel?.Rules?.FirstOrDefault();
+            if (!string.IsNullOrEmpty(detachment) && detachmentRule != null)
+                DetachmentRules[detachment] = detachmentRule;
+
+            foreach (var unit in RosterLoadService.GetPlayableUnits(roster).DistinctBy(u => u.Name))
             {
-                var jsonString = await File.ReadAllTextAsync(filePath);
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                var data = JsonSerializer.Deserialize<RosterRoot>(jsonString, options);
-                var force = data?.Roster?.Forces?.FirstOrDefault();
-                if (force == null) { playerIndex++; continue; }
-
-                var detachmentSel = force.Selections
-                    .FirstOrDefault(s => s.Name == "Detachment")
-                    ?.Selections?.FirstOrDefault();
-                var detachment = detachmentSel?.Name ?? "";
-                var detachmentRule = detachmentSel?.Rules?.FirstOrDefault();
-                if (!string.IsNullOrEmpty(detachment) && detachmentRule != null)
-                    DetachmentRules[detachment] = detachmentRule;
-
-                var units = force.Selections
-                    .Where(s => s.Name != "Configuration" &&
-                                s.Name != "Battle Size" &&
-                                s.Name != "Detachment" &&
-                                s.Name != "Show/Hide Options")
-                    .ToList();
-
-                foreach (var unit in units.DistinctBy(u => u.Name))
-                {
-                    AllUnits.Add(new UnitEntry(
-                        $"{playerId}_{unit.Name}",
-                        unit.Name,
-                        playerId,
-                        playerIndex,
-                        unit,
-                        detachment
-                    ));
-                }
+                AllUnits.Add(new UnitEntry(
+                    $"{playerId}_{unit.Name}",
+                    unit.Name,
+                    playerId,
+                    playerIndex,
+                    unit,
+                    detachment
+                ));
             }
-            catch { }
 
             playerIndex++;
         }
@@ -1038,75 +1021,31 @@
 
     private void Recalculate()
     {
-        // ── Net modifiers (10th Ed: capped at [-1, +1]) ───────────────────
-        // BGNT applies only when legally possible (ranged, non-Pistol, Vehicle/Monster involved)
-        bool appliesBgnt = _bgntPenalty && CanApplyBgnt();
-        NetHitMod   = Math.Clamp((_atkPlusOneHit  ? 1 : 0) - (_defMinusOneHit ? 1 : 0) - (appliesBgnt ? 1 : 0), -1, 1);
-        NetWoundMod = Math.Clamp((_atkPlusOneWound ? 1 : 0) - (_defMinusOneWound ? 1 : 0), -1, 1);
+        var result = WoundCalculationService.Calculate(new WoundCalcInput(
+            HitRoll:         HitRoll,
+            WeaponStrength:  WeaponStrength,
+            WeaponAp:        WeaponAp,
+            DefenderToughness: DefenderToughness,
+            DefenderSave:    DefenderSave,
+            PlusOneHit:      _atkPlusOneHit,
+            PlusOneWound:    _atkPlusOneWound,
+            BgntApplied:     _bgntPenalty && CanApplyBgnt(),
+            MinusOneHit:     _defMinusOneHit,
+            MinusOneWound:   _defMinusOneWound,
+            ReduceAp:        _defReduceAp,
+            HasCover:        _hasCover,
+            InvulnSave:      _invulnSave
+        ));
 
-        // ── Effective AP (AP reduction: makes AP less severe, floor at 0) ─
-        int effectiveAp = WeaponAp.HasValue
-            ? (_defReduceAp ? Math.Min(WeaponAp.Value + 1, 0) : WeaponAp.Value)
-            : 0;
-
-        // ── Base wound roll ───────────────────────────────────────────────
-        if (WeaponStrength.HasValue && DefenderToughness.HasValue)
-        {
-            int s = WeaponStrength.Value, t = DefenderToughness.Value;
-            WoundRoll = s >= t * 2 ? "2+" :
-                        s > t      ? "3+" :
-                        s == t     ? "4+" :
-                        s * 2 <= t ? "6+" :
-                                     "5+";
-        }
-        else { WoundRoll = null; }
-
-        // ── Effective hit roll (with modifier) ────────────────────────────
-        if (HitRoll != null && HitRoll != "AUTO")
-        {
-            int baseHit = ParseRollNum(HitRoll);
-            int eff     = Math.Clamp(baseHit - NetHitMod, 2, 7);
-            EffectiveHitRoll = eff <= 6 ? $"{eff}+" : "N/A";
-        }
-        else { EffectiveHitRoll = HitRoll; }
-
-        // ── Effective wound roll (with modifier) ──────────────────────────
-        if (WoundRoll != null)
-        {
-            int baseWound = ParseRollNum(WoundRoll);
-            int eff       = Math.Clamp(baseWound - NetWoundMod, 2, 7);
-            EffectiveWoundRoll = eff <= 6 ? $"{eff}+" : "N/A";
-        }
-        else { EffectiveWoundRoll = null; }
-
-        // ── Final save: armour vs invuln, take the better ─────────────────
-        if (DefenderSave.HasValue && WeaponAp.HasValue)
-        {
-            int rawArmour   = DefenderSave.Value + Math.Abs(effectiveAp);
-            int adjustedArmour = rawArmour - (_hasCover ? 1 : 0);
-            int armourSave  = Math.Max(adjustedArmour, DefenderSave.Value); // cover can't beat base
-
-            int finalSaveNum;
-            if (_invulnSave > 0)
-                finalSaveNum = armourSave <= 6 ? Math.Min(armourSave, _invulnSave) : _invulnSave;
-            else
-                finalSaveNum = armourSave;
-
-            FinalSaveRoll = finalSaveNum <= 6 ? $"{finalSaveNum}+" : "N/A";
-        }
-        else if (_invulnSave > 0 && WeaponAp.HasValue)
-        {
-            FinalSaveRoll = $"{_invulnSave}+";
-        }
-        else { FinalSaveRoll = null; }
+        NetHitMod          = result.NetHitMod;
+        NetWoundMod        = result.NetWoundMod;
+        WoundRoll          = result.WoundRoll;
+        EffectiveHitRoll   = result.EffectiveHitRoll;
+        EffectiveWoundRoll = result.EffectiveWoundRoll;
+        FinalSaveRoll      = result.FinalSaveRoll;
     }
 
     private void ToggleCover() { _hasCover = !_hasCover; Recalculate(); }
-
-    private static int ParseRollNum(string roll)
-    {
-        return int.TryParse(roll.TrimEnd('+'), out var n) ? n : 4;
-    }
 
     private static string GetCleanWeaponName(string raw) => RosterHelper.GetCleanWeaponName(raw);
 
@@ -1224,15 +1163,7 @@
         return "strat-green";
     }
 
-    private string GetPlayerColor(string playerId) => playerId switch
-    {
-        "p2" => "#5dade2",
-        "p3" => "#2ecc71",
-        "p4" => "#a855f7",
-        "p5" => "#e74c3c",
-        "p6" => "#f39c12",
-        _    => "#ffc107"
-    };
+    private static string GetPlayerColor(string playerId) => PlayerTheme.GetColor(playerId);
 }
 
 <style>

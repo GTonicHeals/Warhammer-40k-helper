@@ -3,9 +3,10 @@ using Warhammer.Models;
 
 namespace Warhammer.Services;
 
-public class StratagemService(IWebHostEnvironment env)
+public class StratagemService(IWebHostEnvironment env, ILogger<StratagemService> logger)
 {
     private readonly IWebHostEnvironment _env = env;
+    private readonly ILogger<StratagemService> _logger = logger;
     private readonly List<StratagemModelWithDetachment> _allStratagems = new();
     private readonly Dictionary<string, List<string>> _unitStratagemMap = new();
     private bool _loaded;
@@ -65,7 +66,7 @@ public class StratagemService(IWebHostEnvironment env)
                 }
             }
         }
-        catch (Exception ex) { Console.WriteLine(ex.Message); }
+        catch (Exception ex) { _logger.LogError(ex, "Failed to load Stratagems.json"); }
     }
 
     public List<StratagemModelWithDetachment> GetStratagemsForUnit(string unitName, string detachmentName)

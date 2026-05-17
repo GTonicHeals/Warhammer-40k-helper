@@ -11,6 +11,7 @@ builder.Services.AddScoped(sp => new HttpClient
     BaseAddress = new Uri(builder.Configuration["BaseAddress"] ?? "https://localhost:7000/")
 });
 
+builder.Services.AddSingleton<RosterLoadService>();
 builder.Services.AddScoped<ObjectiveService>();
 builder.Services.AddScoped<FactionStateService>();
 builder.Services.AddScoped<GameStateService>();

@@ -1,4 +1,5 @@
 @using Warhammer.Services
+@using Warhammer.Helpers
 @inject GameStateService GameState
 @inject FactionStateService FactionState
 @implements IDisposable
@@ -53,22 +54,8 @@
             ? FactionState.PlayerFactions.Keys.OrderBy(k => k).ToList()
             : (IReadOnlyList<string>)["p1"];
 
-    private static string GetPlayerColor(string playerId) => playerId.ToLowerInvariant() switch
-    {
-        "p1" => "var(--c-p1, #ffc107)",
-        "p2" => "var(--c-p2, #5dade2)",
-        "p3" => "var(--c-p3, #2ecc71)",
-        "p4" => "var(--c-p4, #a855f7)",
-        "p5" => "var(--c-p5, #e74c3c)",
-        _    => "var(--c-accent, #f39c12)",
-    };
-
-    private static string GetPlayerLabel(string playerId)
-    {
-        if (int.TryParse(playerId.TrimStart('p', 'P'), out var n))
-            return $"P{n}";
-        return playerId.ToUpperInvariant();
-    }
+    private static string GetPlayerColor(string playerId) => PlayerTheme.GetColorVar(playerId);
+    private static string GetPlayerLabel(string playerId) => PlayerTheme.GetLabel(playerId);
 
     protected override void OnInitialized()
     {
