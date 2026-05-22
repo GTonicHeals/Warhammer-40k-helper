@@ -363,3 +363,4 @@ MigrationBackup/
 FodyWeavers.xsd
 /CICD_PROGRESS.md
 /CICD_SETUP.md
+/.claude/settings.local.json

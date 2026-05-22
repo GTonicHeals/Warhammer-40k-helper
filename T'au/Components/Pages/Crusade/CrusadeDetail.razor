@@ -1,0 +1,465 @@
+@page "/crusade/{Id}"
+@rendermode InteractiveServer
+@using Warhammer.Helpers
+@using Warhammer.Models
+@using Warhammer.Models.Crusade
+@using Warhammer.Services
+@inject CrusadeManagerService CrusadeMgr
+@inject RosterLoadService RosterLoader
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>Crusade — @(_crusade?.ArmyName ?? "...")</PageTitle>
+
+<div class="rules-container">
+    @if (!_loaded)
+    {
+        <p class="text-center text-muted"><em>Loading…</em></p>
+    }
+    else if (_crusade is null)
+    {
+        <div class="alert alert-warning">
+            Crusade not found. <a href="crusade" class="alert-link">Back to manager</a>.
+        </div>
+    }
+    else
+    {
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <input class="form-control form-control-lg crusade-title-input"
+                   @bind="_crusade.ArmyName" @bind:after="SaveAsync"
+                   placeholder="Unnamed Crusade" />
+            <a href="crusade" class="btn btn-outline-secondary ms-2"><i class="bi bi-arrow-left"></i> Back</a>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_crusade.PlayerId))
+        {
+            <p class="mb-3">
+                <span class="badge player-badge me-1" style="background-color: @PlayerTheme.GetColor(_crusade.PlayerId);">
+                    @_crusade.PlayerId.ToUpperInvariant()
+                </span>
+                <span class="text-muted small">
+                    Bound to roster <code>@_crusade.PlayerId</code>. Unit picker is filtered to this roster's units.
+                </span>
+            </p>
+        }
+        else
+        {
+            <div class="alert alert-secondary py-2 mb-3">
+                <i class="bi bi-exclamation-circle me-1"></i>
+                This crusade isn't bound to a player roster. Recreate it from the
+                <a href="crusade" class="alert-link">manager</a> to enable filtered unit picking.
+            </div>
+        }
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <label class="form-label text-warning fw-bold">Faction</label>
+                <input class="form-control bg-dark text-white border-secondary"
+                       @bind="_crusade.Faction" @bind:after="SaveAsync" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label text-warning fw-bold">Supply Limit</label>
+                <input type="number" min="0" class="form-control bg-dark text-white border-secondary"
+                       @bind="_crusade.SupplyLimit" @bind:after="SaveAsync" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label text-warning fw-bold">Supply Used</label>
+                <div class="form-control bg-dark border-secondary"
+                     style="color: @(_crusade.SupplyUsed > _crusade.SupplyLimit ? "#ff6b6b" : "#fff");">
+                    @_crusade.SupplyUsed / @_crusade.SupplyLimit
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label text-warning fw-bold">Req. Points</label>
+                <div class="input-group">
+                    <button class="btn btn-outline-warning" @onclick="DecRp"
+                            disabled="@(_crusade.RequisitionPoints <= 0)">−</button>
+                    <span class="form-control bg-dark text-center text-white border-secondary">
+                        @_crusade.RequisitionPoints / @OrderOfBattle.RequisitionPointsMax
+                    </span>
+                    <button class="btn btn-outline-warning" @onclick="IncRp"
+                            disabled="@(_crusade.RequisitionPoints >= OrderOfBattle.RequisitionPointsMax)">+</button>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="text-warning"><i class="bi bi-people"></i> Order of Battle (@_crusade.Units.Count)</h3>
+
+        <div class="add-unit-form mb-3">
+            @if (string.IsNullOrEmpty(_crusade.PlayerId))
+            {
+                <p class="text-muted mb-0">
+                    <em>Add Unit unavailable — no bound player roster.</em>
+                </p>
+            }
+            else if (_availableUnits.Count == 0)
+            {
+                <p class="text-muted mb-0">
+                    <em>No units found in roster <code>@_crusade.PlayerId</code>. Check that the roster file contains units.</em>
+                </p>
+            }
+            else
+            {
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label text-warning fw-bold">Unit (from @_crusade.PlayerId.ToUpper() roster)</label>
+                        <select class="form-select bg-dark text-white border-secondary" @bind="_selectedUnitKey">
+                            <option value="">— Select Unit —</option>
+                            @foreach (var u in _availableUnits)
+                            {
+                                <option value="@u.Name">@u.Name — @u.Points pts</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end pb-2">
+                        <label class="form-check-label small">
+                            <input type="checkbox" class="form-check-input me-1" @bind="_newUnitCharacter" /> CHARACTER
+                        </label>
+                    </div>
+                    <div class="col-md-3 d-grid">
+                        <button class="btn btn-warning" @onclick="AddUnit"
+                                disabled="@string.IsNullOrEmpty(_selectedUnitKey)">
+                            <i class="bi bi-plus-lg"></i> Add Unit
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (!_crusade.Units.Any())
+        {
+            <p class="text-center text-muted"><em>No units yet. Add one above.</em></p>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var unit in _crusade.Units)
+                {
+                    <div class="col-12 col-xl-6">
+                        <div class="crusade-card">
+                            <div class="crusade-card-header d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i class="bi bi-person-badge me-2"></i>
+                                    @(string.IsNullOrWhiteSpace(unit.UnitName) ? "Unnamed Unit" : unit.UnitName)
+                                </span>
+                                <span class="badge bg-warning text-dark">@RankLabel(unit.Rank)</span>
+                            </div>
+                            <div class="crusade-card-body">
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label small text-warning mb-0">Unit Name</label>
+                                        <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                                               @bind="unit.UnitName" @bind:after="SaveAsync" />
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small text-warning mb-0">Datasheet</label>
+                                        <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                                               @bind="unit.DatasheetName" @bind:after="SaveAsync" />
+                                    </div>
+                                    <div class="col-3">
+                                        <label class="form-label small text-warning mb-0">Points</label>
+                                        <input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary"
+                                               @bind="unit.TotalPoints" @bind:after="SaveAsync" />
+                                    </div>
+                                    <div class="col-3">
+                                        <label class="form-label small text-warning mb-0">XP</label>
+                                        <input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary"
+                                               @bind="unit.Xp" @bind:after="SaveAsync" />
+                                    </div>
+                                    <div class="col-3">
+                                        <label class="form-label small text-warning mb-0">Destroyed</label>
+                                        <input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary"
+                                               @bind="unit.UnitsDestroyed" @bind:after="SaveAsync" />
+                                    </div>
+                                    <div class="col-3">
+                                        <label class="form-label small text-warning mb-0">Crusade Pts</label>
+                                        <input type="number" class="form-control form-control-sm bg-dark text-white border-secondary"
+                                               @bind="unit.CrusadePoints" @bind:after="SaveAsync" />
+                                    </div>
+
+                                    <div class="col-6 d-flex align-items-end pb-1">
+                                        <label class="form-check-label small">
+                                            <input type="checkbox" class="form-check-input me-1"
+                                                   @bind="unit.IsCharacter" @bind:after="SaveAsync" /> CHARACTER
+                                        </label>
+                                    </div>
+                                    <div class="col-6 d-flex align-items-end pb-1">
+                                        <label class="form-check-label small" title="Allows non-CHARACTER units to promote above Battle-hardened">
+                                            <input type="checkbox" class="form-check-input me-1"
+                                                   @bind="unit.LegendaryVeteransUsed" @bind:after="SaveAsync" /> Legendary Vet.
+                                        </label>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label class="form-label small text-warning mb-0">Battle Honours</label>
+                                        <div class="mb-1">
+                                            @if (!unit.BattleHonours.Any())
+                                            {
+                                                <span class="text-muted small"><em>None</em></span>
+                                            }
+                                            @for (int i = 0; i < unit.BattleHonours.Count; i++)
+                                            {
+                                                var idx = i;
+                                                <span class="badge bg-success me-1 mb-1">
+                                                    @unit.BattleHonours[idx]
+                                                    <button type="button" class="btn-close btn-close-white ms-1"
+                                                            style="font-size: 0.55rem; vertical-align: middle;"
+                                                            @onclick="() => RemoveHonour(unit, idx)" aria-label="Remove"></button>
+                                                </span>
+                                            }
+                                        </div>
+                                        <div class="input-group input-group-sm">
+                                            <input class="form-control bg-dark text-white border-secondary"
+                                                   placeholder="Add honour…"
+                                                   value="@GetHonourInput(unit.Id)"
+                                                   @oninput="e => SetHonourInput(unit.Id, e.Value?.ToString() ?? string.Empty)"
+                                                   @onkeydown="e => OnHonourKey(e, unit)" />
+                                            <button class="btn btn-outline-success" @onclick="() => AddHonour(unit)">+</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label class="form-label small text-warning mb-0">Battle Scars</label>
+                                        <div class="mb-1">
+                                            @if (!unit.BattleScars.Any())
+                                            {
+                                                <span class="text-muted small"><em>None</em></span>
+                                            }
+                                            @for (int i = 0; i < unit.BattleScars.Count; i++)
+                                            {
+                                                var idx = i;
+                                                <span class="badge bg-danger me-1 mb-1">
+                                                    @unit.BattleScars[idx]
+                                                    <button type="button" class="btn-close btn-close-white ms-1"
+                                                            style="font-size: 0.55rem; vertical-align: middle;"
+                                                            @onclick="() => RemoveScar(unit, idx)" aria-label="Remove"></button>
+                                                </span>
+                                            }
+                                        </div>
+                                        <div class="input-group input-group-sm">
+                                            <input class="form-control bg-dark text-white border-secondary"
+                                                   placeholder="Add scar…"
+                                                   value="@GetScarInput(unit.Id)"
+                                                   @oninput="e => SetScarInput(unit.Id, e.Value?.ToString() ?? string.Empty)"
+                                                   @onkeydown="e => OnScarKey(e, unit)" />
+                                            <button class="btn btn-outline-danger" @onclick="() => AddScar(unit)">+</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 mt-2 text-end">
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveUnit(unit.Id)">
+                                            <i class="bi bi-trash"></i> Remove unit
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .crusade-title-input {
+        background: transparent;
+        border: 1px solid transparent;
+        color: #ffc107;
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .crusade-title-input:focus {
+        background: #1a1a1a;
+        border-color: #d35400;
+        color: #ffc107;
+        box-shadow: none;
+    }
+    .crusade-card {
+        background: #2a2a2a;
+        border: 1px solid #444;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .crusade-card-header {
+        background: #1a1a1a;
+        color: #d35400;
+        padding: 8px 12px;
+        font-weight: bold;
+        border-bottom: 1px solid #444;
+    }
+    .crusade-card-body {
+        padding: 10px 12px;
+        color: #ddd;
+    }
+    .add-unit-form {
+        background: #2a2a2a;
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 16px;
+    }
+    .player-badge {
+        color: #fff;
+        font-size: 0.65rem;
+        letter-spacing: 0.5px;
+        font-weight: 700;
+        text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+    }
+</style>
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private record AvailableUnit(string Name, int Points);
+
+    private bool _loaded;
+    private OrderOfBattle? _crusade;
+
+    private List<AvailableUnit> _availableUnits = new();
+    private string _selectedUnitKey = "";
+    private bool _newUnitCharacter;
+
+    private readonly Dictionary<string, string> _honourInputs = new();
+    private readonly Dictionary<string, string> _scarInputs = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _loaded) return;
+
+        await CrusadeMgr.LoadAllCrusadesAsync();
+        _crusade = CrusadeMgr.GetCrusade(Id);
+
+        if (_crusade != null && !string.IsNullOrEmpty(_crusade.PlayerId))
+        {
+            var roster = await RosterLoader.LoadRosterAsync(_crusade.PlayerId);
+            if (roster != null)
+            {
+                _availableUnits = RosterLoadService.GetPlayableUnits(roster)
+                    .DistinctBy(u => u.Name)
+                    .Select(u => new AvailableUnit(u.Name, GetPoints(u)))
+                    .OrderBy(u => u.Name)
+                    .ToList();
+            }
+        }
+
+        _loaded = true;
+        StateHasChanged();
+    }
+
+    private static int GetPoints(Selection unit)
+    {
+        var cost = unit.Costs?.FirstOrDefault(c => c.Name == "pts");
+        return cost is null ? 0 : (int)Math.Round(cost.Value);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_crusade is null) return;
+        await CrusadeMgr.SaveCrusadeAsync(_crusade);
+    }
+
+    private async Task IncRp()
+    {
+        if (_crusade is null || _crusade.RequisitionPoints >= OrderOfBattle.RequisitionPointsMax) return;
+        _crusade.RequisitionPoints++;
+        await SaveAsync();
+    }
+
+    private async Task DecRp()
+    {
+        if (_crusade is null || _crusade.RequisitionPoints <= 0) return;
+        _crusade.RequisitionPoints--;
+        await SaveAsync();
+    }
+
+    private async Task AddUnit()
+    {
+        if (_crusade is null || string.IsNullOrEmpty(_selectedUnitKey)) return;
+
+        var available = _availableUnits.FirstOrDefault(u => u.Name == _selectedUnitKey);
+        if (available is null) return;
+
+        _crusade.Units.Add(new CrusadeUnitCard
+        {
+            UnitName = available.Name,
+            DatasheetName = available.Name,
+            TotalPoints = available.Points,
+            IsCharacter = _newUnitCharacter
+        });
+
+        _selectedUnitKey = "";
+        _newUnitCharacter = false;
+        await SaveAsync();
+    }
+
+    private async Task RemoveUnit(string unitId)
+    {
+        if (_crusade is null) return;
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Remove this unit from the Order of Battle?");
+        if (!confirmed) return;
+        _crusade.Units.RemoveAll(u => u.Id == unitId);
+        _honourInputs.Remove(unitId);
+        _scarInputs.Remove(unitId);
+        await SaveAsync();
+    }
+
+    private string GetHonourInput(string unitId) => _honourInputs.TryGetValue(unitId, out var v) ? v : "";
+    private void SetHonourInput(string unitId, string value) => _honourInputs[unitId] = value;
+
+    private async Task AddHonour(CrusadeUnitCard unit)
+    {
+        if (_crusade is null) return;
+        var value = GetHonourInput(unit.Id);
+        if (string.IsNullOrWhiteSpace(value)) return;
+        unit.BattleHonours.Add(value.Trim());
+        _honourInputs[unit.Id] = "";
+        await SaveAsync();
+    }
+
+    private async Task RemoveHonour(CrusadeUnitCard unit, int index)
+    {
+        if (_crusade is null || index < 0 || index >= unit.BattleHonours.Count) return;
+        unit.BattleHonours.RemoveAt(index);
+        await SaveAsync();
+    }
+
+    private async Task OnHonourKey(KeyboardEventArgs e, CrusadeUnitCard unit)
+    {
+        if (e.Key == "Enter") await AddHonour(unit);
+    }
+
+    private string GetScarInput(string unitId) => _scarInputs.TryGetValue(unitId, out var v) ? v : "";
+    private void SetScarInput(string unitId, string value) => _scarInputs[unitId] = value;
+
+    private async Task AddScar(CrusadeUnitCard unit)
+    {
+        if (_crusade is null) return;
+        var value = GetScarInput(unit.Id);
+        if (string.IsNullOrWhiteSpace(value)) return;
+        unit.BattleScars.Add(value.Trim());
+        _scarInputs[unit.Id] = "";
+        await SaveAsync();
+    }
+
+    private async Task RemoveScar(CrusadeUnitCard unit, int index)
+    {
+        if (_crusade is null || index < 0 || index >= unit.BattleScars.Count) return;
+        unit.BattleScars.RemoveAt(index);
+        await SaveAsync();
+    }
+
+    private async Task OnScarKey(KeyboardEventArgs e, CrusadeUnitCard unit)
+    {
+        if (e.Key == "Enter") await AddScar(unit);
+    }
+
+    private static string RankLabel(CrusadeRank rank) => rank switch
+    {
+        CrusadeRank.BattleReady => "Battle-ready",
+        CrusadeRank.Blooded => "Blooded",
+        CrusadeRank.BattleHardened => "Battle-hardened",
+        CrusadeRank.Heroic => "Heroic",
+        CrusadeRank.Legendary => "Legendary",
+        _ => rank.ToString()
+    };
+}

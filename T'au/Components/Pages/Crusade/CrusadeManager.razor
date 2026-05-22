@@ -1,0 +1,243 @@
+@page "/crusade"
+@rendermode InteractiveServer
+@using Warhammer.Helpers
+@using Warhammer.Models.Crusade
+@using Warhammer.Services
+@inject CrusadeManagerService CrusadeMgr
+@inject RosterLoadService RosterLoader
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Crusade Manager</PageTitle>
+
+<div class="rules-container">
+    <div class="header-section text-center mb-4">
+        <h1 class="page-title text-warning">Crusade Manager</h1>
+        <p class="text-muted">
+            Each Order of Battle tracks an army across multiple games — supply limit, requisition points,
+            and a Crusade card per unit with XP, ranks, battle honours, and scars.
+        </p>
+    </div>
+
+    @if (!_loaded)
+    {
+        <p class="text-center text-muted"><em>Loading crusades…</em></p>
+    }
+    else
+    {
+        @if (!CrusadeMgr.Crusades.Any())
+        {
+            <p class="text-center text-muted mb-4">
+                <em>No crusades yet. Begin your first one below.</em>
+            </p>
+        }
+        else
+        {
+            <div class="row g-3 mb-4">
+                @foreach (var crusade in CrusadeMgr.Crusades.OrderByDescending(c => c.UpdatedUtc))
+                {
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="crusade-card">
+                            <div class="crusade-card-header">
+                                <i class="bi bi-shield-shaded me-2"></i>
+                                @(string.IsNullOrWhiteSpace(crusade.ArmyName) ? "Unnamed Crusade" : crusade.ArmyName)
+                                @if (!string.IsNullOrEmpty(crusade.PlayerId))
+                                {
+                                    <span class="badge ms-2 player-badge"
+                                          style="background-color: @PlayerTheme.GetColor(crusade.PlayerId);"
+                                          title="Bound to roster @crusade.PlayerId">
+                                        @PlayerLabel(crusade.PlayerId)
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge ms-2 bg-secondary" title="Legacy crusade — not bound to a player roster">
+                                        no roster
+                                    </span>
+                                }
+                            </div>
+                            <div class="crusade-card-body">
+                                <p class="mb-1"><strong>Faction:</strong> @(string.IsNullOrWhiteSpace(crusade.Faction) ? "—" : crusade.Faction)</p>
+                                <p class="mb-1"><strong>Supply:</strong>
+                                    <span style="color: @(crusade.SupplyUsed > crusade.SupplyLimit ? "#ff6b6b" : "#fff");">
+                                        @crusade.SupplyUsed / @crusade.SupplyLimit
+                                    </span>
+                                </p>
+                                <p class="mb-1"><strong>Req. Points:</strong> @crusade.RequisitionPoints / @OrderOfBattle.RequisitionPointsMax</p>
+                                <p class="mb-2"><strong>Units:</strong> @crusade.Units.Count</p>
+                                <p class="mb-2"><small class="text-muted">Updated @crusade.UpdatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</small></p>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-warning flex-grow-1" @onclick="() => Open(crusade.Id)">
+                                        <i class="bi bi-folder2-open"></i> Open
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => Delete(crusade.Id)" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="new-crusade-form">
+            <h3 class="text-warning"><i class="bi bi-plus-circle"></i> Begin a New Crusade</h3>
+
+            @if (_availablePlayers.Count == 0)
+            {
+                <p class="text-muted mb-0">
+                    <em>No player rosters detected. Add roster JSON files (e.g. <code>p1.json</code>) to <code>wwwroot</code> first.</em>
+                </p>
+            }
+            else
+            {
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label text-warning fw-bold">Army Name</label>
+                        <input class="form-control bg-dark text-white border-secondary"
+                               @bind="_newName" placeholder="e.g. The Eighth Sept" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-warning fw-bold">Player Roster</label>
+                        <select class="form-select bg-dark text-white border-secondary" @bind="_newPlayerId">
+                            <option value="">— Select Player —</option>
+                            @foreach (var p in _availablePlayers)
+                            {
+                                <option value="@p.Id">@PlayerLabel(p.Id) — @p.CatalogueName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label text-warning fw-bold">Supply Limit</label>
+                        <input type="number" min="0" class="form-control bg-dark text-white border-secondary"
+                               @bind="_newSupply" />
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <button class="btn btn-warning" @onclick="Create"
+                                disabled="@(string.IsNullOrWhiteSpace(_newName) || string.IsNullOrEmpty(_newPlayerId))"
+                                title="Create crusade">
+                            <i class="bi bi-plus-lg"></i> Create
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .crusade-card {
+        background: #2a2a2a;
+        border: 1px solid #444;
+        border-radius: 6px;
+        overflow: hidden;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    .crusade-card-header {
+        background: #1a1a1a;
+        color: #d35400;
+        padding: 8px 12px;
+        font-weight: bold;
+        border-bottom: 1px solid #444;
+    }
+    .crusade-card-body {
+        padding: 10px 12px;
+        color: #ddd;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    .crusade-card-body > div:last-child {
+        margin-top: auto;
+    }
+    .new-crusade-form {
+        background: #2a2a2a;
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 16px;
+    }
+    .player-badge {
+        color: #fff;
+        font-size: 0.65rem;
+        letter-spacing: 0.5px;
+        font-weight: 700;
+        text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+    }
+</style>
+
+@code {
+    private record RosterPlayer(string Id, string CatalogueName);
+
+    private bool _loaded;
+    private string _newName = "";
+    private string _newPlayerId = "";
+    private int _newSupply = 1000;
+    private List<RosterPlayer> _availablePlayers = new();
+
+    protected override void OnInitialized()
+    {
+        CrusadeMgr.OnCrusadesChanged += OnChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _loaded) return;
+
+        await CrusadeMgr.LoadAllCrusadesAsync();
+
+        // Roster discovery — same pattern as WoundCalculator.razor
+        var playerIds = await RosterLoader.GetActivePlayerIdsAsync();
+        foreach (var pid in playerIds)
+        {
+            var roster = await RosterLoader.LoadRosterAsync(pid);
+            var cat = roster?.Roster?.Forces?.FirstOrDefault()?.CatalogueName ?? pid;
+            _availablePlayers.Add(new RosterPlayer(pid, cat));
+        }
+
+        _loaded = true;
+        StateHasChanged();
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task Create()
+    {
+        if (string.IsNullOrWhiteSpace(_newName) || string.IsNullOrEmpty(_newPlayerId)) return;
+
+        var player = _availablePlayers.FirstOrDefault(p => p.Id == _newPlayerId);
+        if (player is null) return;
+
+        var c = new OrderOfBattle
+        {
+            ArmyName = _newName.Trim(),
+            PlayerId = player.Id,
+            Faction = player.CatalogueName,
+            SupplyLimit = _newSupply > 0 ? _newSupply : 1000
+        };
+        await CrusadeMgr.SaveCrusadeAsync(c);
+        Nav.NavigateTo($"crusade/{c.Id}");
+    }
+
+    private void Open(string id) => Nav.NavigateTo($"crusade/{id}");
+
+    private async Task Delete(string id)
+    {
+        var crusade = CrusadeMgr.GetCrusade(id);
+        var name = string.IsNullOrWhiteSpace(crusade?.ArmyName) ? "this crusade" : $"\"{crusade!.ArmyName}\"";
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"Delete {name}? This cannot be undone.");
+        if (!confirmed) return;
+        await CrusadeMgr.DeleteCrusadeAsync(id);
+    }
+
+    private static string PlayerLabel(string playerId) =>
+        string.IsNullOrEmpty(playerId) ? "" : playerId.ToUpperInvariant();
+
+    public void Dispose()
+    {
+        CrusadeMgr.OnCrusadesChanged -= OnChanged;
+    }
+}
