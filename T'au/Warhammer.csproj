@@ -6,7 +6,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<RootNamespace>Warhammer</RootNamespace>
 
-		<AssemblyName>Tau_Project</AssemblyName>
+		<AssemblyName>Warhammer_Helper</AssemblyName>
 
 		<BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
 	</PropertyGroup>
