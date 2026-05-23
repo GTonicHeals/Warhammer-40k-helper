@@ -12,6 +12,7 @@ builder.Services.AddScoped(sp => new HttpClient
 });
 
 builder.Services.AddSingleton<RosterLoadService>();
+builder.Services.AddSingleton<CrusadeTraitsService>();
 builder.Services.AddScoped<ObjectiveService>();
 builder.Services.AddScoped<FactionStateService>();
 builder.Services.AddScoped<GameStateService>();

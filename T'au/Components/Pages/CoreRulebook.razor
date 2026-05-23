@@ -212,7 +212,7 @@
     {
         if (string.IsNullOrEmpty(input)) return string.Empty;
         var text = input;
-
+        
         text = Regex.Replace(text, @"\*\*(.*?)\*\*", "<strong class='text-white'>$1</strong>");
         text = Regex.Replace(text, @"\^\^(.*?)\^\^", "<em class='text-info fw-bold'>$1</em>");
         text = text.Replace("•", "<br/>•");

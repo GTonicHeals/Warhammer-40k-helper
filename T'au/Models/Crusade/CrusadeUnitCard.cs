@@ -20,8 +20,11 @@ public class CrusadeUnitCard
     public int Xp { get; set; }
     public int UnitsDestroyed { get; set; }
     public int CrusadePoints { get; set; }
-    public List<string> BattleHonours { get; set; } = new();
-    public List<string> BattleScars { get; set; } = new();
+    [JsonConverter(typeof(AppliedTraitListConverter))]
+    public List<AppliedTrait> BattleHonours { get; set; } = new();
+
+    [JsonConverter(typeof(AppliedTraitListConverter))]
+    public List<AppliedTrait> BattleScars { get; set; } = new();
     public bool IsCharacter { get; set; }
     public bool LegendaryVeteransUsed { get; set; }
 

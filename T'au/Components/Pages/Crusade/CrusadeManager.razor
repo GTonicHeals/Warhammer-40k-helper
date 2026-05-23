@@ -71,7 +71,10 @@
                                     <button class="btn btn-sm btn-warning flex-grow-1" @onclick="() => Open(crusade.Id)">
                                         <i class="bi bi-folder2-open"></i> Open
                                     </button>
-                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => Delete(crusade.Id)" title="Delete">
+                                    <button class="btn btn-sm btn-outline-danger crusade-delete-btn"
+                                            @onclick="() => Delete(crusade.Id)"
+                                            title="Delete crusade"
+                                            aria-label="Delete crusade">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </div>
@@ -166,6 +169,27 @@
         letter-spacing: 0.5px;
         font-weight: 700;
         text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+    }
+    .crusade-delete-btn {
+        border-color: #6c2a2a;
+        color: #d35d5d;
+        background: rgba(220, 53, 69, 0.05);
+        transition: background-color 0.15s ease,
+                    border-color 0.15s ease,
+                    color 0.15s ease,
+                    transform 0.15s ease,
+                    box-shadow 0.15s ease;
+    }
+    .crusade-delete-btn:hover,
+    .crusade-delete-btn:focus-visible {
+        background: #dc3545;
+        border-color: #dc3545;
+        color: #fff;
+        transform: scale(1.08);
+        box-shadow: 0 0 0 0.15rem rgba(220, 53, 69, 0.35);
+    }
+    .crusade-delete-btn:active {
+        transform: scale(0.96);
     }
 </style>
 

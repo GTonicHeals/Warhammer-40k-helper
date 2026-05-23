@@ -13,6 +13,7 @@ public class OrderOfBattle
     public int SupplyLimit { get; set; } = 1000;
     public int RequisitionPoints { get; set; } = 5;
     public List<CrusadeUnitCard> Units { get; set; } = new();
+    public List<CrusadeTrait> CustomTraits { get; set; } = new(); // user-added relics & traits scoped to this crusade
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
 

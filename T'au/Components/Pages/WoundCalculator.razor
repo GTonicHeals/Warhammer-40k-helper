@@ -2,11 +2,13 @@
 @rendermode InteractiveServer
 @using System.Text.RegularExpressions
 @using Warhammer.Models
+@using Warhammer.Models.Crusade
 @using Warhammer.Services
 @using Warhammer.Helpers
 @inject StratagemService StratagemSvc
 @inject WoundCalcStateService CalcState
 @inject RosterLoadService RosterLoader
+@inject CrusadeManagerService Crusades
 
 <div class="wc-page">
 
@@ -91,7 +93,7 @@
                             var active = AttackerPlayerFilter == p.Id;
                             <button class="wc-fbtn @(active ? "wc-fbtn-on" : "")"
                                     style="@(active ? $"--pbtn-color:{GetPlayerColor(p.Id)};" : "")"
-                                    @onclick="() => SetAttackerFilter(p.Id)">P@(p.Index)</button>
+                                    @onclick="() => SetAttackerFilter(p.Id)">@PlayerTheme.GetLabel(p.Id)</button>
                         }
                     </div>
 
@@ -148,25 +150,67 @@
                             }
                             @if (HitRoll != null)
                             {
+                                var hitMods = StatModInfo("Hit", isDefender: false);
                                 <div class="wc-sb-stat">
                                     <span class="wc-sb-lbl">@(SelectedWeapon.TypeName == "Ranged Weapons" ? "BS" : "WS")</span>
-                                    <span class="wc-sb-val wc-sb-hit">@HitRoll</span>
+                                    @if (hitMods != null)
+                                    {
+                                        <span class="kw-tag-wrapper">
+                                            <span class="wc-sb-val wc-sb-hit wc-crusade-mod">@HitRoll<sup>*</sup></span>
+                                            <div class="kw-tooltip">
+                                                <div class="kw-tooltip-title">Hit — Crusade</div>
+                                                <div class="kw-tooltip-body">@string.Join(", ", hitMods)</div>
+                                            </div>
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="wc-sb-val wc-sb-hit">@HitRoll</span>
+                                    }
                                 </div>
                                 <div class="wc-sb-divider"></div>
                             }
                             @if (WeaponStrength.HasValue)
                             {
+                                var sMods = StatModInfo("S", isDefender: false);
                                 <div class="wc-sb-stat">
                                     <span class="wc-sb-lbl">S</span>
-                                    <span class="wc-sb-val">@WeaponStrength</span>
+                                    @if (sMods != null)
+                                    {
+                                        <span class="kw-tag-wrapper">
+                                            <span class="wc-sb-val wc-crusade-mod">@WeaponStrength<sup>*</sup></span>
+                                            <div class="kw-tooltip">
+                                                <div class="kw-tooltip-title">S — Crusade</div>
+                                                <div class="kw-tooltip-body">@string.Join(", ", sMods)</div>
+                                            </div>
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="wc-sb-val">@WeaponStrength</span>
+                                    }
                                 </div>
                             }
                             @if (WeaponAp.HasValue)
                             {
+                                var apMods = StatModInfo("AP", isDefender: false);
                                 <div class="wc-sb-divider"></div>
                                 <div class="wc-sb-stat">
                                     <span class="wc-sb-lbl">AP</span>
-                                    <span class="wc-sb-val wc-sb-ap">@WeaponAp</span>
+                                    @if (apMods != null)
+                                    {
+                                        <span class="kw-tag-wrapper">
+                                            <span class="wc-sb-val wc-sb-ap wc-crusade-mod">@WeaponAp<sup>*</sup></span>
+                                            <div class="kw-tooltip">
+                                                <div class="kw-tooltip-title">AP — Crusade</div>
+                                                <div class="kw-tooltip-body">@string.Join(", ", apMods)</div>
+                                            </div>
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="wc-sb-val wc-sb-ap">@WeaponAp</span>
+                                    }
                                 </div>
                             }
                             
@@ -350,7 +394,7 @@
                             var active = DefenderPlayerFilter == p.Id;
                             <button class="wc-fbtn @(active ? "wc-fbtn-on" : "")"
                                     style="@(active ? $"--pbtn-color:{GetPlayerColor(p.Id)};" : "")"
-                                    @onclick="() => SetDefenderFilter(p.Id)">P@(p.Index)</button>
+                                    @onclick="() => SetDefenderFilter(p.Id)">@PlayerTheme.GetLabel(p.Id)</button>
                         }
                     </div>
 
@@ -376,17 +420,45 @@
                     <!-- Defender stat bar + cover toggle -->
                     @if (DefenderToughness.HasValue)
                     {
+                        var tMods = StatModInfo("T", isDefender: true);
+                        var svMods = StatModInfo("Sv", isDefender: true);
                         <div class="wc-statbar def-statbar">
                             <div class="wc-sb-stat">
                                 <span class="wc-sb-lbl">T</span>
-                                <span class="wc-sb-val">@DefenderToughness</span>
+                                @if (tMods != null)
+                                {
+                                    <span class="kw-tag-wrapper">
+                                        <span class="wc-sb-val wc-crusade-mod">@DefenderToughness<sup>*</sup></span>
+                                        <div class="kw-tooltip">
+                                            <div class="kw-tooltip-title">T — Crusade</div>
+                                            <div class="kw-tooltip-body">@string.Join(", ", tMods)</div>
+                                        </div>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="wc-sb-val">@DefenderToughness</span>
+                                }
                             </div>
                             @if (DefenderSave.HasValue)
                             {
                                 <div class="wc-sb-divider"></div>
                                 <div class="wc-sb-stat">
                                     <span class="wc-sb-lbl">Sv</span>
-                                    <span class="wc-sb-val wc-sb-sv">@(DefenderSave)@("+")</span>
+                                    @if (svMods != null)
+                                    {
+                                        <span class="kw-tag-wrapper">
+                                            <span class="wc-sb-val wc-sb-sv wc-crusade-mod">@(DefenderSave)+<sup>*</sup></span>
+                                            <div class="kw-tooltip">
+                                                <div class="kw-tooltip-title">Sv — Crusade</div>
+                                                <div class="kw-tooltip-body">@string.Join(", ", svMods)</div>
+                                            </div>
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="wc-sb-val wc-sb-sv">@(DefenderSave)@("+")</span>
+                                    }
                                 </div>
                             }
                             @if (DefenderWounds is { Count: > 0 })
@@ -652,7 +724,7 @@
 }
 
 @code {
-    private record UnitEntry(string Key, string Label, string PlayerId, int PlayerIndex, Selection Unit, string DetachmentName);
+    private record UnitEntry(string Key, string Label, string PlayerId, int PlayerIndex, Selection Unit, string DetachmentName, CrusadeUnitCard? CrusadeData = null);
 
     private List<UnitEntry> AllUnits = new();
     private List<Profile> AttackerWeapons = new();
@@ -694,6 +766,18 @@
     private int    NetWoundMod;
     private string? EffectiveHitRoll;
     private string? EffectiveWoundRoll;
+
+    // Per-stat list of crusade traits that contributed a modifier (for the
+    // gold asterisk + hover tooltip on the stat bar). Cleared and re-populated
+    // every time a weapon or defender unit is (re-)selected.
+    private readonly Dictionary<string, List<string>> _attackerStatMods = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, List<string>> _defenderStatMods = new(StringComparer.OrdinalIgnoreCase);
+
+    private List<string>? StatModInfo(string stat, bool isDefender)
+    {
+        var mods = isDefender ? _defenderStatMods : _attackerStatMods;
+        return mods.TryGetValue(stat, out var list) && list.Count > 0 ? list : null;
+    }
 
     private List<StratagemModelWithDetachment> AttackerStratagems = new();
     private List<StratagemModelWithDetachment> DefenderStratagems = new();
@@ -764,7 +848,7 @@
         AttackerPlayerFilter = CalcState.AttackerFilter;
         DefenderPlayerFilter = CalcState.DefenderFilter;
 
-        if (!string.IsNullOrEmpty(CalcState.AttackerUnitKey))
+        if (SelectedAttacker == null && !string.IsNullOrEmpty(CalcState.AttackerUnitKey))
         {
             var atk = AllUnits.FirstOrDefault(u => u.Key == CalcState.AttackerUnitKey);
             if (atk != null)
@@ -779,10 +863,62 @@
             }
         }
 
-        if (!string.IsNullOrEmpty(CalcState.DefenderUnitKey))
+        if (SelectedDefender == null && !string.IsNullOrEmpty(CalcState.DefenderUnitKey))
         {
             var def = AllUnits.FirstOrDefault(u => u.Key == CalcState.DefenderUnitKey);
             if (def != null) SelectDefenderUnit(def);
+        }
+    }
+
+    // Crusade units live in localStorage and require JS interop, which isn't
+    // available during prerender — so we defer their load to first render
+    // (matches the pattern used by CrusadeManager.razor / CrusadeDetail.razor).
+    private bool _crusadeUnitsLoaded;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _crusadeUnitsLoaded) return;
+        _crusadeUnitsLoaded = true;
+
+        await Crusades.LoadAllCrusadesAsync();
+
+        var added = 0;
+        foreach (var crusade in Crusades.Crusades)
+        {
+            if (string.IsNullOrEmpty(crusade.PlayerId)) continue;
+
+            var roster = await RosterLoader.LoadRosterAsync(crusade.PlayerId);
+            if (roster == null) continue;
+
+            var selectionsByName = RosterLoadService.GetPlayableUnits(roster)
+                .DistinctBy(u => u.Name)
+                .ToDictionary(u => u.Name, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var card in crusade.Units)
+            {
+                if (string.IsNullOrEmpty(card.DatasheetName)) continue;
+                if (!selectionsByName.TryGetValue(card.DatasheetName, out var selection)) continue;
+
+                var label = string.IsNullOrWhiteSpace(card.UnitName) ? card.DatasheetName : card.UnitName;
+                AllUnits.Add(new UnitEntry(
+                    Key:            $"pc_{crusade.Id}_{card.Id}",
+                    Label:          label,
+                    PlayerId:       "pc",
+                    PlayerIndex:    99,
+                    Unit:           selection,
+                    DetachmentName: "",
+                    CrusadeData:    card
+                ));
+                added++;
+            }
+        }
+
+        if (added > 0)
+        {
+            // The user may have left a PC unit selected last session — try once
+            // more now that the entries exist. RestoreFromState is idempotent.
+            RestoreFromState();
+            StateHasChanged();
         }
     }
 
@@ -860,7 +996,140 @@
         var dmg   = GetChar(w, "D");
         SelectedWeaponMeta = $"{range}  D:{dmg}";
         CalcState.WeaponName = _selectedWeaponName;
+        ApplyAttackerCrusadeMods();
         Recalculate();
+    }
+
+    // Honour/scar machine modifiers are applied AFTER base weapon stats are read,
+    // so the base values come from the roster profile and the deltas come from
+    // the CrusadeUnitCard. Per-weapon honours (WeaponName / WeaponScope) are
+    // filtered against the currently-selected weapon — see TraitAppliesToWeapon.
+    private void ApplyAttackerCrusadeMods()
+    {
+        _attackerStatMods.Clear();
+        if (SelectedAttacker?.CrusadeData == null) return;
+
+        var traits = SelectedAttacker.CrusadeData.BattleHonours
+            .Concat(SelectedAttacker.CrusadeData.BattleScars);
+
+        foreach (var t in traits)
+        {
+            var m = t.Modifier;
+            if (m == null) continue;
+            if (!TraitAppliesToWeapon(t)) continue;
+
+            if (!string.IsNullOrWhiteSpace(m.Keyword))
+            {
+                SelectedWeaponKeywords.AddRange(RosterHelper.ParseWeaponKeywords(m.Keyword));
+                Track(_attackerStatMods, "Keyword", t.Name);
+            }
+
+            switch (m.Stat?.ToUpperInvariant())
+            {
+                case "S":
+                    if (m.Value.HasValue) { WeaponStrength = (WeaponStrength ?? 0) + m.Value.Value; Track(_attackerStatMods, "S", t.Name); }
+                    else if (m.SetTo.HasValue) { WeaponStrength = Math.Max(WeaponStrength ?? 0, m.SetTo.Value); Track(_attackerStatMods, "S", t.Name); }
+                    break;
+                case "AP":
+                    if (m.Value.HasValue) { WeaponAp = (WeaponAp ?? 0) + m.Value.Value; Track(_attackerStatMods, "AP", t.Name); }
+                    break;
+                case "BS":
+                case "WS":
+                    if (m.Value.HasValue) { HitRoll = AdjustPlusRoll(HitRoll, m.Value.Value); Track(_attackerStatMods, "Hit", t.Name); }
+                    break;
+                case "A":
+                    if (m.Value.HasValue) { WeaponAttacks = AdjustNumericString(WeaponAttacks, m.Value.Value); Track(_attackerStatMods, "A", t.Name); }
+                    break;
+                // "D" / "Move" / "OC" — not in calc input. Tooltip still tells the story.
+            }
+        }
+    }
+
+    private void ApplyDefenderCrusadeMods()
+    {
+        _defenderStatMods.Clear();
+        if (SelectedDefender?.CrusadeData == null) return;
+
+        var traits = SelectedDefender.CrusadeData.BattleHonours
+            .Concat(SelectedDefender.CrusadeData.BattleScars);
+
+        foreach (var t in traits)
+        {
+            var m = t.Modifier;
+            if (m == null) continue;
+
+            switch (m.Stat?.ToUpperInvariant())
+            {
+                case "T":
+                    if (m.Value.HasValue) { DefenderToughness = (DefenderToughness ?? 0) + m.Value.Value; Track(_defenderStatMods, "T", t.Name); }
+                    break;
+                case "SV":
+                    if (m.SetTo.HasValue)
+                    {
+                        DefenderSave = DefenderSave.HasValue ? Math.Min(DefenderSave.Value, m.SetTo.Value) : m.SetTo;
+                        Track(_defenderStatMods, "Sv", t.Name);
+                    }
+                    else if (m.Value.HasValue)
+                    {
+                        DefenderSave = (DefenderSave ?? 0) + m.Value.Value;
+                        Track(_defenderStatMods, "Sv", t.Name);
+                    }
+                    break;
+                case "INVULN":
+                    if (m.SetTo.HasValue)
+                    {
+                        _invulnSave = _invulnSave == 0 ? m.SetTo.Value : Math.Min(_invulnSave, m.SetTo.Value);
+                        Track(_defenderStatMods, "Invuln", t.Name);
+                    }
+                    break;
+            }
+        }
+    }
+
+    private static void Track(Dictionary<string, List<string>> mods, string stat, string traitName)
+    {
+        if (!mods.TryGetValue(stat, out var list))
+        {
+            list = new();
+            mods[stat] = list;
+        }
+        list.Add(traitName);
+    }
+
+    // True when the trait's weapon-scope matches whatever weapon is currently picked.
+    //   WeaponName set  → strict match against the currently-selected weapon name
+    //   WeaponScope = "ranged" / "melee" → match the current weapon's TypeName
+    //   Both null       → no weapon constraint (unit-wide / legacy applied trait)
+    private bool TraitAppliesToWeapon(AppliedTrait t)
+    {
+        if (!string.IsNullOrEmpty(t.WeaponName))
+        {
+            return string.Equals(t.WeaponName, _selectedWeaponName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var scope = t.WeaponScope;
+        if (scope is "ranged" or "weapon-ranged")
+            return SelectedWeapon?.TypeName == "Ranged Weapons";
+        if (scope is "melee" or "weapon-melee")
+            return SelectedWeapon?.TypeName == "Melee Weapons";
+
+        // "weapon" scope without a chosen WeaponName means the trait pre-dates the
+        // weapon-targeting UI — apply to all weapons to preserve legacy behaviour.
+        return true;
+    }
+
+    // "3+" → adjusted by delta, clamped to 2..6. Untouched if "AUTO" or unparseable.
+    private static string? AdjustPlusRoll(string? roll, int delta)
+    {
+        if (string.IsNullOrEmpty(roll) || roll == "AUTO") return roll;
+        if (!int.TryParse(roll.TrimEnd('+'), out var n)) return roll;
+        return $"{Math.Clamp(n + delta, 2, 6)}+";
+    }
+
+    private static string? AdjustNumericString(string? raw, int delta)
+    {
+        if (string.IsNullOrEmpty(raw) || !int.TryParse(raw, out var n)) return raw;
+        return (n + delta).ToString();
     }
 
     private void SelectDefenderUnit(UnitEntry entry)
@@ -891,6 +1160,7 @@
         DefenderDetachmentRule = DetachmentRules.TryGetValue(entry.DetachmentName, out var ddr) ? ddr : null;
 
         CalcState.DefenderUnitKey = entry.Key;
+        ApplyDefenderCrusadeMods();
         Recalculate();
     }
 
@@ -918,6 +1188,7 @@
         WeaponKeywords = null;
         SelectedWeaponKeywords = new();
         _bgntPenalty = false;
+        _attackerStatMods.Clear();
         CalcState.WeaponName = null;
         Recalculate();
     }
@@ -937,6 +1208,7 @@
         DefenderStratagems = new();
         DefenderAbilities = new();
         DefenderDetachmentRule = null;
+        _defenderStatMods.Clear();
         CalcState.DefenderUnitKey = null;
         Recalculate();
     }
@@ -1015,6 +1287,11 @@
         CalcState.AttackerUnitKey = SelectedAttacker?.Key;
         CalcState.DefenderUnitKey = SelectedDefender?.Key;
         CalcState.WeaponName = null;
+
+        // Old attacker (now defender) keeps its crusade-based defender mods;
+        // weapon mods don't apply until the user picks a weapon again.
+        _attackerStatMods.Clear();
+        ApplyDefenderCrusadeMods();
 
         Recalculate();
     }
@@ -1576,6 +1853,13 @@
         font-size: 1.8rem;
         font-weight: 800;
         line-height: 1;
+    }
+
+    /* Stat values modified by a Crusade Honour/Scar — gold tint + asterisk.
+       The asterisk is rendered as a sup element; tooltip uses .kw-tag-wrapper / .kw-tooltip. */
+    .wc-crusade-mod {
+        color: #ffd166 !important;
+        text-shadow: 0 0 6px rgba(255, 209, 102, 0.35);
     }
 
     .wc-sb-meta {

@@ -1,0 +1,62 @@
+{
+  "weaponModifications": [
+    { "name": "Finely Balanced", "effect": "Improve the Weapon Skill (WS) or Ballistic Skill (BS) of this weapon by 1.", "category": "Weapon Modification", "weaponScope": "weapon", "machineModifiers": { "stat": "BS", "value": -1 } },
+    { "name": "Brutal", "effect": "Add 1 to the Strength characteristic of this weapon.", "category": "Weapon Modification", "weaponScope": "weapon", "machineModifiers": { "stat": "S", "value": 1 } },
+    { "name": "Armour Piercing", "effect": "Improve the Armour Penetration (AP) characteristic of this weapon by 1.", "category": "Weapon Modification", "weaponScope": "weapon", "machineModifiers": { "stat": "AP", "value": -1 } },
+    { "name": "Master-worked", "effect": "Add 1 to the Damage characteristic of this weapon.", "category": "Weapon Modification", "weaponScope": "weapon", "machineModifiers": { "stat": "D", "value": 1 } },
+    { "name": "Heirloom", "effect": "Add 1 to the Attacks characteristic of this weapon.", "category": "Weapon Modification", "weaponScope": "weapon", "machineModifiers": { "stat": "A", "value": 1 } },
+    { "name": "Precise", "effect": "Each time an attack is made with this weapon, an unmodified Wound roll of 6 scores a Critical Wound (which triggers [PRECISION] and other critical effects).", "category": "Weapon Modification", "weaponScope": "weapon", "machineModifiers": { "keyword": "PRECISION" } }
+  ],
+  "battleTraits": [
+    { "name": "Born Hunter", "effect": "This unit has the Scouts 9\" ability.", "category": "Character" },
+    { "name": "Focused Gunners", "effect": "Models in this unit have the Feel No Pain 5+ ability against ranged attacks.", "category": "Character" },
+    { "name": "Natural Leader", "effect": "You can re-roll Battle-shock tests taken for this unit.", "category": "Character" },
+    { "name": "Deadly Combatant", "effect": "Melee weapons equipped by models in this unit have the [SUSTAINED HITS 1] ability.", "category": "Character", "weaponScope": "melee", "machineModifiers": { "keyword": "SUSTAINED HITS 1" } },
+    { "name": "Inspiring Presence", "effect": "While a friendly unit is within 6\" of this Character, add 1 to their Leadership characteristic.", "category": "Character" },
+    { "name": "Master Strategist", "effect": "If this unit is on the battlefield, roll a D6 each time you use a Stratagem. On a 5+, you regain 1 CP.", "category": "Character" },
+
+    { "name": "Shadow Stalkers", "effect": "This unit has the [STEALTH] ability.", "category": "Infantry" },
+    { "name": "Resolute Veterans", "effect": "Each time you take a Battle-shock, Leadership, or Desperate Escape test for this unit, add 1 to the result.", "category": "Infantry" },
+    { "name": "Fleet of Foot", "effect": "Add 1\" to this unit's Move characteristic, and add 1 to Advance and Charge rolls made for this unit.", "category": "Infantry", "machineModifiers": { "stat": "Move", "value": 1 } },
+    { "name": "Drop Zone Defenders", "effect": "This unit gains the [DEEP STRIKE] ability.", "category": "Infantry" },
+    { "name": "Urban Fighters", "effect": "This unit always has the Benefit of Cover against ranged attacks if they are wholly within a Ruins terrain feature.", "category": "Infantry" },
+    { "name": "Elite Marksmen", "effect": "Ranged weapons equipped by models in this unit gain the [IGNORES COVER] ability.", "category": "Infantry", "weaponScope": "ranged", "machineModifiers": { "keyword": "IGNORES COVER" } },
+
+    { "name": "High Speed Gunnery", "effect": "Ranged weapons equipped by models in this unit gain the [ASSAULT] ability.", "category": "Monster/Vehicle", "weaponScope": "ranged", "machineModifiers": { "keyword": "ASSAULT" } },
+    { "name": "Predatory Urge", "effect": "You can re-roll Charge rolls made for this unit.", "category": "Monster/Vehicle" },
+    { "name": "Mounted Guerrillas", "effect": "This unit is eligible to declare a Charge in a turn in which it Fell Back.", "category": "Monster/Vehicle" },
+    { "name": "Reinforced Armour / Thick Hide", "effect": "Each time an attack is allocated to this unit, subtract 1 from the Damage characteristic of that attack (to a minimum of 1).", "category": "Monster/Vehicle" },
+    { "name": "Auto-repair Nodes / Regeneration", "effect": "At the start of your Command phase, this unit regains 1 lost wound.", "category": "Monster/Vehicle" },
+    { "name": "Behemoth", "effect": "Add 2 to this unit's Wounds characteristic.", "category": "Monster/Vehicle", "machineModifiers": { "stat": "W", "value": 2 } }
+  ],
+  "crusadeRelics": [
+    { "name": "Artificer Armour", "effect": "The bearer has a Save characteristic of 2+ and a 5+ Invulnerable save.", "category": "Artificer Relic", "machineModifiers": { "stat": "Sv", "setTo": 2 } },
+    { "name": "Artificer Weapon", "effect": "Select one equipped weapon. Improve its Weapon Skill or Ballistic Skill by 1, and add 1 to its Strength and Damage characteristics.", "category": "Artificer Relic", "weaponScope": "weapon", "machineModifiers": { "stat": "S", "value": 1 } },
+    { "name": "Master-vox", "effect": "Each time your opponent uses a Stratagem, roll one D6; on a 5+, you gain 1 CP.", "category": "Artificer Relic" },
+    { "name": "Digital Arsenal", "effect": "Ranged weapons equipped by the bearer gain the [LETHAL HITS] ability.", "category": "Artificer Relic", "weaponScope": "ranged", "machineModifiers": { "keyword": "LETHAL HITS" } },
+    { "name": "Truesilver Weave", "effect": "The bearer has the Feel No Pain 5+ ability.", "category": "Artificer Relic" },
+    { "name": "Blade of the Ordo", "effect": "Melee weapons equipped by the bearer gain the [ANTI-CHAOS 4+] and [ANTI-XENOS 4+] abilities.", "category": "Artificer Relic" },
+
+    { "name": "Mantle of Majesty", "effect": "The bearer has a 4+ Invulnerable save. While a friendly unit is within 6\", add 1 to their Leadership characteristic.", "category": "Antiquity Relic", "machineModifiers": { "stat": "Invuln", "setTo": 4 } },
+    { "name": "Conversion Field", "effect": "The bearer has a 4+ Invulnerable save. Each time a melee attack is allocated to the bearer, on an unmodified saving throw of 6, the attacking unit suffers 1 Mortal Wound.", "category": "Antiquity Relic", "machineModifiers": { "stat": "Invuln", "setTo": 4 } },
+    { "name": "Standard of Righteous Hatred", "effect": "While a friendly unit is within 6\" of the bearer, add 1 to the Strength characteristic of melee weapons equipped by models in that unit.", "category": "Antiquity Relic" },
+    { "name": "Tainted Blade", "effect": "Select one melee weapon. It gains +2 Strength, -2 AP, and 2 Damage, but each time an unmodified hit roll of 1 is made with it, the bearer suffers 1 Mortal Wound.", "category": "Antiquity Relic", "weaponScope": "weapon-melee", "machineModifiers": { "stat": "S", "value": 2 } },
+    { "name": "Icon of Intolerance", "effect": "While a friendly unit is within 6\" of the bearer, each time a model in that unit makes an attack, re-roll a Hit roll of 1.", "category": "Antiquity Relic" },
+    { "name": "Displacement Field", "effect": "This model's unit is eligible to shoot and declare a charge in a turn in which it Fell Back.", "category": "Antiquity Relic" },
+
+    { "name": "Halo of the Indomitable", "effect": "The bearer has a 3+ Invulnerable save and a 4+ Feel No Pain ability.", "category": "Legendary Relic", "machineModifiers": { "stat": "Invuln", "setTo": 3 } },
+    { "name": "Vortex Grenade", "effect": "Once per battle, in your Shooting phase, select one point on the battlefield within 12\" and roll a D6 for each unit within D3\". On a 4+, that unit suffers D3 mortal wounds.", "category": "Legendary Relic" },
+    { "name": "Relic of the Primarch", "effect": "Friendly units gain +1 Attack in melee if within 6\" of the bearer. If the bearer is slain, the opponent gains a unique Agenda to recover it.", "category": "Legendary Relic" },
+    { "name": "Archeotech Curiosity", "effect": "Select one ranged weapon equipped by the bearer. Change its profile to Strength 10, AP -3, Damage 3.", "category": "Legendary Relic", "weaponScope": "weapon-ranged", "machineModifiers": { "stat": "S", "setTo": 10 } },
+    { "name": "Null-field Disruptor", "effect": "Each time the bearer makes an attack, the target cannot take Invulnerable saving throws against that attack.", "category": "Legendary Relic" },
+    { "name": "Gheist Prism Field", "effect": "The bearer gains the [LONE OPERATIVE] and [STEALTH] abilities.", "category": "Legendary Relic", "machineModifiers": { "keyword": "STEALTH" } }
+  ],
+  "battleScars": [
+    { "name": "Crippling Damage", "effect": "This unit cannot Advance. Subtract 1\" from the Move characteristic of models in this unit.", "category": "Battle Scar", "machineModifiers": { "stat": "Move", "value": -1 } },
+    { "name": "Battle-weary", "effect": "Subtract 1 from Battle-shock, Leadership, Desperate Escape, and Out of Action tests taken for this unit.", "category": "Battle Scar" },
+    { "name": "Fatigued", "effect": "Subtract 1 from the Objective Control (OC) characteristic of models in this unit. This unit never receives the Charge bonus.", "category": "Battle Scar", "machineModifiers": { "stat": "OC", "value": -1 } },
+    { "name": "Disgraced", "effect": "This unit is unaffected by your Stratagems and cannot be selected for the 'Marked for Greatness' XP bonus.", "category": "Battle Scar" },
+    { "name": "Mark of Shame", "effect": "This unit cannot form an Attached unit (cannot be lead/attach as a leader) and is unaffected by Aura abilities.", "category": "Battle Scar" },
+    { "name": "Deep Scars", "effect": "Each time an attack targets this unit, a Critical Hit automatically wounds this unit (no Wound roll is made).", "category": "Battle Scar" }
+  ]
+}

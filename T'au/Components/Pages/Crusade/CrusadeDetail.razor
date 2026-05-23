@@ -6,6 +6,7 @@
 @using Warhammer.Services
 @inject CrusadeManagerService CrusadeMgr
 @inject RosterLoadService RosterLoader
+@inject CrusadeTraitsService Traits
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
@@ -126,6 +127,63 @@
             }
         </div>
 
+        <div class="add-custom-trait-form mb-3">
+            <h6 class="text-warning mb-2"><i class="bi bi-stars"></i> Custom Relics &amp; Traits</h6>
+            <p class="small text-muted mb-2">
+                Add Crusade Relics or Battle Traits not in the static rules data. They appear in the honour dropdowns for every unit in this crusade.
+            </p>
+            <div class="row g-2 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label small text-warning mb-0">Type</label>
+                    <select class="form-select form-select-sm bg-dark text-white border-secondary" @bind="_newTraitType">
+                        <option value="@CrusadeTraitTypes.CrusadeRelic">@CrusadeTraitTypes.CrusadeRelic</option>
+                        <option value="@CrusadeTraitTypes.BattleTrait">@CrusadeTraitTypes.BattleTrait</option>
+                        <option value="@CrusadeTraitTypes.WeaponModification">@CrusadeTraitTypes.WeaponModification</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-warning mb-0">Sub-category</label>
+                    <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                           placeholder="e.g. Artificer"
+                           @bind="_newTraitCategory" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-warning mb-0">Name</label>
+                    <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                           placeholder="e.g. Blade of the Eighth Sept"
+                           @bind="_newTraitName" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-warning mb-0">Effect</label>
+                    <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                           placeholder="What the relic/trait does"
+                           @bind="_newTraitEffect" />
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button class="btn btn-sm btn-warning" @onclick="AddCustomTrait"
+                            disabled="@(string.IsNullOrWhiteSpace(_newTraitName) || string.IsNullOrWhiteSpace(_newTraitEffect))">
+                        <i class="bi bi-plus-lg"></i> Add
+                    </button>
+                </div>
+            </div>
+            @if (_crusade.CustomTraits.Any())
+            {
+                <div class="mt-2">
+                    @foreach (var ct in _crusade.CustomTraits)
+                    {
+                        var trait = ct;
+                        <span class="badge bg-secondary me-1 mb-1" title="@trait.Effect">
+                            <span class="text-warning">@trait.Type@(string.IsNullOrWhiteSpace(trait.Category) ? "" : $" / {trait.Category}"):</span>
+                            @trait.Name
+                            <button type="button" class="btn-close btn-close-white ms-1"
+                                    style="font-size: 0.55rem; vertical-align: middle;"
+                                    @onclick="() => RemoveCustomTrait(trait)" aria-label="Remove"></button>
+                        </span>
+                    }
+                </div>
+            }
+        </div>
+
         @if (!_crusade.Units.Any())
         {
             <p class="text-center text-muted"><em>No units yet. Add one above.</em></p>
@@ -190,8 +248,16 @@
                                         </label>
                                     </div>
 
+                                    @{ var honourCap = unit.IsCharacter ? 6 : 3; }
                                     <div class="col-12">
-                                        <label class="form-label small text-warning mb-0">Battle Honours</label>
+                                        <label class="form-label small text-warning mb-0">
+                                            Battle Honours
+                                            <span class="text-muted">(@unit.BattleHonours.Count / @honourCap)</span>
+                                            @if (unit.BattleHonours.Count > honourCap)
+                                            {
+                                                <span class="badge bg-warning text-dark ms-1" title="Exceeds rules cap (3 standard / 6 CHARACTER)">over cap</span>
+                                            }
+                                        </label>
                                         <div class="mb-1">
                                             @if (!unit.BattleHonours.Any())
                                             {
@@ -200,26 +266,105 @@
                                             @for (int i = 0; i < unit.BattleHonours.Count; i++)
                                             {
                                                 var idx = i;
-                                                <span class="badge bg-success me-1 mb-1">
-                                                    @unit.BattleHonours[idx]
-                                                    <button type="button" class="btn-close btn-close-white ms-1"
-                                                            style="font-size: 0.55rem; vertical-align: middle;"
-                                                            @onclick="() => RemoveHonour(unit, idx)" aria-label="Remove"></button>
+                                                var honour = unit.BattleHonours[idx];
+                                                <span class="kw-tag-wrapper me-1 mb-1">
+                                                    <span class="badge bg-success trait-badge"
+                                                          @onclick="() => ShowTraitModal(honour)">
+                                                        @honour.Name
+                                                        <button type="button" class="btn-close btn-close-white ms-1"
+                                                                style="font-size: 0.55rem; vertical-align: middle;"
+                                                                @onclick="() => RemoveHonour(unit, idx)"
+                                                                @onclick:stopPropagation="true"
+                                                                aria-label="Remove"></button>
+                                                    </span>
+                                                    @if (!string.IsNullOrWhiteSpace(honour.Effect))
+                                                    {
+                                                        <div class="kw-tooltip">
+                                                            <div class="kw-tooltip-title">@honour.Name</div>
+                                                            <div class="kw-tooltip-body">@honour.Effect</div>
+                                                        </div>
+                                                    }
                                                 </span>
                                             }
                                         </div>
-                                        <div class="input-group input-group-sm">
-                                            <input class="form-control bg-dark text-white border-secondary"
-                                                   placeholder="Add honour…"
-                                                   value="@GetHonourInput(unit.Id)"
-                                                   @oninput="e => SetHonourInput(unit.Id, e.Value?.ToString() ?? string.Empty)"
-                                                   @onkeydown="e => OnHonourKey(e, unit)" />
-                                            <button class="btn btn-outline-success" @onclick="() => AddHonour(unit)">+</button>
+                                        @{
+                                            var honourType = GetHonourType(unit.Id);
+                                            var honourOptions = HonourOptionsFor(honourType).ToList();
+                                            var selectedTrait = honourOptions.FirstOrDefault(t => t.Name == GetHonourTrait(unit.Id));
+                                            var needsWeaponPick = NeedsWeaponPick(selectedTrait);
+                                            var weaponOptions = needsWeaponPick ? WeaponsForTrait(unit, selectedTrait!) : new List<string>();
+                                            var picked = GetHonourWeapon(unit.Id);
+                                            var canAdd = !string.IsNullOrEmpty(GetHonourTrait(unit.Id))
+                                                         && (!needsWeaponPick || !string.IsNullOrEmpty(picked));
+                                        }
+                                        <div class="row g-1">
+                                            <div class="col-5">
+                                                <select class="form-select form-select-sm bg-dark text-white border-secondary"
+                                                        value="@honourType"
+                                                        @onchange="e => SetHonourType(unit.Id, e.Value?.ToString() ?? string.Empty)">
+                                                    <option value="">— Type —</option>
+                                                    @foreach (var t in CrusadeTraitTypes.HonourTypes)
+                                                    {
+                                                        <option value="@t">@t</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            <div class="col-5">
+                                                <select @key="@($"honour-{unit.Id}-{honourType}")"
+                                                        class="form-select form-select-sm bg-dark text-white border-secondary"
+                                                        value="@GetHonourTrait(unit.Id)"
+                                                        @onchange="e => SetHonourTrait(unit.Id, e.Value?.ToString() ?? string.Empty)"
+                                                        disabled="@(string.IsNullOrEmpty(honourType) || honourOptions.Count == 0)">
+                                                    <option value="">
+                                                        @(honourOptions.Count == 0 && !string.IsNullOrEmpty(honourType)
+                                                            ? "— None available —"
+                                                            : "— Honour —")
+                                                    </option>
+                                                    @foreach (var t in honourOptions)
+                                                    {
+                                                        <option value="@t.Name" title="@t.Effect">@OptionLabel(t)</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            <div class="col-2 d-grid">
+                                                <button class="btn btn-sm btn-outline-success"
+                                                        @onclick="() => AddHonour(unit)"
+                                                        disabled="@(!canAdd)">+</button>
+                                            </div>
                                         </div>
+                                        @if (needsWeaponPick)
+                                        {
+                                            <div class="row g-1 mt-1">
+                                                <div class="col-12">
+                                                    <select @key="@($"honour-weapon-{unit.Id}-{selectedTrait!.Name}")"
+                                                            class="form-select form-select-sm bg-dark text-white border-secondary"
+                                                            value="@picked"
+                                                            @onchange="e => SetHonourWeapon(unit.Id, e.Value?.ToString() ?? string.Empty)"
+                                                            disabled="@(weaponOptions.Count == 0)">
+                                                        <option value="">
+                                                            @(weaponOptions.Count == 0
+                                                                ? "— No matching weapon on this datasheet —"
+                                                                : "— Choose weapon to modify —")
+                                                        </option>
+                                                        @foreach (var w in weaponOptions)
+                                                        {
+                                                            <option value="@w">@w</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        }
                                     </div>
 
                                     <div class="col-12">
-                                        <label class="form-label small text-warning mb-0">Battle Scars</label>
+                                        <label class="form-label small text-warning mb-0">
+                                            Battle Scars
+                                            <span class="text-muted">(@unit.BattleScars.Count / 3)</span>
+                                            @if (unit.BattleScars.Count > 3)
+                                            {
+                                                <span class="badge bg-warning text-dark ms-1" title="Exceeds rules cap of 3">over cap</span>
+                                            }
+                                        </label>
                                         <div class="mb-1">
                                             @if (!unit.BattleScars.Any())
                                             {
@@ -228,21 +373,44 @@
                                             @for (int i = 0; i < unit.BattleScars.Count; i++)
                                             {
                                                 var idx = i;
-                                                <span class="badge bg-danger me-1 mb-1">
-                                                    @unit.BattleScars[idx]
-                                                    <button type="button" class="btn-close btn-close-white ms-1"
-                                                            style="font-size: 0.55rem; vertical-align: middle;"
-                                                            @onclick="() => RemoveScar(unit, idx)" aria-label="Remove"></button>
+                                                var scar = unit.BattleScars[idx];
+                                                <span class="kw-tag-wrapper me-1 mb-1">
+                                                    <span class="badge bg-danger trait-badge"
+                                                          @onclick="() => ShowTraitModal(scar)">
+                                                        @scar.Name
+                                                        <button type="button" class="btn-close btn-close-white ms-1"
+                                                                style="font-size: 0.55rem; vertical-align: middle;"
+                                                                @onclick="() => RemoveScar(unit, idx)"
+                                                                @onclick:stopPropagation="true"
+                                                                aria-label="Remove"></button>
+                                                    </span>
+                                                    @if (!string.IsNullOrWhiteSpace(scar.Effect))
+                                                    {
+                                                        <div class="kw-tooltip">
+                                                            <div class="kw-tooltip-title">@scar.Name</div>
+                                                            <div class="kw-tooltip-body">@scar.Effect</div>
+                                                        </div>
+                                                    }
                                                 </span>
                                             }
                                         </div>
-                                        <div class="input-group input-group-sm">
-                                            <input class="form-control bg-dark text-white border-secondary"
-                                                   placeholder="Add scar…"
-                                                   value="@GetScarInput(unit.Id)"
-                                                   @oninput="e => SetScarInput(unit.Id, e.Value?.ToString() ?? string.Empty)"
-                                                   @onkeydown="e => OnScarKey(e, unit)" />
-                                            <button class="btn btn-outline-danger" @onclick="() => AddScar(unit)">+</button>
+                                        <div class="row g-1">
+                                            <div class="col-10">
+                                                <select class="form-select form-select-sm bg-dark text-white border-secondary"
+                                                        value="@GetScarChoice(unit.Id)"
+                                                        @onchange="e => SetScarChoice(unit.Id, e.Value?.ToString() ?? string.Empty)">
+                                                    <option value="">— Battle Scar —</option>
+                                                    @foreach (var t in Traits.ByType(CrusadeTraitTypes.BattleScar))
+                                                    {
+                                                        <option value="@t.Name" title="@t.Effect">@t.Name</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            <div class="col-2 d-grid">
+                                                <button class="btn btn-sm btn-outline-danger"
+                                                        @onclick="() => AddScar(unit)"
+                                                        disabled="@string.IsNullOrEmpty(GetScarChoice(unit.Id))">+</button>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -260,6 +428,46 @@
         }
     }
 </div>
+
+@if (_modalTrait != null)
+{
+    <div class="modal-backdrop fade show" style="cursor:pointer" @onclick="CloseTraitModal"></div>
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" @onclick="CloseTraitModal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-warning text-light" @onclick:stopPropagation="true">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning">@_modalTrait.Name</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseTraitModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(_modalTrait.Type) || !string.IsNullOrWhiteSpace(_modalTrait.Category))
+                    {
+                        <p class="text-muted small mb-2">
+                            @if (!string.IsNullOrWhiteSpace(_modalTrait.Type))
+                            {
+                                <span>@_modalTrait.Type</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(_modalTrait.Category) &&
+                                 !string.Equals(_modalTrait.Category, _modalTrait.Type, StringComparison.OrdinalIgnoreCase))
+                            {
+                                <span> · @_modalTrait.Category</span>
+                            }
+                        </p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_modalTrait.WeaponName))
+                    {
+                        <p class="small mb-2">
+                            Applied to weapon: <strong class="text-warning">@_modalTrait.WeaponName</strong>
+                        </p>
+                    }
+                    <p class="mb-0">
+                        @(string.IsNullOrWhiteSpace(_modalTrait.Effect) ? "(no effect text recorded)" : _modalTrait.Effect)
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 <style>
     .crusade-title-input {
@@ -292,7 +500,8 @@
         padding: 10px 12px;
         color: #ddd;
     }
-    .add-unit-form {
+    .add-unit-form,
+    .add-custom-trait-form {
         background: #2a2a2a;
         border: 1px solid #444;
         border-radius: 6px;
@@ -305,6 +514,13 @@
         font-weight: 700;
         text-shadow: 0 1px 1px rgba(0,0,0,0.5);
     }
+    .trait-badge {
+        cursor: pointer;
+        user-select: none;
+    }
+    .trait-badge:hover {
+        filter: brightness(1.15);
+    }
 </style>
 
 @code {
@@ -316,16 +532,34 @@
     private OrderOfBattle? _crusade;
 
     private List<AvailableUnit> _availableUnits = new();
+    // Keep the raw Selection objects so the weapon picker can read each unit's
+    // weapon list when applying a per-weapon honour.
+    private Dictionary<string, Selection> _selectionsByName = new(StringComparer.OrdinalIgnoreCase);
     private string _selectedUnitKey = "";
     private bool _newUnitCharacter;
 
-    private readonly Dictionary<string, string> _honourInputs = new();
-    private readonly Dictionary<string, string> _scarInputs = new();
+    // Per-unit dropdown state (transient — not persisted)
+    private readonly Dictionary<string, string> _honourType = new();
+    private readonly Dictionary<string, string> _honourTrait = new();
+    private readonly Dictionary<string, string> _honourWeapon = new();
+    private readonly Dictionary<string, string> _scarChoice = new();
+
+    // Custom-trait form state
+    private string _newTraitType = CrusadeTraitTypes.CrusadeRelic;
+    private string _newTraitCategory = "";
+    private string _newTraitName = "";
+    private string _newTraitEffect = "";
+
+    // Trait details modal (click on an honour/scar badge to open)
+    private AppliedTrait? _modalTrait;
+    private void ShowTraitModal(AppliedTrait t) => _modalTrait = t;
+    private void CloseTraitModal() => _modalTrait = null;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender || _loaded) return;
 
+        await Traits.EnsureLoadedAsync();
         await CrusadeMgr.LoadAllCrusadesAsync();
         _crusade = CrusadeMgr.GetCrusade(Id);
 
@@ -334,8 +568,11 @@
             var roster = await RosterLoader.LoadRosterAsync(_crusade.PlayerId);
             if (roster != null)
             {
-                _availableUnits = RosterLoadService.GetPlayableUnits(roster)
+                var sels = RosterLoadService.GetPlayableUnits(roster)
                     .DistinctBy(u => u.Name)
+                    .ToList();
+                _selectionsByName = sels.ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+                _availableUnits = sels
                     .Select(u => new AvailableUnit(u.Name, GetPoints(u)))
                     .OrderBy(u => u.Name)
                     .ToList();
@@ -398,46 +635,149 @@
         var confirmed = await JS.InvokeAsync<bool>("confirm", "Remove this unit from the Order of Battle?");
         if (!confirmed) return;
         _crusade.Units.RemoveAll(u => u.Id == unitId);
-        _honourInputs.Remove(unitId);
-        _scarInputs.Remove(unitId);
+        _honourType.Remove(unitId);
+        _honourTrait.Remove(unitId);
+        _honourWeapon.Remove(unitId);
+        _scarChoice.Remove(unitId);
         await SaveAsync();
     }
 
-    private string GetHonourInput(string unitId) => _honourInputs.TryGetValue(unitId, out var v) ? v : "";
-    private void SetHonourInput(string unitId, string value) => _honourInputs[unitId] = value;
+    // ── Honour dropdown state ──────────────────────────────────────────
+    private string GetHonourType(string unitId) => _honourType.TryGetValue(unitId, out var v) ? v : "";
+
+    private void SetHonourType(string unitId, string value)
+    {
+        _honourType[unitId] = value;
+        _honourTrait[unitId] = "";  // reset dependent dropdown when type changes
+        _honourWeapon[unitId] = ""; // reset weapon picker too
+    }
+
+    private string GetHonourTrait(string unitId) => _honourTrait.TryGetValue(unitId, out var v) ? v : "";
+
+    private void SetHonourTrait(string unitId, string value)
+    {
+        _honourTrait[unitId] = value;
+        _honourWeapon[unitId] = ""; // reset weapon when trait changes
+    }
+
+    private string GetHonourWeapon(string unitId) => _honourWeapon.TryGetValue(unitId, out var v) ? v : "";
+    private void SetHonourWeapon(string unitId, string value) => _honourWeapon[unitId] = value;
+
+    private static bool NeedsWeaponPick(CrusadeTrait? trait) =>
+        trait?.WeaponScope is "weapon" or "weapon-ranged" or "weapon-melee";
+
+    // Resolves the crusade unit back to its roster Selection and returns the names
+    // of weapons matching the trait's scope ("weapon" = any, "weapon-melee" = melee, etc).
+    private List<string> WeaponsForTrait(CrusadeUnitCard unit, CrusadeTrait trait)
+    {
+        if (!_selectionsByName.TryGetValue(unit.DatasheetName ?? "", out var sel))
+            return new();
+
+        IEnumerable<Profile> weapons = trait.WeaponScope switch
+        {
+            "weapon-ranged" => RosterHelper.GetAllProfilesRecursive(sel, "Ranged Weapons"),
+            "weapon-melee"  => RosterHelper.GetAllProfilesRecursive(sel, "Melee Weapons"),
+            _ => RosterHelper.GetAllProfilesRecursive(sel, "Ranged Weapons")
+                    .Concat(RosterHelper.GetAllProfilesRecursive(sel, "Melee Weapons"))
+        };
+
+        return weapons.Select(w => w.Name).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n).ToList();
+    }
+
+    // Static traits of the chosen type, plus any custom traits of that type from this crusade.
+    private IEnumerable<CrusadeTrait> HonourOptionsFor(string type)
+    {
+        if (string.IsNullOrEmpty(type)) return Enumerable.Empty<CrusadeTrait>();
+
+        var custom = _crusade?.CustomTraits
+            .Where(t => string.Equals(t.Type, type, StringComparison.OrdinalIgnoreCase))
+            ?? Enumerable.Empty<CrusadeTrait>();
+
+        return Traits.ByType(type).Concat(custom).OrderBy(t => t.Name);
+    }
+
+    // Trait dropdown labels show the sub-category in parens when it adds information
+    // (e.g. "Artificer Armour (Artificer)", "Born Hunter (Character)"), and append CP cost
+    // when it differs from the default of 1 (i.e. Antiquity/Legendary relics).
+    private static string OptionLabel(CrusadeTrait t)
+    {
+        var baseLabel = IsCategoryMeaningful(t) ? $"{t.Name} ({t.Category})" : t.Name;
+        var cost = CrusadePointsCostOf(t.Type, t.Category);
+        return cost == 1 ? baseLabel : $"{baseLabel} +{cost} CP";
+    }
+
+    private static bool IsCategoryMeaningful(CrusadeTrait t) =>
+        !string.IsNullOrWhiteSpace(t.Category) &&
+        !string.Equals(t.Category, t.Type, StringComparison.OrdinalIgnoreCase);
+
+    // Tier-based Crusade Points cost for honours.
+    // Crusade Relics: Artificer +1, Antiquity +2, Legendary +3 (per crusade_rules.json).
+    // All other honour types: +1. Scars are handled separately and always −1.
+    private static int CrusadePointsCostOf(string type, string category)
+    {
+        if (!string.Equals(type, CrusadeTraitTypes.CrusadeRelic, StringComparison.OrdinalIgnoreCase))
+            return 1;
+
+        var cat = category ?? "";
+        if (cat.Contains("Legendary", StringComparison.OrdinalIgnoreCase)) return 3;
+        if (cat.Contains("Antiquity", StringComparison.OrdinalIgnoreCase)) return 2;
+        return 1; // Artificer or unrecognized
+    }
+
+    private static int CrusadePointsCostOf(AppliedTrait t) => CrusadePointsCostOf(t.Type, t.Category);
 
     private async Task AddHonour(CrusadeUnitCard unit)
     {
         if (_crusade is null) return;
-        var value = GetHonourInput(unit.Id);
-        if (string.IsNullOrWhiteSpace(value)) return;
-        unit.BattleHonours.Add(value.Trim());
-        _honourInputs[unit.Id] = "";
+        var type = GetHonourType(unit.Id);
+        var name = GetHonourTrait(unit.Id);
+        if (string.IsNullOrEmpty(type) || string.IsNullOrEmpty(name)) return;
+
+        var trait = HonourOptionsFor(type).FirstOrDefault(t => t.Name == name);
+        if (trait is null) return;
+
+        // If the trait targets a specific weapon, require the user to have picked one.
+        // Unit-wide / all-of-type traits pass through with weaponName=null.
+        string? weaponName = null;
+        if (NeedsWeaponPick(trait))
+        {
+            weaponName = GetHonourWeapon(unit.Id);
+            if (string.IsNullOrEmpty(weaponName)) return;
+        }
+
+        var applied = AppliedTrait.FromTrait(trait, weaponName);
+        unit.BattleHonours.Add(applied);
+        unit.CrusadePoints += CrusadePointsCostOf(applied); // TODO: ×2 if TITANIC (no IsTitanic flag yet)
+        _honourTrait[unit.Id] = "";
+        _honourWeapon[unit.Id] = "";
         await SaveAsync();
     }
 
     private async Task RemoveHonour(CrusadeUnitCard unit, int index)
     {
         if (_crusade is null || index < 0 || index >= unit.BattleHonours.Count) return;
+        var removed = unit.BattleHonours[index];
         unit.BattleHonours.RemoveAt(index);
+        unit.CrusadePoints -= CrusadePointsCostOf(removed);
         await SaveAsync();
     }
 
-    private async Task OnHonourKey(KeyboardEventArgs e, CrusadeUnitCard unit)
-    {
-        if (e.Key == "Enter") await AddHonour(unit);
-    }
-
-    private string GetScarInput(string unitId) => _scarInputs.TryGetValue(unitId, out var v) ? v : "";
-    private void SetScarInput(string unitId, string value) => _scarInputs[unitId] = value;
+    // ── Scar dropdown state ────────────────────────────────────────────
+    private string GetScarChoice(string unitId) => _scarChoice.TryGetValue(unitId, out var v) ? v : "";
+    private void SetScarChoice(string unitId, string value) => _scarChoice[unitId] = value;
 
     private async Task AddScar(CrusadeUnitCard unit)
     {
         if (_crusade is null) return;
-        var value = GetScarInput(unit.Id);
-        if (string.IsNullOrWhiteSpace(value)) return;
-        unit.BattleScars.Add(value.Trim());
-        _scarInputs[unit.Id] = "";
+        var name = GetScarChoice(unit.Id);
+        if (string.IsNullOrEmpty(name)) return;
+
+        var trait = Traits.ByType(CrusadeTraitTypes.BattleScar).FirstOrDefault(t => t.Name == name);
+        if (trait is null) return;
+
+        unit.BattleScars.Add(AppliedTrait.FromTrait(trait));
+        unit.CrusadePoints -= 1;
+        _scarChoice[unit.Id] = "";
         await SaveAsync();
     }
 
@@ -445,12 +785,35 @@
     {
         if (_crusade is null || index < 0 || index >= unit.BattleScars.Count) return;
         unit.BattleScars.RemoveAt(index);
+        unit.CrusadePoints += 1;
         await SaveAsync();
     }
 
-    private async Task OnScarKey(KeyboardEventArgs e, CrusadeUnitCard unit)
+    // ── Custom traits (crusade-scoped relics, etc.) ────────────────────
+    private async Task AddCustomTrait()
     {
-        if (e.Key == "Enter") await AddScar(unit);
+        if (_crusade is null) return;
+        if (string.IsNullOrWhiteSpace(_newTraitName) || string.IsNullOrWhiteSpace(_newTraitEffect)) return;
+
+        _crusade.CustomTraits.Add(new CrusadeTrait
+        {
+            Type = _newTraitType,
+            Category = (_newTraitCategory ?? "").Trim(),
+            Name = _newTraitName.Trim(),
+            Effect = _newTraitEffect.Trim()
+        });
+
+        _newTraitCategory = "";
+        _newTraitName = "";
+        _newTraitEffect = "";
+        await SaveAsync();
+    }
+
+    private async Task RemoveCustomTrait(CrusadeTrait trait)
+    {
+        if (_crusade is null) return;
+        _crusade.CustomTraits.Remove(trait);
+        await SaveAsync();
     }
 
     private static string RankLabel(CrusadeRank rank) => rank switch

@@ -1,10 +1,12 @@
 @using Warhammer.Models
+@using Warhammer.Models.Crusade
 @using Warhammer.Services
 @using Warhammer.Helpers
 @using System.Text.RegularExpressions
 @inject NavigationManager NavManager
 @inject FactionStateService FactionState
 @inject RosterLoadService RosterLoader
+@inject CrusadeManagerService Crusades
 @implements IDisposable
 
 <style>
@@ -36,11 +38,22 @@
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="crusade">
+            <NavLink class="nav-link" href="crusade" Match="NavLinkMatch.All">
                 <span class="bi bi-shield-shaded text-warning" aria-hidden="true"></span>
                 <span class="fw-bold text-white">Crusade Manager</span>
             </NavLink>
         </div>
+        @foreach (var crusade in _crusades)
+        {
+            var label = string.IsNullOrWhiteSpace(crusade.ArmyName) ? "Unnamed Crusade" : crusade.ArmyName;
+            var chevColor = string.IsNullOrEmpty(crusade.PlayerId) ? "#888" : PlayerTheme.GetColor(crusade.PlayerId);
+            <div class="nav-item px-3">
+                <NavLink class="nav-link py-0" href="@($"crusade/{crusade.Id}")">
+                    <span class="bi bi-chevron-right small me-2" aria-hidden="true" style="color: @chevColor;"></span>
+                    <span style="font-size: 0.9em;">@label</span>
+                </NavLink>
+            </div>
+        }
 
         <hr class="border-secondary mx-3 my-2" />
 
@@ -158,7 +171,9 @@
     }
 
     private List<PlayerMenuData> Players = new();
+    private List<OrderOfBattle> _crusades = new();
     private Action _onFactionChange = default!;
+    private Action _onCrusadesChanged = default!;
     private bool _disposed;
     private bool _navOpen = false;
 
@@ -180,6 +195,14 @@
             catch (ObjectDisposedException) { }
         };
         FactionState.OnChange += _onFactionChange;
+
+        _onCrusadesChanged = () =>
+        {
+            if (_disposed) return;
+            RefreshCrusades();
+            _ = InvokeAsync(StateHasChanged);
+        };
+        Crusades.OnCrusadesChanged += _onCrusadesChanged;
 
         var playerIds = await RosterLoader.GetActivePlayerIdsAsync();
         int playerIndex = 1;
@@ -203,6 +226,26 @@
         }
     }
 
+    // CrusadeManagerService.LoadAllCrusadesAsync needs JS interop (localStorage),
+    // so it has to run after first render, not in OnInitializedAsync.
+    private bool _crusadesLoaded;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _crusadesLoaded) return;
+        _crusadesLoaded = true;
+
+        await Crusades.LoadAllCrusadesAsync();
+        RefreshCrusades();
+        if (_crusades.Count > 0) StateHasChanged();
+    }
+
+    private void RefreshCrusades()
+    {
+        _crusades = Crusades.Crusades
+            .OrderByDescending(c => c.UpdatedUtc)
+            .ToList();
+    }
+
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         if (_disposed) return;
@@ -224,6 +267,7 @@
         _disposed = true;
         NavManager.LocationChanged -= OnLocationChanged;
         FactionState.OnChange -= _onFactionChange;
+        if (_onCrusadesChanged != null) Crusades.OnCrusadesChanged -= _onCrusadesChanged;
     }
 
     private string GetId(Selection unit) => unit.Name?.Replace(" ", "-").Replace("'", "").Replace("'", "") ?? "unknown";
