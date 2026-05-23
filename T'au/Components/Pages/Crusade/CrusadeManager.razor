@@ -235,11 +235,18 @@
         var player = _availablePlayers.FirstOrDefault(p => p.Id == _newPlayerId);
         if (player is null) return;
 
+        var roster = await RosterLoader.LoadRosterAsync(player.Id);
+        var force = roster?.Roster?.Forces?.FirstOrDefault();
+        var detachment = force?.Selections
+            .FirstOrDefault(s => s.Name == "Detachment")
+            ?.Selections?.FirstOrDefault()?.Name ?? "";
+
         var c = new OrderOfBattle
         {
             ArmyName = _newName.Trim(),
             PlayerId = player.Id,
             Faction = player.CatalogueName,
+            DetachmentName = detachment,
             SupplyLimit = _newSupply > 0 ? _newSupply : 1000
         };
         await CrusadeMgr.SaveCrusadeAsync(c);

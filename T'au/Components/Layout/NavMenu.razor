@@ -37,10 +37,15 @@
                 <span class="fw-bold text-white">Wound Calculator</span>
             </NavLink>
         </div>
+
+        <!-- Campaign -->
+        <div class="nav-item px-3 mt-3 mb-1">
+            <span class="text-uppercase fw-bold text-white-50 small ps-3">Campaign</span>
+        </div>
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="crusade" Match="NavLinkMatch.All">
                 <span class="bi bi-shield-shaded text-warning" aria-hidden="true"></span>
-                <span class="fw-bold text-white">Crusade Manager</span>
+                <span class="fw-bold text-white">Active Crusade</span>
             </NavLink>
         </div>
         @foreach (var crusade in _crusades)
@@ -110,26 +115,39 @@
                 </div>
             }
 
-            @foreach (var player in Players)
+            <div class="nav-item px-3 mt-3">
+                <button class="nav-link w-100 text-start bg-transparent border-0" @onclick="ToggleRosters">
+                    <span class="bi bi-folder me-2" aria-hidden="true"></span>
+                    Standard Rosters
+                    <span class="bi @(_rostersOpen ? "bi-chevron-down" : "bi-chevron-right") float-end" aria-hidden="true"></span>
+                </button>
+            </div>
+
+            @if (_rostersOpen)
             {
-                <div class="player-section mt-3">
-                    <div class="nav-item px-3 mb-1">
-                        <span class="text-uppercase fw-bold small ps-3" style="letter-spacing: 1px; color: @player.Color;">@player.Label</span>
-                    </div>
-
-                    <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="@($"roster/{player.Id}")">
-                            <span class="bi bi-list-nested" aria-hidden="true" style="color: @player.Color;"></span> Full Roster
-                        </NavLink>
-                    </div>
-
-                    @foreach (var unit in player.Units.DistinctBy(u => u.Name))
+                <div class="ps-3 border-start border-secondary ms-3">
+                    @foreach (var player in Players)
                     {
-                        <div class="nav-item px-3">
-                            <NavLink class="nav-link py-0" href="@($"roster/{player.Id}#{GetId(unit)}")">
-                                <span class="bi bi-chevron-right small me-2" aria-hidden="true" style="color: @player.Color;"></span>
-                                <span style="font-size: 0.9em;">@unit.Name</span>
-                            </NavLink>
+                        <div class="player-section mt-3">
+                            <div class="nav-item px-3 mb-1">
+                                <span class="text-uppercase fw-bold small ps-3" style="letter-spacing: 1px; color: @player.Color;">@player.Label</span>
+                            </div>
+
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="@($"roster/{player.Id}")">
+                                    <span class="bi bi-list-nested" aria-hidden="true" style="color: @player.Color;"></span> Full Roster
+                                </NavLink>
+                            </div>
+
+                            @foreach (var unit in player.Units.DistinctBy(u => u.Name))
+                            {
+                                <div class="nav-item px-3">
+                                    <NavLink class="nav-link py-0" href="@($"roster/{player.Id}#{GetId(unit)}")">
+                                        <span class="bi bi-chevron-right small me-2" aria-hidden="true" style="color: @player.Color;"></span>
+                                        <span style="font-size: 0.9em;">@unit.Name</span>
+                                    </NavLink>
+                                </div>
+                            }
                         </div>
                     }
                 </div>
@@ -176,9 +194,11 @@
     private Action _onCrusadesChanged = default!;
     private bool _disposed;
     private bool _navOpen = false;
+    private bool _rostersOpen = false;
 
     private void ToggleNav() => _navOpen = !_navOpen;
     private void CloseNav() => _navOpen = false;
+    private void ToggleRosters() => _rostersOpen = !_rostersOpen;
 
     private string ActivePlayerId = "p1";
     private string ActiveGradientColor => GetGradientColor(ActivePlayerId);

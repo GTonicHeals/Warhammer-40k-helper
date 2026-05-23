@@ -30,27 +30,7 @@
                    @bind="_crusade.ArmyName" @bind:after="SaveAsync"
                    placeholder="Unnamed Crusade" />
             <a href="crusade" class="btn btn-outline-secondary ms-2"><i class="bi bi-arrow-left"></i> Back</a>
-        </div>
-
-        @if (!string.IsNullOrEmpty(_crusade.PlayerId))
-        {
-            <p class="mb-3">
-                <span class="badge player-badge me-1" style="background-color: @PlayerTheme.GetColor(_crusade.PlayerId);">
-                    @_crusade.PlayerId.ToUpperInvariant()
-                </span>
-                <span class="text-muted small">
-                    Bound to roster <code>@_crusade.PlayerId</code>. Unit picker is filtered to this roster's units.
-                </span>
-            </p>
-        }
-        else
-        {
-            <div class="alert alert-secondary py-2 mb-3">
-                <i class="bi bi-exclamation-circle me-1"></i>
-                This crusade isn't bound to a player roster. Recreate it from the
-                <a href="crusade" class="alert-link">manager</a> to enable filtered unit picking.
-            </div>
-        }
+        </div>     
 
         <div class="row g-3 mb-4">
             <div class="col-md-4">
@@ -101,29 +81,9 @@
             }
             else
             {
-                <div class="row g-2 align-items-end">
-                    <div class="col-md-6">
-                        <label class="form-label text-warning fw-bold">Unit (from @_crusade.PlayerId.ToUpper() roster)</label>
-                        <select class="form-select bg-dark text-white border-secondary" @bind="_selectedUnitKey">
-                            <option value="">— Select Unit —</option>
-                            @foreach (var u in _availableUnits)
-                            {
-                                <option value="@u.Name">@u.Name — @u.Points pts</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end pb-2">
-                        <label class="form-check-label small">
-                            <input type="checkbox" class="form-check-input me-1" @bind="_newUnitCharacter" /> CHARACTER
-                        </label>
-                    </div>
-                    <div class="col-md-3 d-grid">
-                        <button class="btn btn-warning" @onclick="AddUnit"
-                                disabled="@string.IsNullOrEmpty(_selectedUnitKey)">
-                            <i class="bi bi-plus-lg"></i> Add Unit
-                        </button>
-                    </div>
-                </div>
+                <button class="btn btn-warning w-100 py-2 fw-bold" @onclick="OpenAddUnitModal">
+                    <i class="bi bi-plus-circle me-2"></i> Select Unit to Add
+                </button>
             }
         </div>
 
@@ -248,6 +208,20 @@
                                         </label>
                                     </div>
 
+                                    <div class="col-12 mb-1">
+                                        <button class="btn btn-sm btn-outline-secondary w-100"
+                                                @onclick="() => ToggleUpgradePanel(unit.Id)">
+                                            <i class="bi bi-sliders"></i>
+                                            @(_upgradePanelOpen.GetValueOrDefault(unit.Id) ? "Hide" : "Manage") Honours &amp; Scars
+                                        </button>
+                                    </div>
+
+                                    @if (_upgradePanelOpen.GetValueOrDefault(unit.Id))
+                                    {
+                                    <div class="col-12">
+                                    <div class="card bg-dark border-secondary p-2 mb-1">
+                                    <div class="row g-2">
+
                                     @{ var honourCap = unit.IsCharacter ? 6 : 3; }
                                     <div class="col-12">
                                         <label class="form-label small text-warning mb-0">
@@ -311,7 +285,7 @@
                                             </div>
                                             <div class="col-5">
                                                 <select @key="@($"honour-{unit.Id}-{honourType}")"
-                                                        class="form-select form-select-sm bg-dark text-white border-secondary"
+                                                        class="form-select form-select-sm border-secondary @(string.IsNullOrEmpty(honourType) || honourOptions.Count == 0 ? "bg-secondary text-muted" : "bg-dark text-white")"
                                                         value="@GetHonourTrait(unit.Id)"
                                                         @onchange="e => SetHonourTrait(unit.Id, e.Value?.ToString() ?? string.Empty)"
                                                         disabled="@(string.IsNullOrEmpty(honourType) || honourOptions.Count == 0)">
@@ -320,9 +294,15 @@
                                                             ? "— None available —"
                                                             : "— Honour —")
                                                     </option>
-                                                    @foreach (var t in honourOptions)
+                                                    @foreach (var group in honourOptions.GroupBy(t =>
+                                                        string.IsNullOrWhiteSpace(t.Category) ? "General" : t.Category))
                                                     {
-                                                        <option value="@t.Name" title="@t.Effect">@OptionLabel(t)</option>
+                                                        <optgroup label="@group.Key">
+                                                            @foreach (var t in group)
+                                                            {
+                                                                <option value="@t.Name" title="@t.Effect">@OptionLabel(t)</option>
+                                                            }
+                                                        </optgroup>
                                                     }
                                                 </select>
                                             </div>
@@ -337,7 +317,7 @@
                                             <div class="row g-1 mt-1">
                                                 <div class="col-12">
                                                     <select @key="@($"honour-weapon-{unit.Id}-{selectedTrait!.Name}")"
-                                                            class="form-select form-select-sm bg-dark text-white border-secondary"
+                                                            class="form-select form-select-sm border-secondary @(weaponOptions.Count == 0 ? "bg-secondary text-muted" : "bg-dark text-white")"
                                                             value="@picked"
                                                             @onchange="e => SetHonourWeapon(unit.Id, e.Value?.ToString() ?? string.Empty)"
                                                             disabled="@(weaponOptions.Count == 0)">
@@ -414,6 +394,11 @@
                                         </div>
                                     </div>
 
+                                    </div> @* row g-2 *@
+                                    </div> @* card *@
+                                    </div> @* col-12 *@
+                                    } @* _upgradePanelOpen *@
+
                                     <div class="col-12 mt-2 text-end">
                                         <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveUnit(unit.Id)">
                                             <i class="bi bi-trash"></i> Remove unit
@@ -428,6 +413,53 @@
         }
     }
 </div>
+
+@if (_showAddUnitModal && _crusade is not null)
+{
+    <div class="modal-backdrop fade show" style="cursor:pointer" @onclick="CloseAddUnitModal"></div>
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" @onclick="CloseAddUnitModal">
+        <div class="modal-dialog modal-dialog-centered modal-lg" @onclick:stopPropagation="true">
+            <div class="modal-content bg-dark border-warning text-light">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning">
+                        <i class="bi bi-person-plus me-2"></i>Select Unit — @_crusade.PlayerId.ToUpper() Roster
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseAddUnitModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="wc-unit-grid">
+                        @foreach (var u in _availableUnits)
+                        {
+                            var selected = string.Equals(u.Name, _selectedUnitKey, StringComparison.OrdinalIgnoreCase);
+                            <div class="wc-tile @(selected ? "wc-tile-atk-on" : "")"
+                                 @onclick="() => _selectedUnitKey = u.Name">
+                                <div class="wc-tile-top">
+                                    <i class="bi bi-person-fill wc-tile-ico"></i>
+                                    <span class="wc-tile-name">@u.Name</span>
+                                </div>
+                                <div class="wc-tile-foot">
+                                    <span style="font-size:0.7rem;color:#888;">@u.Points pts</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary d-flex justify-content-between">
+                    <label class="form-check-label">
+                        <input type="checkbox" class="form-check-input me-1" @bind="_newUnitCharacter" /> CHARACTER
+                    </label>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary" @onclick="CloseAddUnitModal">Cancel</button>
+                        <button class="btn btn-warning" @onclick="AddUnit"
+                                disabled="@string.IsNullOrEmpty(_selectedUnitKey)">
+                            <i class="bi bi-plus-lg"></i> Confirm Add
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @if (_modalTrait != null)
 {
@@ -521,6 +553,42 @@
     .trait-badge:hover {
         filter: brightness(1.15);
     }
+    .wc-unit-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 5px;
+        max-height: 400px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #3a3a3a #1a1a1a;
+        padding-right: 2px;
+    }
+    .wc-unit-grid::-webkit-scrollbar { width: 4px; }
+    .wc-unit-grid::-webkit-scrollbar-track { background: #1a1a1a; }
+    .wc-unit-grid::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 2px; }
+    .wc-tile {
+        background: #242424;
+        border: 1px solid #333;
+        border-radius: 4px;
+        padding: 7px 8px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-height: 50px;
+        transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
+        user-select: none;
+    }
+    .wc-tile:hover { background: #2c2c2c; border-color: #555; }
+    .wc-tile-atk-on {
+        border-color: #c0392b !important;
+        background: rgba(192,57,43,0.14) !important;
+        box-shadow: 0 0 0 1px #c0392b inset;
+    }
+    .wc-tile-top { display: flex; align-items: flex-start; gap: 5px; }
+    .wc-tile-ico { font-size: 0.65rem; color: #555; flex-shrink: 0; margin-top: 2px; }
+    .wc-tile-name { font-size: 0.78rem; font-weight: 600; color: #d0d0d0; line-height: 1.25; word-break: break-word; }
+    .wc-tile-foot { display: flex; justify-content: flex-end; }
 </style>
 
 @code {
@@ -537,12 +605,20 @@
     private Dictionary<string, Selection> _selectionsByName = new(StringComparer.OrdinalIgnoreCase);
     private string _selectedUnitKey = "";
     private bool _newUnitCharacter;
+    private bool _showAddUnitModal = false;
+    private void OpenAddUnitModal() => _showAddUnitModal = true;
+    private void CloseAddUnitModal() { _showAddUnitModal = false; _selectedUnitKey = ""; }
 
     // Per-unit dropdown state (transient — not persisted)
     private readonly Dictionary<string, string> _honourType = new();
     private readonly Dictionary<string, string> _honourTrait = new();
     private readonly Dictionary<string, string> _honourWeapon = new();
     private readonly Dictionary<string, string> _scarChoice = new();
+
+    // Per-unit upgrade panel open/closed state (transient)
+    private readonly Dictionary<string, bool> _upgradePanelOpen = new();
+    private void ToggleUpgradePanel(string unitId) =>
+        _upgradePanelOpen[unitId] = !_upgradePanelOpen.GetValueOrDefault(unitId);
 
     // Custom-trait form state
     private string _newTraitType = CrusadeTraitTypes.CrusadeRelic;
@@ -613,7 +689,7 @@
     {
         if (_crusade is null || string.IsNullOrEmpty(_selectedUnitKey)) return;
 
-        var available = _availableUnits.FirstOrDefault(u => u.Name == _selectedUnitKey);
+        var available = _availableUnits.FirstOrDefault(u => string.Equals(u.Name, _selectedUnitKey, StringComparison.OrdinalIgnoreCase));
         if (available is null) return;
 
         _crusade.Units.Add(new CrusadeUnitCard
@@ -624,7 +700,7 @@
             IsCharacter = _newUnitCharacter
         });
 
-        _selectedUnitKey = "";
+        CloseAddUnitModal();
         _newUnitCharacter = false;
         await SaveAsync();
     }

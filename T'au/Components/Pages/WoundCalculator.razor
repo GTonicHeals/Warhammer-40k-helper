@@ -107,7 +107,7 @@
                                  @onclick="() => SelectAttackerUnit(entry)">
                                 <div class="wc-tile-top">
                                     <i class="bi bi-person-fill wc-tile-ico"></i>
-                                    <span class="wc-tile-name">@entry.Unit.Name</span>
+                                    <span class="wc-tile-name">@entry.Label</span>
                                 </div>
                                 <div class="wc-tile-foot">
                                     <span class="wc-tile-pid" style="color:@GetPlayerColor(entry.PlayerId)">P@(entry.PlayerIndex)</span>
@@ -408,7 +408,7 @@
                                  @onclick="() => SelectDefenderUnit(entry)">
                                 <div class="wc-tile-top">
                                     <i class="bi bi-shield-fill wc-tile-ico"></i>
-                                    <span class="wc-tile-name">@entry.Unit.Name</span>
+                                    <span class="wc-tile-name">@entry.Label</span>
                                 </div>
                                 <div class="wc-tile-foot">
                                     <span class="wc-tile-pid" style="color:@GetPlayerColor(entry.PlayerId)">P@(entry.PlayerIndex)</span>
@@ -904,9 +904,9 @@
                     Key:            $"pc_{crusade.Id}_{card.Id}",
                     Label:          label,
                     PlayerId:       "pc",
-                    PlayerIndex:    99,
+                    PlayerIndex:    0,
                     Unit:           selection,
-                    DetachmentName: "",
+                    DetachmentName: crusade.DetachmentName,
                     CrusadeData:    card
                 ));
                 added++;
