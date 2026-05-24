@@ -106,6 +106,49 @@ public class CampaignSerializationTests
     }
 
     [Fact]
+    public void CampaignState_GmNotebook_defaults_to_empty_list()
+    {
+        RoundTrip(new CampaignState()).GmNotebook.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GmNote_roundtrips_all_fields()
+    {
+        var note = new GmNote
+        {
+            Id        = "note-1",
+            Title     = "Sector 4 Anomaly",
+            Content   = "Something stirs beneath the ice.\nLine two.",
+            Tags      = "lore, necrons",
+            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+        };
+        var result = RoundTrip(note);
+        result.Id.Should().Be("note-1");
+        result.Title.Should().Be("Sector 4 Anomaly");
+        result.Content.Should().Be("Something stirs beneath the ice.\nLine two.");
+        result.Tags.Should().Be("lore, necrons");
+        result.CreatedAt.Should().Be(note.CreatedAt);
+    }
+
+    [Fact]
+    public void CampaignState_GmNotebook_roundtrips_multiple_notes()
+    {
+        var state = new CampaignState
+        {
+            GmNotebook =
+            [
+                new GmNote { Id = "a", Title = "Note A", Tags = "lore",     Content = "Alpha" },
+                new GmNote { Id = "b", Title = "Note B", Tags = "tactical", Content = "Beta"  }
+            ]
+        };
+        var result = RoundTrip(state);
+        result.GmNotebook.Should().HaveCount(2);
+        result.GmNotebook[0].Id.Should().Be("a");
+        result.GmNotebook[0].Tags.Should().Be("lore");
+        result.GmNotebook[1].Title.Should().Be("Note B");
+    }
+
+    [Fact]
     public void CampaignState_with_interconnected_nodes_serializes_without_circular_reference_exception()
     {
         var nodeA = new TerritoryNode { Id = "a", Name = "Alpha", ControllingPlayerId = "p1" };

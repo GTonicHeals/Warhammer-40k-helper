@@ -14,4 +14,5 @@ public class CampaignState
     public Dictionary<string, CampaignPlayer> Players { get; set; } = new();
     public List<TerritoryNode> MapNodes { get; set; } = new();
     public List<BattleRecord> BattleHistory { get; set; } = new();
+    public List<GmNote> GmNotebook { get; set; } = new();
 }

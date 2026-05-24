@@ -1,0 +1,256 @@
+@inject IJSRuntime JS
+@using Warhammer.Models.Campaign
+
+<div class="gm-notes-overlay">
+    <div class="gm-notes-header">
+        <span><i class="bi bi-journal-text me-2"></i>GM NOTES &amp; LORE</span>
+        <button class="btn btn-sm btn-outline-warning" @onclick="OnClose">
+            <i class="bi bi-arrow-left me-1"></i>Back to Map
+        </button>
+    </div>
+    <div class="gm-notes-body">
+        <div class="row h-100 g-0">
+
+            <!-- Left: note list -->
+            <div class="col-md-4 gm-list-col">
+                <button class="btn btn-sm btn-outline-warning w-100 mb-2" @onclick="AddNewNote">
+                    <i class="bi bi-plus-lg me-1"></i>Add New Note
+                </button>
+                <div class="gm-note-list">
+                    @foreach (var note in Campaign.GmNotebook)
+                    {
+                        <div class="gm-note-item @(_selectedNote?.Id == note.Id ? "active" : "")"
+                             @onclick="() => SelectNote(note)">
+                            <div class="gm-note-item-content">
+                                <div class="gm-note-item-title">@note.Title</div>
+                                @if (!string.IsNullOrWhiteSpace(note.Tags))
+                                {
+                                    <div class="gm-note-item-tags">
+                                        @foreach (var tag in ParseTags(note.Tags))
+                                        {
+                                            <span class="badge bg-secondary me-1">@tag</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <button class="gm-delete-btn"
+                                    @onclick:stopPropagation="true"
+                                    @onclick="() => DeleteNote(note)">
+                                &#x2715;
+                            </button>
+                        </div>
+                    }
+                    @if (!Campaign.GmNotebook.Any())
+                    {
+                        <p class="gm-empty-list">No notes yet.</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Right: note editor -->
+            <div class="col-md-8 gm-editor-col">
+                @if (_selectedNote is null)
+                {
+                    <div class="gm-placeholder">[ SELECT OR CREATE A NOTE ]</div>
+                }
+                else
+                {
+                    <input class="gm-note-title-input"
+                           placeholder="Note title…"
+                           @bind="_selectedNote.Title"
+                           @bind:event="oninput"
+                           @bind:after="SaveAsync" />
+                    <input class="gm-note-tags-input"
+                           placeholder="e.g. lore, tyranids, objective"
+                           @bind="_selectedNote.Tags"
+                           @bind:event="oninput"
+                           @bind:after="SaveAsync" />
+                    <textarea class="gm-notes-textarea"
+                              placeholder="Write your notes here…"
+                              @bind="_selectedNote.Content"
+                              @bind:event="oninput"
+                              @bind:after="SaveAsync"></textarea>
+                }
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .gm-notes-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1050;
+        background: #060810;
+        display: flex;
+        flex-direction: column;
+        font-family: 'Courier New', monospace;
+    }
+    .gm-notes-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 20px;
+        background: #0a0c14;
+        border-bottom: 1px solid #c8960c;
+        color: #ffc107;
+        font-weight: bold;
+        letter-spacing: 1.5px;
+        flex-shrink: 0;
+    }
+    .gm-notes-body {
+        flex: 1;
+        overflow: hidden;
+        padding: 16px;
+        min-height: 0;
+    }
+    .gm-notes-body .row {
+        height: 100%;
+    }
+
+    /* Left column */
+    .gm-list-col {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        border-right: 1px solid #1a1a2a;
+        padding-right: 12px;
+    }
+    .gm-note-list {
+        flex: 1;
+        overflow-y: auto;
+        min-height: 0;
+    }
+    .gm-note-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #1a1a2a;
+        margin-bottom: 6px;
+        cursor: pointer;
+        transition: background 0.12s, border-color 0.12s;
+    }
+    .gm-note-item-content { flex: 1; min-width: 0; }
+    .gm-note-item:hover  { background: #0d0f1a; border-color: #2a2a3a; }
+    .gm-note-item.active { background: rgba(200,150,12,0.1); border-color: #c8960c; }
+    .gm-note-item-title  { color: #ffc107; font-size: 0.85rem; font-weight: bold; margin-bottom: 4px; }
+    .gm-note-item-tags   { font-size: 0.7rem; }
+    .gm-delete-btn {
+        flex-shrink: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        font-weight: bold;
+        color: #ff5555;
+        background: transparent;
+        border: 1px solid #ff555555;
+        border-radius: 4px;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0;
+    }
+    .gm-delete-btn:hover { color: #fff; background: #ff5555; border-color: #ff5555; }
+    .gm-empty-list { color: #666; font-size: 0.78rem; text-align: center; padding-top: 20px; letter-spacing: 1px; }
+
+    /* Right column */
+    .gm-editor-col {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        padding-left: 16px;
+        gap: 10px;
+    }
+    .gm-note-title-input {
+        width: 100%;
+        background: transparent;
+        color: #ffc107;
+        border: none;
+        border-bottom: 1px solid #2a2a3a;
+        font-size: 1.2rem;
+        font-weight: bold;
+        padding: 6px 0;
+        font-family: 'Courier New', monospace;
+        flex-shrink: 0;
+    }
+    .gm-note-title-input:focus { outline: none; border-bottom-color: #c8960c; }
+    .gm-note-title-input::placeholder { color: #666; }
+    .gm-note-tags-input {
+        width: 100%;
+        background: transparent;
+        color: #888;
+        border: none;
+        border-bottom: 1px solid #1a1a2a;
+        font-size: 0.8rem;
+        padding: 4px 0;
+        font-family: 'Courier New', monospace;
+        flex-shrink: 0;
+    }
+    .gm-note-tags-input:focus { outline: none; border-bottom-color: #c8960c; }
+    .gm-note-tags-input::placeholder { color: #666; }
+    .gm-notes-textarea {
+        flex: 1;
+        width: 100%;
+        resize: none;
+        background: #0d0f1a;
+        color: #ddd;
+        border: 1px solid #2a2a3a;
+        border-radius: 6px;
+        padding: 16px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.95rem;
+        line-height: 1.7;
+        min-height: 0;
+    }
+    .gm-notes-textarea:focus {
+        outline: none;
+        border-color: #c8960c;
+        box-shadow: 0 0 0 2px rgba(200, 150, 12, 0.2);
+    }
+    .gm-notes-textarea::placeholder { color: #666; }
+    .gm-placeholder {
+        color: #666;
+        font-size: 0.85rem;
+        padding-top: 40px;
+        text-align: center;
+        letter-spacing: 1px;
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public CampaignState Campaign { get; set; } = default!;
+    [Parameter] public EventCallback OnNotesChanged { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private GmNote? _selectedNote;
+
+    private async Task AddNewNote()
+    {
+        var note = new GmNote();
+        Campaign.GmNotebook.Insert(0, note);
+        _selectedNote = note;
+        await OnNotesChanged.InvokeAsync();
+    }
+
+    private async Task DeleteNote(GmNote note)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"Delete \"{note.Title}\"?");
+        if (!confirmed) return;
+        Campaign.GmNotebook.Remove(note);
+        if (_selectedNote == note)
+            _selectedNote = Campaign.GmNotebook.FirstOrDefault();
+        await OnNotesChanged.InvokeAsync();
+    }
+
+    private void SelectNote(GmNote note) => _selectedNote = note;
+
+    private Task SaveAsync() => OnNotesChanged.InvokeAsync();
+
+    private static IEnumerable<string> ParseTags(string tags) =>
+        tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+}

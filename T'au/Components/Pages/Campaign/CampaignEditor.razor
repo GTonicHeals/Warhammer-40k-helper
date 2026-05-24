@@ -28,6 +28,10 @@
             <input class="form-control form-control-lg campaign-title-input"
                    @bind="_campaign.CampaignName"
                    placeholder="Campaign Name" />
+            <button class="btn btn-outline-secondary flex-shrink-0" @onclick="() => _showGmNotes = true"
+                    title="GM Notes &amp; Lore">
+                <i class="bi bi-journal-text me-1"></i> GM Notes
+            </button>
             <button class="btn btn-warning px-4 flex-shrink-0" @onclick="SaveAsync" disabled="@_saving">
                 @if (_saving)
                 {
@@ -36,6 +40,13 @@
                 <i class="bi bi-floppy me-1"></i> Save
             </button>
         </div>
+
+        @if (_showGmNotes)
+        {
+            <GmNotes Campaign="_campaign"
+                     OnNotesChanged="() => CampaignSvc.SaveCampaignAsync(_campaign!)"
+                     OnClose="() => _showGmNotes = false" />
+        }
 
         <div class="row g-4">
             <!-- Left: Map -->
@@ -264,6 +275,7 @@
     private CampaignMap? _mapComponent;
     private bool _loaded;
     private bool _saving;
+    private bool _showGmNotes;
     private TerritoryNode? _selectedNode;
 
     private string _newNodeName        = "";
