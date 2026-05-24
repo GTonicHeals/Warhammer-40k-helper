@@ -112,7 +112,8 @@ window.mapNodeInterop = (function () {
                     startLeft:   parseFloat(nodeEl.style.left),
                     startTop:    parseFloat(nodeEl.style.top),
                     rectW:       rect.width,
-                    rectH:       rect.height
+                    rectH:       rect.height,
+                    hasMoved:    false
                 };
                 nodeEl.classList.add('dragging');
                 mapEl.classList.add('map-dragging');
@@ -132,6 +133,10 @@ window.mapNodeInterop = (function () {
                 var newTop  = Math.max(1, Math.min(99, dragging.startTop  + dy));
                 dragging.nodeEl.style.left = newLeft + '%';
                 dragging.nodeEl.style.top  = newTop  + '%';
+                if (Math.abs(e.clientX - dragging.startMouseX) > 3 ||
+                    Math.abs(e.clientY - dragging.startMouseY) > 3) {
+                    dragging.hasMoved = true;
+                }
             } else if (panning) {
                 tx = panning.startTx + (e.clientX - panning.startX);
                 ty = panning.startTy + (e.clientY - panning.startY);
@@ -141,11 +146,13 @@ window.mapNodeInterop = (function () {
 
         function onMouseUp() {
             if (dragging) {
-                var x = parseFloat(dragging.nodeEl.style.left) / 100;
-                var y = parseFloat(dragging.nodeEl.style.top)  / 100;
                 dragging.nodeEl.classList.remove('dragging');
                 mapEl.classList.remove('map-dragging');
-                dotNetRef.invokeMethodAsync('OnNodeMoved', dragging.nodeId, x, y);
+                if (dragging.hasMoved) {
+                    var x = parseFloat(dragging.nodeEl.style.left) / 100;
+                    var y = parseFloat(dragging.nodeEl.style.top)  / 100;
+                    dotNetRef.invokeMethodAsync('OnNodeMoved', dragging.nodeId, x, y);
+                }
                 dragging = null;
             } else if (panning) {
                 panning = null;

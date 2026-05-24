@@ -195,9 +195,60 @@
                         </div>
                     </div>
                 }
-                else if (_campaign.MapNodes.Any())
+                else if (_selectedMapNote is not null)
                 {
-                    <p class="text-muted text-center small mt-3"><em>Click a node on the map to edit it. Click a note pin to open it in GM Notes.</em></p>
+                    <div class="ce-node-card">
+                        <div class="ce-node-header">
+                            <span>&#x1F4CC; @(string.IsNullOrWhiteSpace(_selectedMapNote.Title) ? "Unnamed Note" : _selectedMapNote.Title)</span>
+                            <span class="ce-badge @(_selectedMapNote.IsPublic ? "badge-p1" : "badge-neutral")">
+                                @(_selectedMapNote.IsPublic ? "PUBLIC" : "PRIVATE")
+                            </span>
+                        </div>
+                        <div class="ce-node-body">
+                            <div class="mb-2">
+                                <label class="form-label small text-warning mb-1">Title</label>
+                                <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                                       @bind="_selectedMapNote.Title"
+                                       @bind:event="oninput"
+                                       @bind:after="SaveAsync" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small text-warning mb-1">Tags</label>
+                                <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                                       placeholder="e.g. lore, objective"
+                                       @bind="_selectedMapNote.Tags"
+                                       @bind:event="oninput"
+                                       @bind:after="SaveAsync" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small text-warning mb-1">Content</label>
+                                <textarea class="form-control form-control-sm bg-dark text-white border-secondary"
+                                          rows="5"
+                                          @bind="_selectedMapNote.Content"
+                                          @bind:event="oninput"
+                                          @bind:after="SaveAsync"
+                                          placeholder="Note content…"></textarea>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <div class="form-check form-check-inline mb-0">
+                                    <input type="checkbox" class="form-check-input" id="chk-note-pub"
+                                           @bind="_selectedMapNote.IsPublic"
+                                           @bind:after="SaveAsync" />
+                                    <label class="form-check-label small text-muted" for="chk-note-pub">
+                                        Visible to players
+                                    </label>
+                                </div>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        @onclick="RemoveSelectedMapNote">
+                                    <i class="bi bi-trash"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else if (_campaign.MapNodes.Any() || _campaign.GmNotebook.Any(n => n.X >= 0))
+                {
+                    <p class="text-muted text-center small mt-3"><em>Click a node or note pin on the map to edit it.</em></p>
                 }
             </div>
         </div>
@@ -283,6 +334,7 @@
     private bool _showGmNotes;
     private string? _gmNotesNoteId;
     private TerritoryNode? _selectedNode;
+    private GmNote? _selectedMapNote;
 
     private string _newNodeName        = "";
     private string _newNodeDescription = "";
@@ -312,16 +364,10 @@
 
     private void HandleNodeSelected(string nodeId)
     {
-        _selectedNode = _campaign?.MapNodes.FirstOrDefault(n => n.Id == nodeId);
-        if (_selectedNode is null && _campaign is not null)
-        {
-            var note = _campaign.GmNotebook.FirstOrDefault(n => n.Id == nodeId && n.X >= 0);
-            if (note is not null)
-            {
-                _gmNotesNoteId = note.Id;
-                _showGmNotes   = true;
-            }
-        }
+        _selectedNode    = _campaign?.MapNodes.FirstOrDefault(n => n.Id == nodeId);
+        _selectedMapNote = _selectedNode is null
+            ? _campaign?.GmNotebook.FirstOrDefault(n => n.Id == nodeId && n.X >= 0)
+            : null;
         StateHasChanged();
     }
 
@@ -384,9 +430,16 @@
             : (0.5, 0.5);
         var note = new GmNote { X = cx, Y = cy };
         _campaign.GmNotebook.Insert(0, note);
-        _selectedNode  = null;
-        _gmNotesNoteId = note.Id;
-        _showGmNotes   = true;
+        _selectedNode    = null;
+        _selectedMapNote = note;
+        await CampaignSvc.SaveCampaignAsync(_campaign);
+    }
+
+    private async Task RemoveSelectedMapNote()
+    {
+        if (_campaign is null || _selectedMapNote is null) return;
+        _campaign.GmNotebook.Remove(_selectedMapNote);
+        _selectedMapNote = null;
         await CampaignSvc.SaveCampaignAsync(_campaign);
     }
 
