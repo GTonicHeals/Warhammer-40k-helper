@@ -1,0 +1,7 @@
+<Project>
+  <ItemGroup>
+    <!-- ImageSharp 3.x moderate PNG advisory (GHSA-rxmq-m78w-7wmc).
+         Suppressed: heightmaps are uploaded by the local trusted user, not from the internet. -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-rxmq-m78w-7wmc" />
+  </ItemGroup>
+</Project>

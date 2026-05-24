@@ -1,0 +1,17 @@
+namespace Warhammer.Models.Campaign;
+
+public class CampaignState
+{
+    public string CampaignName { get; set; } = "Narrative Campaign";
+    public int    MapSeed        { get; set; } = Random.Shared.Next(1, 999_999);
+    public string MapBiome       { get; set; } = "agri";
+    public int    MapOctaves     { get; set; } = 4;
+    public double MapLacunarity  { get; set; } = 2.0;
+    public double MapPersistence { get; set; } = 0.5;
+    public double MapScale       { get; set; } = 2.0;
+    public double MapOffsetX     { get; set; } = 0.0;
+    public double MapOffsetY     { get; set; } = 0.0;
+    public Dictionary<string, CampaignPlayer> Players { get; set; } = new();
+    public List<TerritoryNode> MapNodes { get; set; } = new();
+    public List<BattleRecord> BattleHistory { get; set; } = new();
+}

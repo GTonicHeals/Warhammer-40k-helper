@@ -3,6 +3,9 @@
    Classes used across multiple pages — loaded globally via App.razor.
    ============================================================= */
 
+/* Bootstrap's default text-muted (#6c757d) is illegible on dark backgrounds. */
+.text-muted { color: #9a9a9a !important; }
+
 
 /* ── Section header ───────────────────────────────────────── */
 .section-header {

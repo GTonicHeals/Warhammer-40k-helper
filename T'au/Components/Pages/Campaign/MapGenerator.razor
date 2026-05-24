@@ -1,0 +1,351 @@
+@page "/map-generator"
+@rendermode InteractiveServer
+@using Warhammer.Models.Campaign
+@using Warhammer.Services
+@inject CampaignManagerService CampaignSvc
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>Map Generator</PageTitle>
+
+<div class="mg-root">
+
+    <!-- Controls panel -->
+    <div class="mg-controls">
+        <div class="mg-header">
+            <button class="btn btn-sm btn-outline-secondary" @onclick='() => Nav.NavigateTo("/campaign-editor")'>
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <span class="mg-title">MAP GENERATOR</span>
+        </div>
+
+        @if (!_loaded)
+        {
+            <p class="mg-hint mt-3">Loading…</p>
+        }
+        else
+        {
+            <!-- Seed -->
+            <div class="mg-section">
+                <div class="mg-row">
+                    <label class="mg-label">SEED</label>
+                    <input class="form-control form-control-sm mg-seed-input"
+                           type="number" min="1" max="999999"
+                           value="@_seed"
+                           @onchange="e => { _seed = int.TryParse(e.Value?.ToString(), out var v) ? Math.Clamp(v,1,999999) : _seed; OnParamChanged(); }" />
+                    <button class="btn btn-sm btn-outline-warning ms-1 flex-shrink-0" @onclick="Randomize" title="Random seed">
+                        <i class="bi bi-dice-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Biome -->
+            <div class="mg-section">
+                <label class="mg-label">BIOME</label>
+                <select class="form-select form-select-sm bg-dark text-warning border-secondary mt-1"
+                        value="@_biome"
+                        @onchange="e => { _biome = e.Value?.ToString() ?? _biome; OnParamChanged(); }">
+                    <option value="agri">Agri World</option>
+                    <option value="death">Death World</option>
+                    <option value="ice">Ice World</option>
+                    <option value="ash">Ash Wastes</option>
+                </select>
+            </div>
+
+            <!-- Scale -->
+            <div class="mg-section">
+                <div class="mg-param-header">
+                    <label class="mg-label">SCALE</label>
+                    <span class="mg-val">@_scale.ToString("F1")</span>
+                </div>
+                <input type="range" class="form-range mg-range" min="0.5" max="8.0" step="0.1"
+                       value="@_scale"
+                       @oninput="e => { _scale = double.TryParse(e.Value?.ToString(), out var v) ? v : _scale; OnParamChanged(); }" />
+                <p class="mg-hint">Higher = more, smaller features</p>
+            </div>
+
+            <!-- Octaves -->
+            <div class="mg-section">
+                <div class="mg-param-header">
+                    <label class="mg-label">OCTAVES</label>
+                    <span class="mg-val">@_octaves</span>
+                </div>
+                <input type="range" class="form-range mg-range" min="1" max="8" step="1"
+                       value="@_octaves"
+                       @oninput="e => { _octaves = int.TryParse(e.Value?.ToString(), out var v) ? v : _octaves; OnParamChanged(); }" />
+                <p class="mg-hint">More octaves → finer detail layers</p>
+            </div>
+
+            <!-- Lacunarity -->
+            <div class="mg-section">
+                <div class="mg-param-header">
+                    <label class="mg-label">LACUNARITY</label>
+                    <span class="mg-val">@_lacunarity.ToString("F2")</span>
+                </div>
+                <input type="range" class="form-range mg-range" min="1.0" max="4.0" step="0.05"
+                       value="@_lacunarity"
+                       @oninput="e => { _lacunarity = double.TryParse(e.Value?.ToString(), out var v) ? v : _lacunarity; OnParamChanged(); }" />
+                <p class="mg-hint">Frequency multiplier per octave</p>
+            </div>
+
+            <!-- Persistence -->
+            <div class="mg-section">
+                <div class="mg-param-header">
+                    <label class="mg-label">PERSISTENCE</label>
+                    <span class="mg-val">@_persistence.ToString("F2")</span>
+                </div>
+                <input type="range" class="form-range mg-range" min="0.1" max="0.95" step="0.05"
+                       value="@_persistence"
+                       @oninput="e => { _persistence = double.TryParse(e.Value?.ToString(), out var v) ? v : _persistence; OnParamChanged(); }" />
+                <p class="mg-hint">Amplitude decay per octave</p>
+            </div>
+
+            <!-- Offset X -->
+            <div class="mg-section">
+                <div class="mg-param-header">
+                    <label class="mg-label">OFFSET X</label>
+                    <span class="mg-val">@_offsetX.ToString("F1")</span>
+                </div>
+                <input type="range" class="form-range mg-range" min="-5.0" max="5.0" step="0.1"
+                       value="@_offsetX"
+                       @oninput="e => { _offsetX = double.TryParse(e.Value?.ToString(), out var v) ? v : _offsetX; OnParamChanged(); }" />
+            </div>
+
+            <!-- Offset Y -->
+            <div class="mg-section">
+                <div class="mg-param-header">
+                    <label class="mg-label">OFFSET Y</label>
+                    <span class="mg-val">@_offsetY.ToString("F1")</span>
+                </div>
+                <input type="range" class="form-range mg-range" min="-5.0" max="5.0" step="0.1"
+                       value="@_offsetY"
+                       @oninput="e => { _offsetY = double.TryParse(e.Value?.ToString(), out var v) ? v : _offsetY; OnParamChanged(); }" />
+            </div>
+
+            <!-- Actions -->
+            <div class="mg-actions">
+                <button class="btn btn-warning w-100 mb-2" @onclick="ApplyAsync" disabled="@_saving">
+                    @if (_saving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    <i class="bi bi-check2-circle me-1"></i> Apply to Campaign
+                </button>
+                <button class="btn btn-outline-secondary w-100" @onclick='() => Nav.NavigateTo("/campaign-editor")'>
+                    Cancel
+                </button>
+            </div>
+        }
+    </div>
+
+    <!-- Preview panel -->
+    <div class="mg-preview">
+        <div class="mg-canvas-wrap">
+            <canvas id="map-gen-canvas" class="mg-canvas"></canvas>
+            @if (!_loaded)
+            {
+                <div class="mg-overlay"><span class="mg-blink">[ INITIALISING ]</span></div>
+            }
+        </div>
+        <p class="mg-preview-hint">
+            <i class="bi bi-info-circle me-1"></i>Adjust parameters to preview — changes apply instantly.
+        </p>
+    </div>
+
+</div>
+
+<style>
+    .mg-root {
+        display: flex;
+        height: calc(100vh - 56px); /* subtract nav height */
+        overflow: hidden;
+        background: #060810;
+    }
+
+    /* Controls */
+    .mg-controls {
+        width: 280px;
+        flex-shrink: 0;
+        border-right: 1px solid #c8960c;
+        overflow-y: auto;
+        padding: 14px 14px 20px;
+        background: #08090f;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+    .mg-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+    .mg-title {
+        font-family: 'Courier New', monospace;
+        font-size: 0.82rem;
+        font-weight: bold;
+        letter-spacing: 2px;
+        color: #c8960c;
+    }
+    .mg-section {
+        border-top: 1px solid #1a1a1a;
+        padding: 10px 0 6px;
+    }
+    .mg-label {
+        font-family: 'Courier New', monospace;
+        font-size: 0.65rem;
+        letter-spacing: 1.5px;
+        color: #666;
+        display: block;
+        margin-bottom: 2px;
+    }
+    .mg-param-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 2px;
+    }
+    .mg-val {
+        font-family: 'Courier New', monospace;
+        font-size: 0.82rem;
+        color: #ffc107;
+        font-weight: bold;
+    }
+    .mg-hint {
+        font-size: 0.68rem;
+        color: #9a9a9a;
+        margin: 2px 0 0;
+    }
+    .mg-range { accent-color: #c8960c; }
+    .mg-seed-input {
+        background: #111 !important;
+        color: #ffc107 !important;
+        border-color: #333 !important;
+        font-family: 'Courier New', monospace;
+        font-size: 0.82rem;
+        max-width: 100px;
+    }
+    .mg-row { display: flex; align-items: center; gap: 6px; }
+    .mg-actions { margin-top: auto; padding-top: 16px; border-top: 1px solid #1a1a1a; }
+
+    /* Preview */
+    .mg-preview {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        gap: 8px;
+    }
+    .mg-canvas-wrap {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+    }
+    .mg-canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: contain;
+    }
+    .mg-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(6,8,16,0.75);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Courier New', monospace;
+        color: #c8960c;
+        font-size: 1rem;
+        letter-spacing: 3px;
+    }
+    .mg-blink { animation: blink 1s step-start infinite; }
+    @@keyframes blink { 50% { opacity: 0; } }
+    .mg-preview-hint {
+        font-size: 0.72rem;
+        color: #9a9a9a;
+        margin: 0;
+        font-family: 'Courier New', monospace;
+        letter-spacing: 0.5px;
+    }
+
+    @@media (max-width: 640px) {
+        .mg-root { flex-direction: column; height: auto; overflow: visible; }
+        .mg-controls { width: 100%; border-right: none; border-bottom: 1px solid #c8960c; }
+        .mg-canvas-wrap { min-height: 280px; }
+    }
+</style>
+
+@code {
+    private CampaignState? _campaign;
+    private bool _loaded;
+    private bool _saving;
+    private bool _needsRedraw;
+
+    private int    _seed        = 1;
+    private string _biome       = "agri";
+    private int    _octaves     = 4;
+    private double _lacunarity  = 2.0;
+    private double _persistence = 0.5;
+    private double _scale       = 2.0;
+    private double _offsetX     = 0.0;
+    private double _offsetY     = 0.0;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _campaign    = await CampaignSvc.LoadCampaignAsync();
+            _seed        = _campaign.MapSeed;
+            _biome       = _campaign.MapBiome;
+            _octaves     = _campaign.MapOctaves;
+            _lacunarity  = _campaign.MapLacunarity;
+            _persistence = _campaign.MapPersistence;
+            _scale       = _campaign.MapScale;
+            _offsetX     = _campaign.MapOffsetX;
+            _offsetY     = _campaign.MapOffsetY;
+            _loaded      = true;
+            _needsRedraw = true;
+            StateHasChanged();
+            return;
+        }
+
+        if (_needsRedraw)
+        {
+            _needsRedraw = false;
+            await PreviewAsync();
+        }
+    }
+
+    private void OnParamChanged() => _needsRedraw = true;
+
+    private void Randomize()
+    {
+        _seed = Random.Shared.Next(1, 999_999);
+        OnParamChanged();
+    }
+
+    private async Task PreviewAsync()
+    {
+        await JS.InvokeVoidAsync("topoMapInterop.drawById", "map-gen-canvas", _seed, _biome,
+            new { octaves = _octaves, lacunarity = _lacunarity, persistence = _persistence,
+                  scale = _scale, offsetX = _offsetX, offsetY = _offsetY });
+    }
+
+    private async Task ApplyAsync()
+    {
+        if (_campaign is null) return;
+        _saving = true;
+        _campaign.MapSeed        = _seed;
+        _campaign.MapBiome       = _biome;
+        _campaign.MapOctaves     = _octaves;
+        _campaign.MapLacunarity  = _lacunarity;
+        _campaign.MapPersistence = _persistence;
+        _campaign.MapScale       = _scale;
+        _campaign.MapOffsetX     = _offsetX;
+        _campaign.MapOffsetY     = _offsetY;
+        await CampaignSvc.SaveCampaignAsync(_campaign);
+        Nav.NavigateTo("/campaign-editor");
+    }
+}
