@@ -7,4 +7,7 @@ public class GmNote
     public string   Content   { get; set; } = "";
     public string   Tags      { get; set; } = "";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public double   X         { get; set; } = -1;
+    public double   Y         { get; set; } = -1;
+    public bool     IsPublic  { get; set; } = false;
 }

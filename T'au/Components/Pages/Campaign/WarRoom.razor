@@ -67,6 +67,8 @@ else
                     @if (_campaign.MapNodes.Any())
                     {
                         <CampaignMap Nodes="_campaign.MapNodes"
+                                     MapNotes="_campaign.GmNotebook.Where(n => n.X >= 0 && n.IsPublic).ToList()"
+                                     IsReadOnly="true"
                                      MapSeed="_campaign.MapSeed" MapBiome="@_campaign.MapBiome"
                                      MapOctaves="_campaign.MapOctaves" MapLacunarity="_campaign.MapLacunarity"
                                      MapPersistence="_campaign.MapPersistence" MapScale="_campaign.MapScale"
@@ -92,7 +94,17 @@ else
                 <div class="wr-panel">
                     <div class="wr-panel-head"><i class="bi bi-crosshair me-2"></i>SECTOR INTEL</div>
                     <div class="wr-panel-body">
-                        @if (_selectedNode is not null)
+                        @if (_selectedMapNote is not null)
+                        {
+                            <div class="wr-intel-name">&#x1F4CC; @_selectedMapNote.Title.ToUpperInvariant()</div>
+                            @if (!string.IsNullOrWhiteSpace(_selectedMapNote.Content))
+                            {
+                                <div class="wr-secret-event mt-2">
+                                    <div class="wr-secret-body">@_selectedMapNote.Content</div>
+                                </div>
+                            }
+                        }
+                        else if (_selectedNode is not null)
                         {
                             var ctrlClass = _selectedNode.ControllingPlayerId switch
                             {
@@ -369,6 +381,7 @@ else
     private CampaignState? _campaign;
     private bool _loaded;
     private TerritoryNode? _selectedNode;
+    private GmNote? _selectedMapNote;
 
     private CampaignPlayer? _p1;
     private CampaignPlayer? _p2;
@@ -406,7 +419,10 @@ else
 
     private void HandleNodeSelected(string nodeId)
     {
-        _selectedNode = _campaign?.MapNodes.FirstOrDefault(n => n.Id == nodeId);
+        _selectedNode    = _campaign?.MapNodes.FirstOrDefault(n => n.Id == nodeId);
+        _selectedMapNote = _selectedNode is null
+            ? _campaign?.GmNotebook.FirstOrDefault(n => n.IsPublic && n.X >= 0 && n.Id == nodeId)
+            : null;
         StateHasChanged();
     }
 

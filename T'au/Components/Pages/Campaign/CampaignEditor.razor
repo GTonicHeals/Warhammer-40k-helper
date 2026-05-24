@@ -44,8 +44,9 @@
         @if (_showGmNotes)
         {
             <GmNotes Campaign="_campaign"
+                     SelectedNoteId="_gmNotesNoteId"
                      OnNotesChanged="() => CampaignSvc.SaveCampaignAsync(_campaign!)"
-                     OnClose="() => _showGmNotes = false" />
+                     OnClose="() => { _showGmNotes = false; _gmNotesNoteId = null; }" />
         }
 
         <div class="row g-4">
@@ -66,10 +67,14 @@
                     <a class="btn btn-sm btn-outline-secondary flex-shrink-0" href="/map-generator">
                         <i class="bi bi-sliders me-1"></i>Tune Map
                     </a>
+                    <button class="btn btn-sm btn-outline-info flex-shrink-0" @onclick="AddMapNoteAsync">
+                        <i class="bi bi-pin-map me-1"></i>Add Note
+                    </button>
                     <span class="text-muted small flex-shrink-0">Seed: @_campaign.MapSeed</span>
                 </div>
                 <CampaignMap @ref="_mapComponent"
                              Nodes="_campaign.MapNodes"
+                             MapNotes="_campaign.GmNotebook.Where(n => n.X >= 0).ToList()"
                              MapSeed="_campaign.MapSeed" MapBiome="@_campaign.MapBiome"
                              MapOctaves="_campaign.MapOctaves" MapLacunarity="_campaign.MapLacunarity"
                              MapPersistence="_campaign.MapPersistence" MapScale="_campaign.MapScale"
@@ -192,7 +197,7 @@
                 }
                 else if (_campaign.MapNodes.Any())
                 {
-                    <p class="text-muted text-center small mt-3"><em>Click a node on the map to edit it.</em></p>
+                    <p class="text-muted text-center small mt-3"><em>Click a node on the map to edit it. Click a note pin to open it in GM Notes.</em></p>
                 }
             </div>
         </div>
@@ -276,6 +281,7 @@
     private bool _loaded;
     private bool _saving;
     private bool _showGmNotes;
+    private string? _gmNotesNoteId;
     private TerritoryNode? _selectedNode;
 
     private string _newNodeName        = "";
@@ -307,6 +313,15 @@
     private void HandleNodeSelected(string nodeId)
     {
         _selectedNode = _campaign?.MapNodes.FirstOrDefault(n => n.Id == nodeId);
+        if (_selectedNode is null && _campaign is not null)
+        {
+            var note = _campaign.GmNotebook.FirstOrDefault(n => n.Id == nodeId && n.X >= 0);
+            if (note is not null)
+            {
+                _gmNotesNoteId = note.Id;
+                _showGmNotes   = true;
+            }
+        }
         StateHasChanged();
     }
 
@@ -359,6 +374,20 @@
 
         if (_selectedNode?.Id == nodeId)
             _selectedNode = null;
+    }
+
+    private async Task AddMapNoteAsync()
+    {
+        if (_campaign is null) return;
+        var (cx, cy) = _mapComponent is not null
+            ? await _mapComponent.GetViewCenterAsync()
+            : (0.5, 0.5);
+        var note = new GmNote { X = cx, Y = cy };
+        _campaign.GmNotebook.Insert(0, note);
+        _selectedNode  = null;
+        _gmNotesNoteId = note.Id;
+        _showGmNotes   = true;
+        await CampaignSvc.SaveCampaignAsync(_campaign);
     }
 
     private void SetController(TerritoryNode node, string? value) =>

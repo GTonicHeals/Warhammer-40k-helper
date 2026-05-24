@@ -42,6 +42,20 @@
                 <span class="map-node-label">@node.Name</span>
             </div>
         }
+
+        @foreach (var note in MapNotes.Where(n => n.X >= 0))
+        {
+            var noteLabel = (!IsReadOnly && !note.IsPublic) ? $"\U0001f512 {note.Title}" : note.Title;
+            var noteCss   = (!IsReadOnly && !note.IsPublic) ? "note-private" : "note-public";
+            <div class="map-node map-note-pin @noteCss @(_selectedId == note.Id ? "selected" : "")"
+                 data-node-id="@note.Id"
+                 style="left:@(Fmt(note.X * 100))%;top:@(Fmt(note.Y * 100))%"
+                 @onclick="@(() => HandleNodeClick(note.Id))"
+                 @onclick:stopPropagation="true">
+                <div class="map-note-icon">&#x1F4CC;</div>
+                <span class="map-node-label">@noteLabel</span>
+            </div>
+        }
     </div>
 </div>
 
@@ -120,10 +134,17 @@
     .node-p1      { color: #4da6ff; }
     .node-p2      { color: #ff5555; }
     .node-neutral { color: #c8960c; }
+
+    .map-note-pin  { z-index: 11; }
+    .map-note-icon { font-size: 16px; line-height: 1; }
+    .note-public   { color: #50fa7b; }
+    .note-private  { color: #bd93f9; opacity: 0.8; }
 </style>
 
 @code {
     [Parameter, EditorRequired] public List<TerritoryNode> Nodes { get; set; } = new();
+    [Parameter] public List<GmNote> MapNotes  { get; set; } = new();
+    [Parameter] public bool          IsReadOnly { get; set; }
     [Parameter] public EventCallback<string>                          OnNodeSelected { get; set; }
     [Parameter] public EventCallback<(string Id, double X, double Y)> NodeMoved     { get; set; }
     [Parameter] public int    MapSeed        { get; set; } = 1;
@@ -143,6 +164,7 @@
     private DotNetObjectReference<CampaignMap>? _dotNetRef;
     private string? _selectedId;
     private string _lastDrawKey = "";
+    private bool _didDrag;
 
     private static string Fmt(double v) =>
         v.ToString("F2", CultureInfo.InvariantCulture);
@@ -189,6 +211,7 @@
 
     private async Task HandleNodeClick(string id)
     {
+        if (_didDrag) { _didDrag = false; return; }
         _selectedId = id;
         StateHasChanged();
         await OnNodeSelected.InvokeAsync(id);
@@ -197,10 +220,20 @@
     [JSInvokable]
     public async Task OnNodeMoved(string id, double x, double y)
     {
+        _didDrag = true;
         var node = Nodes.FirstOrDefault(n => n.Id == id);
-        if (node is null) return;
-        node.X = Math.Round(x, 4);
-        node.Y = Math.Round(y, 4);
+        if (node is not null)
+        {
+            node.X = Math.Round(x, 4);
+            node.Y = Math.Round(y, 4);
+        }
+        else
+        {
+            var note = MapNotes.FirstOrDefault(n => n.Id == id);
+            if (note is null) return;
+            note.X = Math.Round(x, 4);
+            note.Y = Math.Round(y, 4);
+        }
         await NodeMoved.InvokeAsync((id, x, y));
     }
 

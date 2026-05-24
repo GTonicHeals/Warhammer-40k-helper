@@ -33,6 +33,19 @@
                                     </div>
                                 }
                             </div>
+                            <button class="gm-action-btn @(note.X >= 0 ? "gm-btn-pinned" : "")"
+                                    title="@(note.X >= 0 ? "Unpin from map" : "Pin to map")"
+                                    @onclick:stopPropagation="true"
+                                    @onclick="() => TogglePinAsync(note, note.X < 0)">
+                                &#x1F4CC;
+                            </button>
+                            <button class="gm-action-btn @(note.X >= 0 && note.IsPublic ? "gm-btn-public" : "")"
+                                    title="@(note.IsPublic ? "Hide from players" : "Show to players")"
+                                    disabled="@(note.X < 0)"
+                                    @onclick:stopPropagation="true"
+                                    @onclick="() => TogglePublicAsync(note)">
+                                &#x1F441;
+                            </button>
                             <button class="gm-delete-btn"
                                     @onclick:stopPropagation="true"
                                     @onclick="() => DeleteNote(note)">
@@ -156,6 +169,27 @@
         padding: 0;
     }
     .gm-delete-btn:hover { color: #fff; background: #ff5555; border-color: #ff5555; }
+    .gm-action-btn {
+        flex-shrink: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        background: transparent;
+        border: 1px solid #2a2a3a;
+        border-radius: 4px;
+        cursor: pointer;
+        color: #444;
+        padding: 0;
+        line-height: 1;
+        transition: color 0.12s, border-color 0.12s, background 0.12s;
+    }
+    .gm-action-btn:disabled { opacity: 0.25; cursor: default; }
+    .gm-action-btn:not(:disabled):hover { border-color: #555; color: #888; }
+    .gm-btn-pinned  { color: #c8960c; border-color: #c8960c55; }
+    .gm-btn-public  { color: #50fa7b; border-color: #50fa7b55; }
     .gm-empty-list { color: #666; font-size: 0.78rem; text-align: center; padding-top: 20px; letter-spacing: 1px; }
 
     /* Right column */
@@ -226,8 +260,20 @@
     [Parameter, EditorRequired] public CampaignState Campaign { get; set; } = default!;
     [Parameter] public EventCallback OnNotesChanged { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public string? SelectedNoteId { get; set; }
 
     private GmNote? _selectedNote;
+    private string? _appliedNoteId;
+
+    protected override void OnParametersSet()
+    {
+        if (SelectedNoteId is not null && SelectedNoteId != _appliedNoteId)
+        {
+            _appliedNoteId = SelectedNoteId;
+            var note = Campaign.GmNotebook.FirstOrDefault(n => n.Id == SelectedNoteId);
+            if (note is not null) _selectedNote = note;
+        }
+    }
 
     private async Task AddNewNote()
     {
@@ -250,6 +296,19 @@
     private void SelectNote(GmNote note) => _selectedNote = note;
 
     private Task SaveAsync() => OnNotesChanged.InvokeAsync();
+
+    private async Task TogglePinAsync(GmNote note, bool pin)
+    {
+        if (pin) { note.X = 0.5; note.Y = 0.5; }
+        else     { note.X = -1;  note.Y = -1; note.IsPublic = false; }
+        await SaveAsync();
+    }
+
+    private async Task TogglePublicAsync(GmNote note)
+    {
+        note.IsPublic = !note.IsPublic;
+        await SaveAsync();
+    }
 
     private static IEnumerable<string> ParseTags(string tags) =>
         tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
