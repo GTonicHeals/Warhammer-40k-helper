@@ -53,6 +53,27 @@ public class CampaignSerializationTests
     }
 
     [Fact]
+    public void TerritoryNode_SecretEventText_roundtrips()
+    {
+        var node = new TerritoryNode { SecretEventText = "Ambush! Tyranids attack!" };
+        RoundTrip(node).SecretEventText.Should().Be("Ambush! Tyranids attack!");
+    }
+
+    [Fact]
+    public void TerritoryNode_SecretEventText_defaults_to_empty_string()
+    {
+        var node = new TerritoryNode();
+        RoundTrip(node).SecretEventText.Should().Be("");
+    }
+
+    [Fact]
+    public void TerritoryNode_IsEventRevealed_roundtrips_true_and_false()
+    {
+        RoundTrip(new TerritoryNode { IsEventRevealed = false }).IsEventRevealed.Should().BeFalse();
+        RoundTrip(new TerritoryNode { IsEventRevealed = true  }).IsEventRevealed.Should().BeTrue();
+    }
+
+    [Fact]
     public void BattleRecord_CapturedTerritoryId_nullable_roundtrip()
     {
         var rec = new BattleRecord { MissionName = "Test", CapturedTerritoryId = null };

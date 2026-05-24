@@ -127,6 +127,22 @@
                                        @bind="_selectedNode.BuffEffect" placeholder="—" />
                             </div>
                             <div class="mb-2">
+                                <label class="form-label small text-warning mb-1">
+                                    <i class="bi bi-eye-slash me-1"></i>Secret Narrative Event (Hidden from Players)
+                                </label>
+                                <textarea class="form-control form-control-sm bg-dark text-white border-secondary"
+                                          rows="3"
+                                          @bind="_selectedNode.SecretEventText"
+                                          placeholder="Write the hidden event text here…"></textarea>
+                            </div>
+                            <div class="mb-2 d-flex align-items-center gap-2">
+                                <input type="checkbox" class="form-check-input" id="chk-revealed"
+                                       @bind="_selectedNode.IsEventRevealed" />
+                                <label class="form-check-label small text-muted" for="chk-revealed">
+                                    Mark event as already revealed (visible to players)
+                                </label>
+                            </div>
+                            <div class="mb-2">
                                 <label class="form-label small text-warning mb-1">Controller</label>
                                 <select class="form-select form-select-sm bg-dark text-white border-secondary"
                                         value="@(_selectedNode.ControllingPlayerId ?? "")"

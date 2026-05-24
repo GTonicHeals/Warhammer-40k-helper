@@ -136,6 +136,26 @@ else
                                     <span class="wr-intel-val">@string.Join(", ", links!)</span>
                                 </div>
                             }
+                            @if (!string.IsNullOrWhiteSpace(_selectedNode.SecretEventText))
+                            {
+                                if (!_selectedNode.IsEventRevealed)
+                                {
+                                    <div class="mt-2">
+                                        <button class="btn btn-warning btn-sm w-100" @onclick="RevealEventAsync">
+                                            <i class="bi bi-eye-slash me-1"></i> Reveal Hidden Event
+                                        </button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="wr-secret-event mt-2">
+                                        <div class="wr-secret-head">
+                                            <i class="bi bi-eye me-1"></i>CLASSIFIED INTEL DECRYPTED
+                                        </div>
+                                        <div class="wr-secret-body">@_selectedNode.SecretEventText</div>
+                                    </div>
+                                }
+                            }
                         }
                         else
                         {
@@ -313,6 +333,31 @@ else
     .wr-table td { padding: 5px 12px; color: #bbb; }
     .wr-muted { color: #555; }
 
+    /* Secret event callout */
+    .wr-secret-event {
+        border: 1px solid var(--amber);
+        border-left: 3px solid var(--amber-bright);
+        background: rgba(200, 150, 12, 0.06);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .wr-secret-head {
+        background: rgba(200, 150, 12, 0.15);
+        color: var(--amber-bright);
+        font-size: 0.62rem;
+        font-weight: bold;
+        letter-spacing: 1.5px;
+        padding: 4px 8px;
+        border-bottom: 1px solid rgba(200, 150, 12, 0.2);
+    }
+    .wr-secret-body {
+        padding: 8px;
+        color: #ddd;
+        font-size: 0.78rem;
+        line-height: 1.5;
+        white-space: pre-wrap;
+    }
+
     /* Responsive: stack on small screens */
     @@media (max-width: 768px) {
         .wr-content { flex-direction: column; }
@@ -363,5 +408,12 @@ else
     {
         _selectedNode = _campaign?.MapNodes.FirstOrDefault(n => n.Id == nodeId);
         StateHasChanged();
+    }
+
+    private async Task RevealEventAsync()
+    {
+        if (_selectedNode is null || _campaign is null) return;
+        _selectedNode.IsEventRevealed = true;
+        await CampaignSvc.SaveCampaignAsync(_campaign);
     }
 }
