@@ -1,0 +1,366 @@
+@page "/campaign-editor"
+@rendermode InteractiveServer
+@using Warhammer.Models.Campaign
+@using Warhammer.Services
+@inject CampaignManagerService CampaignSvc
+
+<PageTitle>Campaign Map Editor</PageTitle>
+
+<div class="rules-container">
+    <div class="header-section text-center mb-4">
+        <h1 class="page-title text-warning">
+            <i class="bi bi-map me-2"></i>Campaign Map Editor
+        </h1>
+        <p class="text-muted">Build the strategic map — place territory nodes on the terrain, assign control, and link them.</p>
+    </div>
+
+    @if (!_loaded)
+    {
+        <p class="text-center text-muted"><em>Loading campaign…</em></p>
+    }
+    else if (_campaign is null)
+    {
+        <div class="alert alert-warning">Failed to load campaign data.</div>
+    }
+    else
+    {
+        <div class="d-flex align-items-center justify-content-between mb-3 gap-3">
+            <input class="form-control form-control-lg campaign-title-input"
+                   @bind="_campaign.CampaignName"
+                   placeholder="Campaign Name" />
+            <button class="btn btn-warning px-4 flex-shrink-0" @onclick="SaveAsync" disabled="@_saving">
+                @if (_saving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                }
+                <i class="bi bi-floppy me-1"></i> Save
+            </button>
+        </div>
+
+        <div class="row g-4">
+            <!-- Left: Map -->
+            <div class="col-lg-7">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <select class="form-select form-select-sm bg-dark text-warning border-secondary ce-biome-select"
+                            value="@_campaign.MapBiome"
+                            @onchange="OnBiomeChanged">
+                        <option value="agri">Agri World</option>
+                        <option value="death">Death World</option>
+                        <option value="ice">Ice World</option>
+                        <option value="ash">Ash Wastes</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline-warning flex-shrink-0" @onclick="RegenerateMapAsync">
+                        <i class="bi bi-arrow-repeat me-1"></i>Regenerate
+                    </button>
+                    <a class="btn btn-sm btn-outline-secondary flex-shrink-0" href="/map-generator">
+                        <i class="bi bi-sliders me-1"></i>Tune Map
+                    </a>
+                    <span class="text-muted small flex-shrink-0">Seed: @_campaign.MapSeed</span>
+                </div>
+                <CampaignMap @ref="_mapComponent"
+                             Nodes="_campaign.MapNodes"
+                             MapSeed="_campaign.MapSeed" MapBiome="@_campaign.MapBiome"
+                             MapOctaves="_campaign.MapOctaves" MapLacunarity="_campaign.MapLacunarity"
+                             MapPersistence="_campaign.MapPersistence" MapScale="_campaign.MapScale"
+                             MapOffsetX="_campaign.MapOffsetX" MapOffsetY="_campaign.MapOffsetY"
+                             AllowDrag="true"
+                             NodeMoved="HandleNodeMoved"
+                             OnNodeSelected="HandleNodeSelected" />
+                <p class="text-muted small mt-1 mb-0"><i class="bi bi-arrows-move me-1"></i>Drag nodes to position them on the map.</p>
+            </div>
+
+            <!-- Right: Add node form + selected node editor -->
+            <div class="col-lg-5">
+                <div class="ce-form-panel mb-3">
+                    <h5 class="text-warning mb-3"><i class="bi bi-plus-circle me-2"></i>Add Territory Node</h5>
+                    <div class="mb-2">
+                        <label class="form-label text-warning fw-bold small mb-1">Node Name</label>
+                        <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                               @bind="_newNodeName" placeholder="e.g. Sector Alpha" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label text-warning fw-bold small mb-1">Description</label>
+                        <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                               @bind="_newNodeDescription" placeholder="e.g. Ruined manufactorum district" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-warning fw-bold small mb-1">Buff Effect</label>
+                        <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                               @bind="_newNodeBuffEffect" placeholder="e.g. +1 CP per round" />
+                    </div>
+                    <button class="btn btn-sm btn-warning w-100" @onclick="AddNodeAsync"
+                            disabled="@string.IsNullOrWhiteSpace(_newNodeName)">
+                        <i class="bi bi-plus-lg"></i> Add Node
+                    </button>
+                </div>
+
+                @if (_selectedNode is not null)
+                {
+                    var otherNodes = _campaign.MapNodes.Where(n => n.Id != _selectedNode.Id).ToList();
+                    var ctrl = _selectedNode.ControllingPlayerId;
+                    var (badgeClass, badgeLabel) = ctrl switch
+                    {
+                        "p1" => ("badge-p1", _campaign.Players.GetValueOrDefault("p1")?.Name ?? "Player 1"),
+                        "p2" => ("badge-p2", _campaign.Players.GetValueOrDefault("p2")?.Name ?? "Player 2"),
+                        _    => ("badge-neutral", "Neutral")
+                    };
+
+                    <div class="ce-node-card">
+                        <div class="ce-node-header">
+                            <span><i class="bi bi-geo-alt-fill me-2"></i>@(string.IsNullOrWhiteSpace(_selectedNode.Name) ? "Unnamed Node" : _selectedNode.Name)</span>
+                            <span class="ce-badge @badgeClass">@badgeLabel</span>
+                        </div>
+                        <div class="ce-node-body">
+                            <div class="mb-2">
+                                <label class="form-label small text-warning mb-1">Node Name</label>
+                                <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                                       @bind="_selectedNode.Name" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small text-warning mb-1">Description</label>
+                                <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                                       @bind="_selectedNode.Description" placeholder="—" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small text-warning mb-1">Buff Effect</label>
+                                <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                                       @bind="_selectedNode.BuffEffect" placeholder="—" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small text-warning mb-1">Controller</label>
+                                <select class="form-select form-select-sm bg-dark text-white border-secondary"
+                                        value="@(_selectedNode.ControllingPlayerId ?? "")"
+                                        @onchange="e => SetController(_selectedNode, e.Value?.ToString())">
+                                    <option value="">— Neutral —</option>
+                                    @foreach (var (pid, player) in _campaign.Players)
+                                    {
+                                        <option value="@pid">@player.Name (@pid.ToUpper())</option>
+                                    }
+                                </select>
+                            </div>
+
+                            @if (otherNodes.Any())
+                            {
+                                <label class="form-label small text-warning mb-1">Connections</label>
+                                <div class="ce-connections-list mb-2">
+                                    @foreach (var other in otherNodes)
+                                    {
+                                        var linked = _selectedNode.ConnectedNodeIds.Contains(other.Id);
+                                        <label class="ce-connection-item @(linked ? "linked" : "")">
+                                            <input type="checkbox" checked="@linked"
+                                                   @onchange="() => ToggleConnection(_selectedNode, other.Id)" />
+                                            <span>@(string.IsNullOrWhiteSpace(other.Name) ? "Unnamed" : other.Name)</span>
+                                        </label>
+                                    }
+                                </div>
+                            }
+
+                            <div class="text-end mt-2">
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveNode(_selectedNode.Id)">
+                                    <i class="bi bi-trash"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else if (_campaign.MapNodes.Any())
+                {
+                    <p class="text-muted text-center small mt-3"><em>Click a node on the map to edit it.</em></p>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .ce-biome-select { max-width: 160px; }
+    .campaign-title-input {
+        background: transparent;
+        border: 1px solid transparent;
+        color: #ffc107;
+        font-size: 1.6rem;
+        font-weight: bold;
+    }
+    .campaign-title-input:focus {
+        background: #1a1a1a;
+        border-color: #d35400;
+        color: #ffc107;
+        box-shadow: none;
+    }
+    .ce-form-panel {
+        background: #2a2a2a;
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 16px;
+    }
+    .ce-node-card {
+        background: #2a2a2a;
+        border: 1px solid #444;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .ce-node-header {
+        background: #1a1a1a;
+        color: #d35400;
+        padding: 8px 12px;
+        font-weight: bold;
+        border-bottom: 1px solid #444;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .ce-node-body { padding: 10px 12px; color: #ddd; }
+    .ce-badge {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+    .badge-p1      { background: #1a3a6a; color: #7fb3f5; }
+    .badge-p2      { background: #6a1a1a; color: #f57b7b; }
+    .badge-neutral { background: #3a3a3a; color: #aaa; }
+    .ce-connections-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ce-connection-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+        padding: 3px 8px;
+        border-radius: 4px;
+        border: 1px solid #444;
+        background: #1e1e1e;
+        font-size: 0.82rem;
+        color: #aaa;
+        user-select: none;
+        transition: border-color 0.12s, color 0.12s, background 0.12s;
+    }
+    .ce-connection-item.linked {
+        border-color: #d35400;
+        color: #ffc107;
+        background: rgba(211, 84, 0, 0.12);
+    }
+    .ce-connection-item input[type="checkbox"] { accent-color: #d35400; }
+</style>
+
+@code {
+    private CampaignState? _campaign;
+    private CampaignMap? _mapComponent;
+    private bool _loaded;
+    private bool _saving;
+    private TerritoryNode? _selectedNode;
+
+    private string _newNodeName        = "";
+    private string _newNodeDescription = "";
+    private string _newNodeBuffEffect  = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _loaded) return;
+        _loaded   = true;
+        _campaign = await CampaignSvc.LoadCampaignAsync();
+
+        // Auto-place legacy nodes that have no coordinates yet
+        int idx = 0;
+        bool anyPlaced = false;
+        foreach (var node in _campaign.MapNodes.Where(n => n.X < 0))
+        {
+            node.X = 0.05;
+            node.Y = Math.Min(0.90, 0.10 + idx * 0.12);
+            idx++;
+            anyPlaced = true;
+        }
+        if (anyPlaced)
+            await CampaignSvc.SaveCampaignAsync(_campaign);
+
+        StateHasChanged();
+    }
+
+    private void HandleNodeSelected(string nodeId)
+    {
+        _selectedNode = _campaign?.MapNodes.FirstOrDefault(n => n.Id == nodeId);
+        StateHasChanged();
+    }
+
+    private async Task HandleNodeMoved((string Id, double X, double Y) args)
+    {
+        if (_campaign is null) return;
+        await CampaignSvc.SaveCampaignAsync(_campaign);
+    }
+
+    private async Task RegenerateMapAsync()
+    {
+        if (_campaign is null) return;
+        _campaign.MapSeed = Random.Shared.Next(1, 999_999);
+        await CampaignSvc.SaveCampaignAsync(_campaign);
+    }
+
+    private async Task OnBiomeChanged(ChangeEventArgs e)
+    {
+        if (_campaign is null) return;
+        _campaign.MapBiome = e.Value?.ToString() ?? "agri";
+        await CampaignSvc.SaveCampaignAsync(_campaign);
+    }
+
+    private async Task AddNodeAsync()
+    {
+        if (_campaign is null || string.IsNullOrWhiteSpace(_newNodeName)) return;
+
+        var (cx, cy) = _mapComponent is not null
+            ? await _mapComponent.GetViewCenterAsync()
+            : (0.5, 0.5);
+
+        _campaign.MapNodes.Add(new TerritoryNode
+        {
+            Name        = _newNodeName.Trim(),
+            Description = _newNodeDescription.Trim(),
+            BuffEffect  = _newNodeBuffEffect.Trim(),
+            X           = cx,
+            Y           = cy
+        });
+
+        _newNodeName = _newNodeDescription = _newNodeBuffEffect = "";
+    }
+
+    private void RemoveNode(string nodeId)
+    {
+        if (_campaign is null) return;
+        _campaign.MapNodes.RemoveAll(n => n.Id == nodeId);
+        foreach (var node in _campaign.MapNodes)
+            node.ConnectedNodeIds.Remove(nodeId);
+
+        if (_selectedNode?.Id == nodeId)
+            _selectedNode = null;
+    }
+
+    private void SetController(TerritoryNode node, string? value) =>
+        node.ControllingPlayerId = string.IsNullOrEmpty(value) ? null : value;
+
+    private void ToggleConnection(TerritoryNode node, string targetId)
+    {
+        if (_campaign is null) return;
+        var target = _campaign.MapNodes.FirstOrDefault(n => n.Id == targetId);
+        if (target is null) return;
+
+        if (node.ConnectedNodeIds.Contains(targetId))
+        {
+            node.ConnectedNodeIds.Remove(targetId);
+            target.ConnectedNodeIds.Remove(node.Id);
+        }
+        else
+        {
+            node.ConnectedNodeIds.Add(targetId);
+            if (!target.ConnectedNodeIds.Contains(node.Id))
+                target.ConnectedNodeIds.Add(node.Id);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_campaign is null) return;
+        _saving = true;
+        StateHasChanged();
+        await CampaignSvc.SaveCampaignAsync(_campaign);
+        _saving = false;
+    }
+}

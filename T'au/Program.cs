@@ -19,6 +19,7 @@ builder.Services.AddScoped<GameStateService>();
 builder.Services.AddScoped<StratagemService>();
 builder.Services.AddScoped<WoundCalcStateService>();
 builder.Services.AddScoped<CrusadeManagerService>();
+builder.Services.AddScoped<CampaignManagerService>();
 
 var app = builder.Build();
 

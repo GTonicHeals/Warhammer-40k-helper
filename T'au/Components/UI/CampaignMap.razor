@@ -1,0 +1,213 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@using Warhammer.Models.Campaign
+@using Warhammer.Helpers
+@using System.Globalization
+
+<div class="map-viewport @CssClass @(AllowDrag ? "map-drag-mode" : "")">
+    <div class="map-inner" @ref="_inner">
+        <canvas id="campaign-topo-canvas" @ref="_canvas" class="map-layer map-canvas"></canvas>
+
+        <svg class="map-layer map-svg" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+            @{
+                var nodeMap = Nodes.ToDictionary(n => n.Id);
+            }
+            @foreach (var edge in CampaignMapHelpers.BuildEdges(Nodes))
+            {
+                if (nodeMap.TryGetValue(edge.From, out var n1) &&
+                    nodeMap.TryGetValue(edge.To,   out var n2) &&
+                    n1.X >= 0 && n2.X >= 0)
+                {
+                    <line class="map-edge"
+                          x1="@Fmt(n1.X * 1000)" y1="@Fmt(n1.Y * 1000)"
+                          x2="@Fmt(n2.X * 1000)" y2="@Fmt(n2.Y * 1000)" />
+                }
+            }
+        </svg>
+
+        @foreach (var node in Nodes.Where(n => n.X >= 0))
+        {
+            var factionCss = node.ControllingPlayerId switch
+            {
+                "p1" => "node-p1",
+                "p2" => "node-p2",
+                _    => "node-neutral"
+            };
+            <div class="map-node @factionCss @(_selectedId == node.Id ? "selected" : "")"
+                 data-node-id="@node.Id"
+                 style="left:@(Fmt(node.X * 100))%;top:@(Fmt(node.Y * 100))%"
+                 @onclick="@(() => HandleNodeClick(node.Id))"
+                 @onclick:stopPropagation="true">
+                <div class="map-node-pip"></div>
+                <span class="map-node-label">@node.Name</span>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .map-viewport {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        min-height: 320px;
+        overflow: hidden;
+        background: #06080e;
+        border: 1px solid #2a2a2a;
+        border-radius: 6px;
+        user-select: none;
+    }
+    .map-inner {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 200%;
+        height: 200%;
+    }
+    .map-layer {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+    }
+    .map-canvas { pointer-events: none; }
+    .map-svg    { pointer-events: none; overflow: visible; }
+
+    .map-edge {
+        stroke: #c8960c;
+        stroke-width: 2.5;
+        stroke-dasharray: 6 4;
+        opacity: 0.7;
+    }
+
+    .map-node {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        cursor: pointer;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+    }
+    .map-drag-mode .map-node          { cursor: grab; }
+    .map-drag-mode .map-node.dragging { cursor: grabbing; }
+    .map-drag-mode.map-dragging       { cursor: grabbing !important; }
+
+    .map-node-pip {
+        width: 14px;
+        height: 14px;
+        transform: rotate(45deg);
+        border: 2px solid currentColor;
+        background: rgba(0, 0, 0, 0.65);
+        transition: box-shadow 0.2s;
+    }
+    .map-node:hover .map-node-pip,
+    .map-node.selected .map-node-pip {
+        box-shadow: 0 0 8px currentColor, 0 0 18px currentColor;
+    }
+    .map-node-label {
+        font-size: 10px;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+        text-shadow: 0 0 8px currentColor;
+        white-space: nowrap;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 1px 5px;
+        border-radius: 2px;
+    }
+    .node-p1      { color: #4da6ff; }
+    .node-p2      { color: #ff5555; }
+    .node-neutral { color: #c8960c; }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public List<TerritoryNode> Nodes { get; set; } = new();
+    [Parameter] public EventCallback<string>                          OnNodeSelected { get; set; }
+    [Parameter] public EventCallback<(string Id, double X, double Y)> NodeMoved     { get; set; }
+    [Parameter] public int    MapSeed        { get; set; } = 1;
+    [Parameter] public string MapBiome       { get; set; } = "agri";
+    [Parameter] public int    MapOctaves     { get; set; } = 4;
+    [Parameter] public double MapLacunarity  { get; set; } = 2.0;
+    [Parameter] public double MapPersistence { get; set; } = 0.5;
+    [Parameter] public double MapScale       { get; set; } = 2.0;
+    [Parameter] public double MapOffsetX     { get; set; } = 0.0;
+    [Parameter] public double MapOffsetY     { get; set; } = 0.0;
+    [Parameter] public bool   AllowDrag { get; set; }
+    [Parameter] public bool   AllowPan  { get; set; }
+    [Parameter] public string CssClass  { get; set; } = "";
+
+    private ElementReference _canvas;
+    private ElementReference _inner;
+    private DotNetObjectReference<CampaignMap>? _dotNetRef;
+    private string? _selectedId;
+    private string _lastDrawKey = "";
+
+    private static string Fmt(double v) =>
+        v.ToString("F2", CultureInfo.InvariantCulture);
+
+    private string DrawKey() =>
+        $"{MapSeed}|{MapBiome}|{MapOctaves}|{MapLacunarity:F2}|{MapPersistence:F2}|{MapScale:F1}|{MapOffsetX:F1}|{MapOffsetY:F1}";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var key = DrawKey();
+        if (firstRender || key != _lastDrawKey)
+        {
+            _lastDrawKey = key;
+            await JS.InvokeVoidAsync("topoMapInterop.drawById", "campaign-topo-canvas", MapSeed, MapBiome,
+                new { octaves = MapOctaves, lacunarity = MapLacunarity, persistence = MapPersistence,
+                      scale = MapScale, offsetX = MapOffsetX, offsetY = MapOffsetY });
+        }
+
+        if (firstRender)
+        {
+            if (AllowDrag)
+            {
+                _dotNetRef = DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("mapNodeInterop.initEditor", _inner, _dotNetRef);
+            }
+            if (AllowPan)
+                await JS.InvokeVoidAsync("mapNodeInterop.initWarRoom", _inner);
+        }
+    }
+
+    public async Task<(double X, double Y)> GetViewCenterAsync()
+    {
+        try
+        {
+            var result = await JS.InvokeAsync<System.Text.Json.JsonElement>(
+                "mapNodeInterop.getViewCenter", _inner);
+            return (result.GetProperty("x").GetDouble(), result.GetProperty("y").GetDouble());
+        }
+        catch
+        {
+            return (0.5, 0.5);
+        }
+    }
+
+    private async Task HandleNodeClick(string id)
+    {
+        _selectedId = id;
+        StateHasChanged();
+        await OnNodeSelected.InvokeAsync(id);
+    }
+
+    [JSInvokable]
+    public async Task OnNodeMoved(string id, double x, double y)
+    {
+        var node = Nodes.FirstOrDefault(n => n.Id == id);
+        if (node is null) return;
+        node.X = Math.Round(x, 4);
+        node.Y = Math.Round(y, 4);
+        await NodeMoved.InvokeAsync((id, x, y));
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("mapNodeInterop.destroy", _inner); }
+        catch { /* tearing down */ }
+        _dotNetRef?.Dispose();
+    }
+}
