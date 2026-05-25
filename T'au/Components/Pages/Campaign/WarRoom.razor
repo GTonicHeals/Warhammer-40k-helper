@@ -180,10 +180,10 @@ else
                 <div class="wr-panel">
                     <div class="wr-panel-head"><i class="bi bi-bar-chart-fill me-2"></i>STANDINGS</div>
                     <div class="wr-panel-body">
-                        @foreach (var (pid, player) in _campaign.Players)
+                        @foreach (var player in _campaign.Players)
                         {
-                            var terr      = _terrByPid.GetValueOrDefault(pid);
-                            var nameClass = pid == "p1" ? "wr-text-p1" : "wr-text-p2";
+                            var terr      = _terrByPid.GetValueOrDefault(player.Id);
+                            var nameClass = player.Id == "p1" ? "wr-text-p1" : "wr-text-p2";
                             <div class="wr-standing-row">
                                 <span class="wr-standing-name @nameClass">@player.Name.ToUpperInvariant()</span>
                                 <div class="wr-standing-stats">
@@ -211,7 +211,7 @@ else
                                 <tbody>
                                     @foreach (var b in _campaign.BattleHistory.OrderByDescending(b => b.DatePlayed))
                                     {
-                                        var wName  = _campaign.Players.GetValueOrDefault(b.WinnerPlayerId)?.Name ?? b.WinnerPlayerId;
+                                        var wName  = _campaign.Players.FirstOrDefault(p => p.Id == b.WinnerPlayerId)?.Name ?? b.WinnerPlayerId;
                                         var wClass = b.WinnerPlayerId == "p1" ? "wr-text-p1" : b.WinnerPlayerId == "p2" ? "wr-text-p2" : "";
                                         <tr>
                                             <td class="wr-muted">@b.DatePlayed.ToString("MM-dd")</td>
@@ -378,7 +378,7 @@ else
 </style>
 
 @code {
-    private CampaignState? _campaign;
+    private Campaign? _campaign;
     private bool _loaded;
     private TerritoryNode? _selectedNode;
     private GmNote? _selectedMapNote;
@@ -400,8 +400,8 @@ else
     private void RefreshStats()
     {
         if (_campaign is null) return;
-        _p1 = _campaign.Players.GetValueOrDefault("p1");
-        _p2 = _campaign.Players.GetValueOrDefault("p2");
+        _p1 = _campaign.Players.FirstOrDefault(p => p.Id == "p1");
+        _p2 = _campaign.Players.FirstOrDefault(p => p.Id == "p2");
 
         _terrByPid.Clear();
         foreach (var node in _campaign.MapNodes)

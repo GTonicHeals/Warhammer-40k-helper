@@ -1,63 +1,126 @@
-using System.Text.Json;
-using Microsoft.JSInterop;
+﻿using Microsoft.EntityFrameworkCore;
+using Warhammer.Data;
 using Warhammer.Models.Campaign;
 
 namespace Warhammer.Services;
 
-public class CampaignManagerService(IJSRuntime js, ILogger<CampaignManagerService> logger)
+public class CampaignManagerService(
+    IDbContextFactory<AppDbContext>  dbFactory,
+    ILogger<CampaignManagerService>  logger)
 {
-    private const string StorageKey = "campaign_1v1";
-    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+    // Convenience accessor exposing the last-loaded/saved instance.
+    // Not a source of truth — callers should use the return value of LoadCampaignAsync.
+    public Campaign? Campaign { get; private set; }
 
-    public CampaignState? Campaign { get; private set; }
-
-    // Must be called from OnAfterRenderAsync(firstRender: true) — JS interop
-    // is unavailable during Blazor Server prerender.
-    public async Task<CampaignState> LoadCampaignAsync()
+    public async Task<Campaign> LoadCampaignAsync()
     {
-        // Return the in-memory state if it was already loaded successfully.
-        // This is the authoritative source after a save (e.g. navigating back
-        // from MapGenerator) so we don't have to rely on a localStorage round-trip.
-        if (Campaign is not null) return Campaign;
+        await using var ctx = await dbFactory.CreateDbContextAsync();
 
-        try
+        var campaign = await ctx.Campaigns
+            .Include(c => c.Players)
+            .Include(c => c.MapNodes)
+            .Include(c => c.BattleHistory)
+            .Include(c => c.GmNotebook)        // GmNotebook covers both notebook entries and map pins
+            .AsSplitQuery()                    // avoid Cartesian explosion across 4 collections
+            .AsNoTracking()                    // return a detached graph; SaveCampaignAsync re-attaches
+            .OrderBy(c => c.Id)
+            .FirstOrDefaultAsync();
+
+        if (campaign is null)
         {
-            var json = await js.InvokeAsync<string?>("campaignStorage.load", StorageKey);
-            if (!string.IsNullOrEmpty(json))
-            {
-                var state = JsonSerializer.Deserialize<CampaignState>(json, JsonOptions);
-                if (state is not null)
-                {
-                    Campaign = state;
-                    return state;
-                }
-            }
-            // Empty storage — first use. Cache the default so subsequent loads are fast.
-            Campaign = CreateDefault();
-            return Campaign;
+            campaign = CreateDefault();
+            ctx.Campaigns.Add(campaign);
+            await ctx.SaveChangesAsync();
+            logger.LogInformation("Seeded default campaign with Id={Id}", campaign.Id);
         }
-        catch (Exception ex)
+
+        Campaign = campaign;
+        return campaign;
+    }
+
+    public async Task SaveCampaignAsync(Campaign campaign)
+    {
+        await using var ctx = await dbFactory.CreateDbContextAsync();
+
+        // INSERT path: brand-new campaign that has never been persisted.
+        if (campaign.Id == 0)
         {
-            logger.LogWarning(ex, "Failed to load campaign from localStorage — returning default");
-            // Don't cache — keep Campaign null so the next call retries from localStorage
-            // once the JS interop is actually available (i.e. after prerender).
-            return CreateDefault();
+            ctx.Campaigns.Add(campaign);
+            await ctx.SaveChangesAsync();
+            Campaign = campaign;
+            return;
+        }
+
+        // UPDATE path: load the tracked graph, then reconcile each child collection
+        // by primary key. We can't use ctx.Update(campaign) because every child carries
+        // a client-generated GUID — EF cannot distinguish "new" from "existing" on its
+        // own and would mis-classify inserts as updates (zero-row UPDATEs).
+        var existing = await ctx.Campaigns
+            .Include(c => c.Players)
+            .Include(c => c.MapNodes)
+            .Include(c => c.BattleHistory)
+            .Include(c => c.GmNotebook)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(c => c.Id == campaign.Id);
+
+        if (existing is null)
+        {
+            // The Id the caller is holding has disappeared from the DB (e.g. it was
+            // reset between Load and Save). Treat as an insert so the user's work survives.
+            ctx.Entry(campaign).State = EntityState.Added;
+            await ctx.SaveChangesAsync();
+            Campaign = campaign;
+            logger.LogWarning("Campaign {Id} not found on save — inserted as new", campaign.Id);
+            return;
+        }
+
+        // Copy scalar values (CampaignName, MapSeed, MapBiome, MapScale, ...) from the
+        // incoming detached entity onto the tracked one. Navigation collections are
+        // handled below — SetValues only touches mapped scalars and primitive collections.
+        ctx.Entry(existing).CurrentValues.SetValues(campaign);
+
+        Reconcile(ctx, existing.Players,       campaign.Players,       p => p.Id);
+        Reconcile(ctx, existing.MapNodes,      campaign.MapNodes,      n => n.Id);
+        Reconcile(ctx, existing.BattleHistory, campaign.BattleHistory, b => b.Id);
+        Reconcile(ctx, existing.GmNotebook,    campaign.GmNotebook,    g => g.Id);
+
+        await ctx.SaveChangesAsync();
+        Campaign = campaign;
+    }
+
+    // Diffs the tracked collection against the incoming one by primary key:
+    //   - present in DB, absent from incoming  -> Remove (DELETE)
+    //   - present in both                      -> SetValues (UPDATE)
+    //   - absent from DB, present in incoming  -> add to tracked collection (INSERT)
+    // EF infers the FK on inserts from the parent's collection navigation.
+    private static void Reconcile<T>(
+        AppDbContext      ctx,
+        List<T>           tracked,
+        List<T>           incoming,
+        Func<T, string>   keySelector) where T : class
+    {
+        var trackedByKey  = tracked.ToDictionary(keySelector);
+        var incomingByKey = incoming.ToDictionary(keySelector);
+
+        foreach (var (key, entity) in trackedByKey)
+            if (!incomingByKey.ContainsKey(key))
+                ctx.Remove(entity);
+
+        foreach (var (key, entity) in incomingByKey)
+        {
+            if (trackedByKey.TryGetValue(key, out var trackedEntity))
+                ctx.Entry(trackedEntity).CurrentValues.SetValues(entity);
+            else
+                tracked.Add(entity);
         }
     }
 
-    public async Task SaveCampaignAsync(CampaignState state)
+    private static Campaign CreateDefault() => new()
     {
-        Campaign = state;
-        var json = JsonSerializer.Serialize(state, JsonOptions);
-        await js.InvokeVoidAsync("campaignStorage.save", StorageKey, json);
-    }
-
-    private static CampaignState CreateDefault() => new()
-    {
-        Players = new Dictionary<string, CampaignPlayer>
+        Players =
         {
-            ["p1"] = new CampaignPlayer { Id = "p1", Name = "Player 1" },
-            ["p2"] = new CampaignPlayer { Id = "p2", Name = "Player 2" }
+            new CampaignPlayer { Id = "p1", Name = "Player 1" },
+            new CampaignPlayer { Id = "p2", Name = "Player 2" }
         }
     };
 }
