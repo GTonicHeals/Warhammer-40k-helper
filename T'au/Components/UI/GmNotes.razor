@@ -257,7 +257,7 @@
 </style>
 
 @code {
-    [Parameter, EditorRequired] public CampaignState Campaign { get; set; } = default!;
+    [Parameter, EditorRequired] public Campaign Campaign { get; set; } = default!;
     [Parameter] public EventCallback OnNotesChanged { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public string? SelectedNoteId { get; set; }

@@ -116,8 +116,8 @@
                     var ctrl = _selectedNode.ControllingPlayerId;
                     var (badgeClass, badgeLabel) = ctrl switch
                     {
-                        "p1" => ("badge-p1", _campaign.Players.GetValueOrDefault("p1")?.Name ?? "Player 1"),
-                        "p2" => ("badge-p2", _campaign.Players.GetValueOrDefault("p2")?.Name ?? "Player 2"),
+                        "p1" => ("badge-p1", _campaign.Players.FirstOrDefault(p => p.Id == "p1")?.Name ?? "Player 1"),
+                        "p2" => ("badge-p2", _campaign.Players.FirstOrDefault(p => p.Id == "p2")?.Name ?? "Player 2"),
                         _    => ("badge-neutral", "Neutral")
                     };
 
@@ -164,9 +164,9 @@
                                         value="@(_selectedNode.ControllingPlayerId ?? "")"
                                         @onchange="e => SetController(_selectedNode, e.Value?.ToString())">
                                     <option value="">— Neutral —</option>
-                                    @foreach (var (pid, player) in _campaign.Players)
+                                    @foreach (var player in _campaign.Players)
                                     {
-                                        <option value="@pid">@player.Name (@pid.ToUpper())</option>
+                                        <option value="@player.Id">@player.Name (@player.Id.ToUpper())</option>
                                     }
                                 </select>
                             </div>
@@ -327,7 +327,7 @@
 </style>
 
 @code {
-    private CampaignState? _campaign;
+    private Campaign? _campaign;
     private CampaignMap? _mapComponent;
     private bool _loaded;
     private bool _saving;
