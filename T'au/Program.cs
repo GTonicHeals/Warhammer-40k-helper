@@ -27,8 +27,22 @@ builder.Services.AddScoped<WoundCalcStateService>();
 builder.Services.AddScoped<CrusadeManagerService>();
 builder.Services.AddScoped<CampaignManagerService>();
 builder.Services.AddScoped<GmNoteSeeder>();
+builder.Services.AddScoped<NodeSeeder>();
 
 var app = builder.Build();
+
+// Ensure the SQLite schema is up to date, then seed default data on first run.
+using (var scope = app.Services.CreateScope())
+{
+    var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+    await using var ctx = await factory.CreateDbContextAsync();
+    await ctx.Database.EnsureCreatedAsync();
+
+    var gmSeeder   = scope.ServiceProvider.GetRequiredService<GmNoteSeeder>();
+    var nodeSeeder = scope.ServiceProvider.GetRequiredService<NodeSeeder>();
+    await gmSeeder.SeedAsync();
+    await nodeSeeder.SeedAsync();
+}
 
 // Dev-only seed mode: `dotnet run --project T'au -- seed <name>` runs a seeder
 // against the configured DB and exits without starting the web host.

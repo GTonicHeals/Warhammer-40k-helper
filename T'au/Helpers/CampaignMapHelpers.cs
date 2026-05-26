@@ -7,7 +7,7 @@ public static class CampaignMapHelpers
     public record JsEdge(string From, string To);
 
     // Deduplicates bidirectional edges: for any pair (A,B) only one edge is emitted.
-    public static IReadOnlyList<JsEdge> BuildEdges(IEnumerable<TerritoryNode> nodes)
+    public static IReadOnlyList<JsEdge> BuildEdges(IEnumerable<Node> nodes)
     {
         var seen  = new HashSet<string>();
         var edges = new List<JsEdge>();

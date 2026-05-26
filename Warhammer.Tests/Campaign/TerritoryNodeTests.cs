@@ -8,7 +8,7 @@ using CampaignEntity = Warhammer.Models.Campaign.Campaign;
 
 namespace Warhammer.Tests.Campaign;
 
-// Verifies the SQLite-specific JSON column conversion for TerritoryNode.ConnectedNodeIds.
+// Verifies the SQLite-specific JSON column conversion for Node.ConnectedNodeIds.
 // Postgres mapped List<string> -> text[] natively; SQLite has no array type, so we serialise
 // to a JSON text column via HasConversion in AppDbContext. These tests guard that workaround
 // against regression — without them, a broken converter would fail silently in production.
@@ -22,7 +22,7 @@ public class TerritoryNodeTests : SqliteTestBase
         {
             MapNodes =
             {
-                new TerritoryNode
+                new Territory
                 {
                     Id               = nodeId,
                     Name             = "Hub",
@@ -44,7 +44,7 @@ public class TerritoryNodeTests : SqliteTestBase
         {
             ctx.ChangeTracker.Clear();
 
-            var loaded = await ctx.TerritoryNodes.SingleAsync(n => n.Id == nodeId);
+            var loaded = await ctx.Nodes.SingleAsync(n => n.Id == nodeId);
 
             loaded.ConnectedNodeIds.Should().HaveCount(3);
             loaded.ConnectedNodeIds.Should().BeEquivalentTo(new[] { "NodeA", "NodeB", "NodeC" });
@@ -59,7 +59,7 @@ public class TerritoryNodeTests : SqliteTestBase
         {
             MapNodes =
             {
-                new TerritoryNode
+                new Territory
                 {
                     Id               = nodeId,
                     Name             = "Hub",
@@ -78,14 +78,14 @@ public class TerritoryNodeTests : SqliteTestBase
         // silently miss. EF would treat the reference as unchanged and skip the UPDATE.
         await using (var ctx = CreateContext())
         {
-            var node = await ctx.TerritoryNodes.SingleAsync(n => n.Id == nodeId);
+            var node = await ctx.Nodes.SingleAsync(n => n.Id == nodeId);
             node.ConnectedNodeIds.Add("Gamma");
             await ctx.SaveChangesAsync();
         }
 
         await using (var ctx = CreateContext())
         {
-            var reloaded = await ctx.TerritoryNodes.AsNoTracking().SingleAsync(n => n.Id == nodeId);
+            var reloaded = await ctx.Nodes.AsNoTracking().SingleAsync(n => n.Id == nodeId);
             reloaded.ConnectedNodeIds.Should().BeEquivalentTo(new[] { "Alpha", "Beta", "Gamma" });
         }
     }

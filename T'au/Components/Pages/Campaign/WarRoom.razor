@@ -104,41 +104,48 @@ else
                                 </div>
                             }
                         }
-                        else if (_selectedNode is not null)
+                        else if (_selectedNode is Territory selectedTerritory)
                         {
-                            var ctrlClass = _selectedNode.ControllingPlayerId switch
+                            var ctrlClass = selectedTerritory.ControllingPlayerId switch
                             {
                                 "p1" => "wr-text-p1",
                                 "p2" => "wr-text-p2",
                                 _    => "wr-text-neutral"
                             };
-                            var ctrlName = _selectedNode.ControllingPlayerId switch
+                            var ctrlName = selectedTerritory.ControllingPlayerId switch
                             {
                                 "p1" => _p1?.Name ?? "Player 1",
                                 "p2" => _p2?.Name ?? "Player 2",
                                 _    => "Neutral"
                             };
-                            var links = _selectedNode.ConnectedNodeIds
+                            var links = selectedTerritory.ConnectedNodeIds
                                 .Select(id => _campaign!.MapNodes.FirstOrDefault(n => n.Id == id)?.Name)
                                 .Where(n => n is not null)
                                 .ToList();
-                            <div class="wr-intel-name">@_selectedNode.Name.ToUpperInvariant()</div>
+
+                            <div class="wr-intel-name">@selectedTerritory.Name.ToUpperInvariant()</div>
                             <div class="wr-intel-row">
                                 <span class="wr-intel-label">CONTROLLER</span>
                                 <span class="@ctrlClass wr-intel-val fw-bold">@ctrlName.ToUpperInvariant()</span>
                             </div>
-                            @if (!string.IsNullOrWhiteSpace(_selectedNode.Description))
+                            <div class="wr-intel-row">
+                                <span class="wr-intel-label">TERRAIN</span>
+                                <span class="wr-intel-val">
+                                    <i class="bi @TerrainIcon(selectedTerritory.TerrainType) me-1"></i>@TerrainLabel(selectedTerritory.TerrainType)
+                                </span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(selectedTerritory.Description))
                             {
                                 <div class="wr-intel-row">
                                     <span class="wr-intel-label">SITREP</span>
-                                    <span class="wr-intel-val">@_selectedNode.Description</span>
+                                    <span class="wr-intel-val">@selectedTerritory.Description</span>
                                 </div>
                             }
-                            @if (!string.IsNullOrWhiteSpace(_selectedNode.BuffEffect))
+                            @if (!string.IsNullOrWhiteSpace(selectedTerritory.BuffEffect))
                             {
                                 <div class="wr-intel-row">
                                     <span class="wr-intel-label">BUFF</span>
-                                    <span class="wr-intel-val text-warning">@_selectedNode.BuffEffect</span>
+                                    <span class="wr-intel-val text-warning">@selectedTerritory.BuffEffect</span>
                                 </div>
                             }
                             @if (links.Any())
@@ -148,9 +155,45 @@ else
                                     <span class="wr-intel-val">@string.Join(", ", links!)</span>
                                 </div>
                             }
-                            @if (!string.IsNullOrWhiteSpace(_selectedNode.SecretEventText))
+                        }
+                        else if (_selectedNode is CampaignEvent selectedEvent)
+                        {
+                            var links = selectedEvent.ConnectedNodeIds
+                                .Select(id => _campaign!.MapNodes.FirstOrDefault(n => n.Id == id)?.Name)
+                                .Where(n => n is not null)
+                                .ToList();
+                            var attachedName = selectedEvent.AttachedToNodeId is not null
+                                ? _campaign.MapNodes.FirstOrDefault(n => n.Id == selectedEvent.AttachedToNodeId)?.Name
+                                : null;
+
+                            <div class="wr-intel-name">
+                                <i class="bi bi-calendar-event-fill me-1" style="color:#bd93f9"></i>
+                                @selectedEvent.Name.ToUpperInvariant()
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(selectedEvent.Description))
                             {
-                                if (!_selectedNode.IsEventRevealed)
+                                <div class="wr-intel-row">
+                                    <span class="wr-intel-label">SITREP</span>
+                                    <span class="wr-intel-val">@selectedEvent.Description</span>
+                                </div>
+                            }
+                            @if (attachedName is not null)
+                            {
+                                <div class="wr-intel-row">
+                                    <span class="wr-intel-label">LOCATION</span>
+                                    <span class="wr-intel-val text-warning">@attachedName</span>
+                                </div>
+                            }
+                            @if (links.Any())
+                            {
+                                <div class="wr-intel-row">
+                                    <span class="wr-intel-label">LINKS</span>
+                                    <span class="wr-intel-val">@string.Join(", ", links!)</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(selectedEvent.SecretEventText))
+                            {
+                                if (!selectedEvent.IsEventRevealed)
                                 {
                                     <div class="mt-2">
                                         <button class="btn btn-warning btn-sm w-100" @onclick="RevealEventAsync">
@@ -164,7 +207,7 @@ else
                                         <div class="wr-secret-head">
                                             <i class="bi bi-eye me-1"></i>CLASSIFIED INTEL DECRYPTED
                                         </div>
-                                        <div class="wr-secret-body">@_selectedNode.SecretEventText</div>
+                                        <div class="wr-secret-body">@selectedEvent.SecretEventText</div>
                                     </div>
                                 }
                             }
@@ -380,7 +423,7 @@ else
 @code {
     private Campaign? _campaign;
     private bool _loaded;
-    private TerritoryNode? _selectedNode;
+    private Node?   _selectedNode;
     private GmNote? _selectedMapNote;
 
     private CampaignPlayer? _p1;
@@ -404,17 +447,18 @@ else
         _p2 = _campaign.Players.FirstOrDefault(p => p.Id == "p2");
 
         _terrByPid.Clear();
-        foreach (var node in _campaign.MapNodes)
+        foreach (var territory in _campaign.MapNodes.OfType<Territory>())
         {
-            var pid = node.ControllingPlayerId;
+            var pid = territory.ControllingPlayerId;
             if (!string.IsNullOrEmpty(pid))
                 _terrByPid[pid] = _terrByPid.GetValueOrDefault(pid) + 1;
         }
 
+        var territories = _campaign.MapNodes.OfType<Territory>().ToList();
         _p1Terr    = _terrByPid.GetValueOrDefault("p1");
         _p2Terr    = _terrByPid.GetValueOrDefault("p2");
-        _neuTerr   = _campaign.MapNodes.Count - _terrByPid.Values.Sum();
-        _totalTerr = _campaign.MapNodes.Count;
+        _neuTerr   = territories.Count - _terrByPid.Values.Sum();
+        _totalTerr = territories.Count;
     }
 
     private void HandleNodeSelected(string nodeId)
@@ -428,8 +472,40 @@ else
 
     private async Task RevealEventAsync()
     {
-        if (_selectedNode is null || _campaign is null) return;
-        _selectedNode.IsEventRevealed = true;
+        if (_campaign is null || _selectedNode is not CampaignEvent evt) return;
+        evt.IsEventRevealed = true;
         await CampaignSvc.SaveCampaignAsync(_campaign);
     }
+
+    private static string TerrainIcon(TerrainType t) => t switch
+    {
+        TerrainType.Standard        => "bi-hexagon",
+        TerrainType.Ruins           => "bi-building-slash",
+        TerrainType.HiveCity        => "bi-buildings-fill",
+        TerrainType.ForgeWorld      => "bi-gear-wide-connected",
+        TerrainType.Plain           => "bi-align-bottom",
+        TerrainType.Forest          => "bi-tree-fill",
+        TerrainType.City            => "bi-building-fill",
+        TerrainType.PowerPlant      => "bi-lightning-charge-fill",
+        TerrainType.WeaponStockpile => "bi-box-seam-fill",
+        TerrainType.MilitaryCamp    => "bi-flag-fill",
+        TerrainType.OrbitalDefence  => "bi-rocket-fill",
+        _                           => "bi-question-circle"
+    };
+
+    private static string TerrainLabel(TerrainType t) => t switch
+    {
+        TerrainType.Standard        => "Standard",
+        TerrainType.Ruins           => "Ruins",
+        TerrainType.HiveCity        => "Hive City",
+        TerrainType.ForgeWorld      => "Forge World",
+        TerrainType.Plain           => "Plain",
+        TerrainType.Forest          => "Forest",
+        TerrainType.City            => "City",
+        TerrainType.PowerPlant      => "Power Plant",
+        TerrainType.WeaponStockpile => "Stockpile",
+        TerrainType.MilitaryCamp    => "Mil. Camp",
+        TerrainType.OrbitalDefence  => "Orbital Defence",
+        _                           => t.ToString()
+    };
 }

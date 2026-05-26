@@ -12,7 +12,7 @@ namespace Warhammer.Tests.TestInfrastructure;
 // Dispose() drops it.
 //
 // EnsureCreated runs OnModelCreating, which is what wires up the HasConversion +
-// ValueComparer for TerritoryNode.ConnectedNodeIds — the production JSON list mapping.
+// ValueComparer for Node.ConnectedNodeIds — the production JSON list mapping.
 public abstract class SqliteTestBase : IDisposable
 {
     private readonly SqliteConnection                _connection;

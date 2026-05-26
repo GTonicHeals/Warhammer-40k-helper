@@ -11,7 +11,7 @@
         <h1 class="page-title text-warning">
             <i class="bi bi-map me-2"></i>Campaign Map Editor
         </h1>
-        <p class="text-muted">Build the strategic map — place territory nodes on the terrain, assign control, and link them.</p>
+        <p class="text-muted">Build the strategic map — place nodes on the terrain, assign control, and link them.</p>
     </div>
 
     @if (!_loaded)
@@ -87,113 +87,274 @@
 
             <!-- Right: Add node form + selected node editor -->
             <div class="col-lg-5">
+
+                <!-- Add node form -->
                 <div class="ce-form-panel mb-3">
-                    <h5 class="text-warning mb-3"><i class="bi bi-plus-circle me-2"></i>Add Territory Node</h5>
+                    <h5 class="text-warning mb-3"><i class="bi bi-plus-circle me-2"></i>Add Node</h5>
+
+                    <!-- Node type selector -->
+                    <div class="mb-3">
+                        <label class="form-label text-warning fw-bold small mb-1">Node Type</label>
+                        <div class="ce-type-grid">
+                            <button class="ce-type-tile @(!_newNodeIsEvent ? "ce-type-tile-on" : "")"
+                                    @onclick="() => _newNodeIsEvent = false">
+                                <i class="bi bi-geo-alt-fill"></i>
+                                <span>Territory</span>
+                            </button>
+                            <button class="ce-type-tile @(_newNodeIsEvent ? "ce-type-tile-on" : "")"
+                                    @onclick="() => _newNodeIsEvent = true">
+                                <i class="bi bi-calendar-event-fill"></i>
+                                <span>Campaign Event</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="mb-2">
                         <label class="form-label text-warning fw-bold small mb-1">Node Name</label>
                         <input class="form-control form-control-sm bg-dark text-white border-secondary"
-                               @bind="_newNodeName" placeholder="e.g. Sector Alpha" />
+                               @bind="_newNodeName" placeholder="@(_newNodeIsEvent ? "e.g. The Ambush at Krugg's Crossing" : "e.g. Sector Alpha")" />
                     </div>
                     <div class="mb-2">
                         <label class="form-label text-warning fw-bold small mb-1">Description</label>
                         <input class="form-control form-control-sm bg-dark text-white border-secondary"
-                               @bind="_newNodeDescription" placeholder="e.g. Ruined manufactorum district" />
+                               @bind="_newNodeDescription" placeholder="@(_newNodeIsEvent ? "e.g. A skirmish erupts in the ruins" : "e.g. Ruined manufactorum district")" />
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label text-warning fw-bold small mb-1">Buff Effect</label>
-                        <input class="form-control form-control-sm bg-dark text-white border-secondary"
-                               @bind="_newNodeBuffEffect" placeholder="e.g. +1 CP per round" />
-                    </div>
+
+                    @if (!_newNodeIsEvent)
+                    {
+                        <div class="mb-2">
+                            <label class="form-label text-warning fw-bold small mb-1">Buff Effect</label>
+                            <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                                   @bind="_newNodeBuffEffect" placeholder="e.g. +1 CP per round" />
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label text-warning fw-bold small mb-1">Victory Point Value</label>
+                            <input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary"
+                                   @bind="_newNodeVictoryPointValue" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-warning fw-bold small mb-1">Terrain Type</label>
+                            <div class="terrain-grid">
+                                @foreach (var terrain in Enum.GetValues<TerrainType>())
+                                {
+                                    var t = terrain;
+                                    <button class="terrain-tile @(_newNodeTerrainType == t ? "terrain-tile-on" : "")"
+                                            @onclick="() => _newNodeTerrainType = t">
+                                        <i class="bi @TerrainIcon(t)"></i>
+                                        <span>@TerrainLabel(t)</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-2">
+                            <label class="form-label text-warning fw-bold small mb-1">
+                                <i class="bi bi-eye-slash me-1"></i>Secret Event Text (Hidden from Players)
+                            </label>
+                            <textarea class="form-control form-control-sm bg-dark text-white border-secondary"
+                                      rows="3"
+                                      @bind="_newNodeSecretEventText"
+                                      placeholder="Write the hidden event text here…"></textarea>
+                        </div>
+                        <div class="mb-2 d-flex align-items-center gap-2">
+                            <input type="checkbox" class="form-check-input" id="chk-new-revealed"
+                                   @bind="_newNodeIsEventRevealed" />
+                            <label class="form-check-label small text-muted" for="chk-new-revealed">
+                                Mark event as already revealed (visible to players)
+                            </label>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-warning fw-bold small mb-1">Attached to Territory</label>
+                            <select class="form-select form-select-sm bg-dark text-white border-secondary"
+                                    value="@(_newNodeAttachedToNodeId ?? "")"
+                                    @onchange="e => _newNodeAttachedToNodeId = string.IsNullOrEmpty(e.Value?.ToString()) ? null : e.Value.ToString()">
+                                <option value="">— None —</option>
+                                @foreach (var node in _campaign!.MapNodes.OfType<Territory>())
+                                {
+                                    <option value="@node.Id">@(string.IsNullOrWhiteSpace(node.Name) ? "Unnamed" : node.Name)</option>
+                                }
+                            </select>
+                        </div>
+                    }
+
                     <button class="btn btn-sm btn-warning w-100" @onclick="AddNodeAsync"
                             disabled="@string.IsNullOrWhiteSpace(_newNodeName)">
-                        <i class="bi bi-plus-lg"></i> Add Node
+                        <i class="bi bi-plus-lg"></i> Add @(_newNodeIsEvent ? "Event" : "Territory")
                     </button>
                 </div>
 
+                <!-- Selected node editor -->
                 @if (_selectedNode is not null)
                 {
                     var otherNodes = _campaign.MapNodes.Where(n => n.Id != _selectedNode.Id).ToList();
-                    var ctrl = _selectedNode.ControllingPlayerId;
-                    var (badgeClass, badgeLabel) = ctrl switch
+
+                    @if (_selectedNode is Territory territory)
                     {
-                        "p1" => ("badge-p1", _campaign.Players.FirstOrDefault(p => p.Id == "p1")?.Name ?? "Player 1"),
-                        "p2" => ("badge-p2", _campaign.Players.FirstOrDefault(p => p.Id == "p2")?.Name ?? "Player 2"),
-                        _    => ("badge-neutral", "Neutral")
-                    };
+                        var ctrl = territory.ControllingPlayerId;
+                        var (badgeClass, badgeLabel) = ctrl switch
+                        {
+                            "p1" => ("badge-p1", _campaign.Players.FirstOrDefault(p => p.Id == "p1")?.Name ?? "Player 1"),
+                            "p2" => ("badge-p2", _campaign.Players.FirstOrDefault(p => p.Id == "p2")?.Name ?? "Player 2"),
+                            _    => ("badge-neutral", "Neutral")
+                        };
 
-                    <div class="ce-node-card">
-                        <div class="ce-node-header">
-                            <span><i class="bi bi-geo-alt-fill me-2"></i>@(string.IsNullOrWhiteSpace(_selectedNode.Name) ? "Unnamed Node" : _selectedNode.Name)</span>
-                            <span class="ce-badge @badgeClass">@badgeLabel</span>
-                        </div>
-                        <div class="ce-node-body">
-                            <div class="mb-2">
-                                <label class="form-label small text-warning mb-1">Node Name</label>
-                                <input class="form-control form-control-sm bg-dark text-white border-secondary"
-                                       @bind="_selectedNode.Name" />
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label small text-warning mb-1">Description</label>
-                                <input class="form-control form-control-sm bg-dark text-white border-secondary"
-                                       @bind="_selectedNode.Description" placeholder="—" />
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label small text-warning mb-1">Buff Effect</label>
-                                <input class="form-control form-control-sm bg-dark text-white border-secondary"
-                                       @bind="_selectedNode.BuffEffect" placeholder="—" />
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label small text-warning mb-1">
-                                    <i class="bi bi-eye-slash me-1"></i>Secret Narrative Event (Hidden from Players)
-                                </label>
-                                <textarea class="form-control form-control-sm bg-dark text-white border-secondary"
-                                          rows="3"
-                                          @bind="_selectedNode.SecretEventText"
-                                          placeholder="Write the hidden event text here…"></textarea>
-                            </div>
-                            <div class="mb-2 d-flex align-items-center gap-2">
-                                <input type="checkbox" class="form-check-input" id="chk-revealed"
-                                       @bind="_selectedNode.IsEventRevealed" />
-                                <label class="form-check-label small text-muted" for="chk-revealed">
-                                    Mark event as already revealed (visible to players)
-                                </label>
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label small text-warning mb-1">Controller</label>
-                                <select class="form-select form-select-sm bg-dark text-white border-secondary"
-                                        value="@(_selectedNode.ControllingPlayerId ?? "")"
-                                        @onchange="e => SetController(_selectedNode, e.Value?.ToString())">
-                                    <option value="">— Neutral —</option>
-                                    @foreach (var player in _campaign.Players)
-                                    {
-                                        <option value="@player.Id">@player.Name (@player.Id.ToUpper())</option>
-                                    }
-                                </select>
-                            </div>
-
-                            @if (otherNodes.Any())
-                            {
-                                <label class="form-label small text-warning mb-1">Connections</label>
-                                <div class="ce-connections-list mb-2">
-                                    @foreach (var other in otherNodes)
-                                    {
-                                        var linked = _selectedNode.ConnectedNodeIds.Contains(other.Id);
-                                        <label class="ce-connection-item @(linked ? "linked" : "")">
-                                            <input type="checkbox" checked="@linked"
-                                                   @onchange="() => ToggleConnection(_selectedNode, other.Id)" />
-                                            <span>@(string.IsNullOrWhiteSpace(other.Name) ? "Unnamed" : other.Name)</span>
-                                        </label>
-                                    }
+                        <div class="ce-node-card">
+                            <div class="ce-node-header">
+                                <span><i class="bi bi-geo-alt-fill me-2"></i>@(string.IsNullOrWhiteSpace(territory.Name) ? "Unnamed Territory" : territory.Name)</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="ce-badge @badgeClass">@badgeLabel</span>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveNode(_selectedNode.Id)">
+                                        <i class="bi bi-trash me-1"></i>Delete
+                                    </button>
                                 </div>
-                            }
+                            </div>
+                            <div class="ce-node-body">
+                                <div class="mb-2">
+                                    <label class="form-label small text-warning mb-1">Node Name</label>
+                                    <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                                           @bind="_selectedNode.Name" />
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small text-warning mb-1">Description</label>
+                                    <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                                           @bind="_selectedNode.Description" placeholder="—" />
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small text-warning mb-1">Buff Effect</label>
+                                    <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                                           @bind="territory.BuffEffect" placeholder="—" />
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small text-warning mb-1">Victory Point Value</label>
+                                    <input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary"
+                                           @bind="territory.VictoryPointValue" />
+                                </div>
 
-                            <div class="text-end mt-2">
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveNode(_selectedNode.Id)">
-                                    <i class="bi bi-trash"></i> Remove
-                                </button>
+                                <!-- Terrain Type picker -->
+                                <div class="mb-2">
+                                    <label class="form-label small text-warning mb-1">Terrain Type</label>
+                                    <div class="terrain-grid">
+                                        @foreach (var terrain in Enum.GetValues<TerrainType>())
+                                        {
+                                            var t = terrain;
+                                            <button class="terrain-tile @(territory.TerrainType == t ? "terrain-tile-on" : "")"
+                                                    @onclick="() => territory.TerrainType = t">
+                                                <i class="bi @TerrainIcon(t)"></i>
+                                                <span>@TerrainLabel(t)</span>
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="mb-2">
+                                    <label class="form-label small text-warning mb-1">Controller</label>
+                                    <select class="form-select form-select-sm bg-dark text-white border-secondary"
+                                            value="@(territory.ControllingPlayerId ?? "")"
+                                            @onchange="e => SetController(territory, e.Value?.ToString())">
+                                        <option value="">— Neutral —</option>
+                                        @foreach (var player in _campaign.Players)
+                                        {
+                                            <option value="@player.Id">@player.Name (@player.Id.ToUpper())</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                @if (otherNodes.Any())
+                                {
+                                    <label class="form-label small text-warning mb-1">Connections</label>
+                                    <div class="ce-connections-list mb-2">
+                                        @foreach (var other in otherNodes)
+                                        {
+                                            var linked = _selectedNode.ConnectedNodeIds.Contains(other.Id);
+                                            <label class="ce-connection-item @(linked ? "linked" : "")">
+                                                <input type="checkbox" checked="@linked"
+                                                       @onchange="() => ToggleConnection(_selectedNode, other.Id)" />
+                                                <span>@(string.IsNullOrWhiteSpace(other.Name) ? "Unnamed" : other.Name)</span>
+                                            </label>
+                                        }
+                                    </div>
+                                }
+
                             </div>
                         </div>
-                    </div>
+                    }
+                    else if (_selectedNode is CampaignEvent evt)
+                    {
+                        var attachedName = evt.AttachedToNodeId is not null
+                            ? _campaign.MapNodes.FirstOrDefault(n => n.Id == evt.AttachedToNodeId)?.Name
+                            : null;
+
+                        <div class="ce-node-card">
+                            <div class="ce-node-header">
+                                <span><i class="bi bi-calendar-event-fill me-2"></i>@(string.IsNullOrWhiteSpace(evt.Name) ? "Unnamed Event" : evt.Name)</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="ce-badge badge-event">EVENT</span>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveNode(_selectedNode.Id)">
+                                        <i class="bi bi-trash me-1"></i>Delete
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="ce-node-body">
+                                <div class="mb-2">
+                                    <label class="form-label small text-warning mb-1">Event Name</label>
+                                    <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                                           @bind="_selectedNode.Name" />
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small text-warning mb-1">Description</label>
+                                    <input class="form-control form-control-sm bg-dark text-white border-secondary"
+                                           @bind="_selectedNode.Description" placeholder="—" />
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small text-warning mb-1">
+                                        <i class="bi bi-eye-slash me-1"></i>Secret Event Text (Hidden from Players)
+                                    </label>
+                                    <textarea class="form-control form-control-sm bg-dark text-white border-secondary"
+                                              rows="3"
+                                              @bind="evt.SecretEventText"
+                                              placeholder="Write the hidden event text here…"></textarea>
+                                </div>
+                                <div class="mb-2 d-flex align-items-center gap-2">
+                                    <input type="checkbox" class="form-check-input" id="chk-revealed"
+                                           @bind="evt.IsEventRevealed" />
+                                    <label class="form-check-label small text-muted" for="chk-revealed">
+                                        Mark event as already revealed (visible to players)
+                                    </label>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small text-warning mb-1">Attached to Territory</label>
+                                    <select class="form-select form-select-sm bg-dark text-white border-secondary"
+                                            value="@(evt.AttachedToNodeId ?? "")"
+                                            @onchange="e => evt.AttachedToNodeId = string.IsNullOrEmpty(e.Value?.ToString()) ? null : e.Value.ToString()">
+                                        <option value="">— None —</option>
+                                        @foreach (var node in _campaign.MapNodes.OfType<Territory>())
+                                        {
+                                            <option value="@node.Id">@(string.IsNullOrWhiteSpace(node.Name) ? "Unnamed" : node.Name)</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                @if (otherNodes.Any())
+                                {
+                                    <label class="form-label small text-warning mb-1">Connections</label>
+                                    <div class="ce-connections-list mb-2">
+                                        @foreach (var other in otherNodes)
+                                        {
+                                            var linked = _selectedNode.ConnectedNodeIds.Contains(other.Id);
+                                            <label class="ce-connection-item @(linked ? "linked" : "")">
+                                                <input type="checkbox" checked="@linked"
+                                                       @onchange="() => ToggleConnection(_selectedNode, other.Id)" />
+                                                <span>@(string.IsNullOrWhiteSpace(other.Name) ? "Unnamed" : other.Name)</span>
+                                            </label>
+                                        }
+                                    </div>
+                                }
+
+                            </div>
+                        </div>
+                    }
                 }
                 else if (_selectedMapNote is not null)
                 {
@@ -295,14 +456,19 @@
     .ce-node-body { padding: 10px 12px; color: #ddd; }
     .ce-badge {
         font-size: 0.7rem;
-        padding: 2px 8px;
+        padding: 3px 8px;
         border-radius: 10px;
         font-weight: 700;
         letter-spacing: 0.5px;
+        display: inline-flex;
+        align-items: center;
+        line-height: 1;
     }
+
     .badge-p1      { background: #1a3a6a; color: #7fb3f5; }
     .badge-p2      { background: #6a1a1a; color: #f57b7b; }
     .badge-neutral { background: #3a3a3a; color: #aaa; }
+    .badge-event   { background: #2e1a5a; color: #bd93f9; }
     .ce-connections-list { display: flex; flex-wrap: wrap; gap: 6px; }
     .ce-connection-item {
         display: flex;
@@ -324,6 +490,72 @@
         background: rgba(211, 84, 0, 0.12);
     }
     .ce-connection-item input[type="checkbox"] { accent-color: #d35400; }
+
+    /* Node type selector */
+    .ce-type-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+    }
+    .ce-type-tile {
+        background: #1e1e1e;
+        border: 1px solid #444;
+        border-radius: 5px;
+        padding: 10px 6px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.72rem;
+        color: #888;
+        font-family: 'Courier New', monospace;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        transition: border-color 0.12s, color 0.12s, background 0.12s;
+        user-select: none;
+    }
+    .ce-type-tile i { font-size: 1.2rem; }
+    .ce-type-tile:hover { border-color: #888; color: #ccc; background: #2a2a2a; }
+    .ce-type-tile-on {
+        border-color: #d35400 !important;
+        color: #ffc107 !important;
+        background: rgba(211, 84, 0, 0.12) !important;
+        box-shadow: 0 0 0 1px rgba(211, 84, 0, 0.3) inset;
+    }
+
+    /* Terrain type picker */
+    .terrain-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+    }
+    .terrain-tile {
+        background: #1e1e1e;
+        border: 1px solid #3a3a3a;
+        border-radius: 4px;
+        padding: 7px 4px 5px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        font-size: 0.6rem;
+        color: #777;
+        text-align: center;
+        line-height: 1.2;
+        user-select: none;
+        font-family: 'Courier New', monospace;
+        letter-spacing: 0.3px;
+        transition: border-color 0.12s, color 0.12s, background 0.12s;
+    }
+    .terrain-tile i { font-size: 1rem; }
+    .terrain-tile:hover { border-color: #777; color: #ccc; background: #2a2a2a; }
+    .terrain-tile-on {
+        border-color: #d35400 !important;
+        color: #ffc107 !important;
+        background: rgba(211, 84, 0, 0.12) !important;
+    }
 </style>
 
 @code {
@@ -333,12 +565,20 @@
     private bool _saving;
     private bool _showGmNotes;
     private string? _gmNotesNoteId;
-    private TerritoryNode? _selectedNode;
+    private Node?   _selectedNode;
     private GmNote? _selectedMapNote;
 
-    private string _newNodeName        = "";
-    private string _newNodeDescription = "";
-    private string _newNodeBuffEffect  = "";
+    private bool       _newNodeIsEvent          = false;
+    private string     _newNodeName             = "";
+    private string     _newNodeDescription      = "";
+    // Territory-specific
+    private string     _newNodeBuffEffect        = "";
+    private int        _newNodeVictoryPointValue = 1;
+    private TerrainType _newNodeTerrainType      = TerrainType.Standard;
+    // CampaignEvent-specific
+    private string     _newNodeSecretEventText   = "";
+    private bool       _newNodeIsEventRevealed   = false;
+    private string?    _newNodeAttachedToNodeId  = null;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -399,16 +639,41 @@
             ? await _mapComponent.GetViewCenterAsync()
             : (0.5, 0.5);
 
-        _campaign.MapNodes.Add(new TerritoryNode
+        if (_newNodeIsEvent)
         {
-            Name        = _newNodeName.Trim(),
-            Description = _newNodeDescription.Trim(),
-            BuffEffect  = _newNodeBuffEffect.Trim(),
-            X           = cx,
-            Y           = cy
-        });
+            _campaign.MapNodes.Add(new CampaignEvent
+            {
+                Name             = _newNodeName.Trim(),
+                Description      = _newNodeDescription.Trim(),
+                SecretEventText  = _newNodeSecretEventText.Trim(),
+                IsEventRevealed  = _newNodeIsEventRevealed,
+                AttachedToNodeId = _newNodeAttachedToNodeId,
+                X                = cx,
+                Y                = cy
+            });
+            _newNodeSecretEventText  = "";
+            _newNodeIsEventRevealed  = false;
+            _newNodeAttachedToNodeId = null;
+        }
+        else
+        {
+            _campaign.MapNodes.Add(new Territory
+            {
+                Name               = _newNodeName.Trim(),
+                Description        = _newNodeDescription.Trim(),
+                BuffEffect         = _newNodeBuffEffect.Trim(),
+                VictoryPointValue  = _newNodeVictoryPointValue,
+                TerrainType        = _newNodeTerrainType,
+                X                  = cx,
+                Y                  = cy
+            });
+            _newNodeBuffEffect        = "";
+            _newNodeVictoryPointValue = 1;
+            _newNodeTerrainType       = TerrainType.Standard;
+        }
 
-        _newNodeName = _newNodeDescription = _newNodeBuffEffect = "";
+        _newNodeName        = "";
+        _newNodeDescription = "";
     }
 
     private void RemoveNode(string nodeId)
@@ -443,10 +708,10 @@
         await CampaignSvc.SaveCampaignAsync(_campaign);
     }
 
-    private void SetController(TerritoryNode node, string? value) =>
-        node.ControllingPlayerId = string.IsNullOrEmpty(value) ? null : value;
+    private void SetController(Territory territory, string? value) =>
+        territory.ControllingPlayerId = string.IsNullOrEmpty(value) ? null : value;
 
-    private void ToggleConnection(TerritoryNode node, string targetId)
+    private void ToggleConnection(Node node, string targetId)
     {
         if (_campaign is null) return;
         var target = _campaign.MapNodes.FirstOrDefault(n => n.Id == targetId);
@@ -473,4 +738,36 @@
         await CampaignSvc.SaveCampaignAsync(_campaign);
         _saving = false;
     }
+
+    private static string TerrainIcon(TerrainType t) => t switch
+    {
+        TerrainType.Standard        => "bi-hexagon",
+        TerrainType.Ruins           => "bi-building-slash",
+        TerrainType.HiveCity        => "bi-buildings-fill",
+        TerrainType.ForgeWorld      => "bi-gear-wide-connected",
+        TerrainType.Plain           => "bi-align-bottom",
+        TerrainType.Forest          => "bi-tree-fill",
+        TerrainType.City            => "bi-building-fill",
+        TerrainType.PowerPlant      => "bi-lightning-charge-fill",
+        TerrainType.WeaponStockpile => "bi-box-seam-fill",
+        TerrainType.MilitaryCamp    => "bi-flag-fill",
+        TerrainType.OrbitalDefence  => "bi-rocket-fill",
+        _                           => "bi-question-circle"
+    };
+
+    private static string TerrainLabel(TerrainType t) => t switch
+    {
+        TerrainType.Standard        => "Standard",
+        TerrainType.Ruins           => "Ruins",
+        TerrainType.HiveCity        => "Hive City",
+        TerrainType.ForgeWorld      => "Forge World",
+        TerrainType.Plain           => "Plain",
+        TerrainType.Forest          => "Forest",
+        TerrainType.City            => "City",
+        TerrainType.PowerPlant      => "Power Plant",
+        TerrainType.WeaponStockpile => "Stockpile",
+        TerrainType.MilitaryCamp    => "Mil. Camp",
+        TerrainType.OrbitalDefence  => "Orbital Def.",
+        _                           => t.ToString()
+    };
 }

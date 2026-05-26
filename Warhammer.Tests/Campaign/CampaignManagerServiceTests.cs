@@ -44,9 +44,9 @@ public class CampaignManagerServiceTests : SqliteTestBase
             {
                 CampaignName = "Seeded",
                 Players       = { new CampaignPlayer { Id = "p1", Name = "P1" } },
-                MapNodes      = { new TerritoryNode  { Id = "n1", Name = "Hab" } },
-                BattleHistory = { new BattleRecord   { Id = "b1", MissionName = "Skirmish" } },
-                GmNotebook    = { new GmNote         { Id = "g1", Title = "Note" } }
+                MapNodes      = { new Territory       { Id = "n1", Name = "Hab" } },
+                BattleHistory = { new BattleRecord    { Id = "b1", MissionName = "Skirmish" } },
+                GmNotebook    = { new GmNote          { Id = "g1", Title = "Note" } }
             };
             ctx.Campaigns.Add(seed);
             await ctx.SaveChangesAsync();
@@ -65,15 +65,15 @@ public class CampaignManagerServiceTests : SqliteTestBase
     [Fact]
     public async Task SaveCampaignAsync_inserts_campaign_with_relational_children()
     {
-        // Build a brand-new campaign carrying a TerritoryNode (map node) and a pinned,
+        // Build a brand-new campaign carrying a Territory (map node) and a pinned,
         // public GmNote (the "MapNote" — a GmNote with X/Y >= 0 and IsPublic = true).
         // Then verify, by querying the raw child tables in an independent context,
         // that the rows landed with correct FKs.
         var campaign = new CampaignEntity
         {
             CampaignName = "Insert With Children",
-            MapNodes     = { new TerritoryNode { Id = "node-1", Name = "Forge World" } },
-            GmNotebook   = { new GmNote        { Id = "note-1", Title = "Pinned", X = 0.5, Y = 0.5, IsPublic = true } }
+            MapNodes     = { new Territory { Id = "node-1", Name = "Forge World" } },
+            GmNotebook   = { new GmNote   { Id = "note-1", Title = "Pinned", X = 0.5, Y = 0.5, IsPublic = true } }
         };
 
         await CreateService().SaveCampaignAsync(campaign);
@@ -81,9 +81,9 @@ public class CampaignManagerServiceTests : SqliteTestBase
         campaign.Id.Should().BePositive("EF should populate the Id after the insert");
 
         await using var ctx = CreateContext();
-        var node = await ctx.TerritoryNodes.AsNoTracking().SingleAsync(n => n.Id == "node-1");
-        var note = await ctx.GmNotes       .AsNoTracking().SingleAsync(g => g.Id == "note-1");
-        node.CampaignId.Should().Be(campaign.Id, "the TerritoryNode FK should point at the new campaign");
+        var node = await ctx.Nodes  .AsNoTracking().SingleAsync(n => n.Id == "node-1");
+        var note = await ctx.GmNotes.AsNoTracking().SingleAsync(g => g.Id == "note-1");
+        node.CampaignId.Should().Be(campaign.Id, "the Territory FK should point at the new campaign");
         node.Name      .Should().Be("Forge World");
         note.CampaignId.Should().Be(campaign.Id, "the GmNote FK should point at the new campaign");
         note.IsPublic  .Should().BeTrue();
@@ -95,9 +95,9 @@ public class CampaignManagerServiceTests : SqliteTestBase
     public async Task LoadCampaignAsync_returns_existing_campaign_with_all_four_collections_populated()
     {
         var initial = await CreateService().LoadCampaignAsync();
-        initial.MapNodes     .Add(new TerritoryNode { Name = "Hab Block", X = 0.1, Y = 0.2 });
-        initial.BattleHistory.Add(new BattleRecord  { MissionName = "Sweep and Clear", WinnerPlayerId = "p1" });
-        initial.GmNotebook   .Add(new GmNote        { Title = "Sector 4 Anomaly" });
+        initial.MapNodes     .Add(new Territory    { Name = "Hab Block", X = 0.1, Y = 0.2 });
+        initial.BattleHistory.Add(new BattleRecord { MissionName = "Sweep and Clear", WinnerPlayerId = "p1" });
+        initial.GmNotebook   .Add(new GmNote       { Title = "Sector 4 Anomaly" });
         await CreateService().SaveCampaignAsync(initial);
 
         var loaded = await CreateService().LoadCampaignAsync();
@@ -145,8 +145,8 @@ public class CampaignManagerServiceTests : SqliteTestBase
     {
         var c = await CreateService().LoadCampaignAsync();
         var nodeId = Guid.NewGuid().ToString();
-        c.MapNodes  .Add(new TerritoryNode { Id = nodeId, Name = "Forge World" });
-        c.GmNotebook.Add(new GmNote        { Title = "Pinned", X = 0.5, Y = 0.5, IsPublic = true });
+        c.MapNodes  .Add(new Territory { Id = nodeId, Name = "Forge World" });
+        c.GmNotebook.Add(new GmNote   { Title = "Pinned", X = 0.5, Y = 0.5, IsPublic = true });
 
         await CreateService().SaveCampaignAsync(c);
 
@@ -178,8 +178,8 @@ public class CampaignManagerServiceTests : SqliteTestBase
     public async Task SaveCampaignAsync_deletes_removed_child_entities()
     {
         var c = await CreateService().LoadCampaignAsync();
-        c.MapNodes.Add(new TerritoryNode { Id = "n1", Name = "Alpha" });
-        c.MapNodes.Add(new TerritoryNode { Id = "n2", Name = "Beta"  });
+        c.MapNodes.Add(new Territory { Id = "n1", Name = "Alpha" });
+        c.MapNodes.Add(new Territory { Id = "n2", Name = "Beta"  });
         await CreateService().SaveCampaignAsync(c);
 
         var reload = await CreateService().LoadCampaignAsync();
@@ -202,14 +202,14 @@ public class CampaignManagerServiceTests : SqliteTestBase
     }
 
     [Fact]
-    public async Task TerritoryNode_ConnectedNodeIds_roundtrips_and_updates_through_json_conversion()
+    public async Task Node_ConnectedNodeIds_roundtrips_and_updates_through_json_conversion()
     {
         // Same shape as the focused unit test in TerritoryNodeTests, but goes through
         // the full service round-trip (LoadCampaignAsync / SaveCampaignAsync) instead of
         // direct AppDbContext access — catches regressions in the service-level
         // reconciliation flow specifically.
         var c = await CreateService().LoadCampaignAsync();
-        c.MapNodes.Add(new TerritoryNode
+        c.MapNodes.Add(new Territory
         {
             Id               = "hub",
             Name             = "Hub",
@@ -233,9 +233,9 @@ public class CampaignManagerServiceTests : SqliteTestBase
     public async Task Deleting_campaign_cascades_to_all_child_collections()
     {
         var c = await CreateService().LoadCampaignAsync();
-        c.MapNodes     .Add(new TerritoryNode { Name = "Hab" });
-        c.BattleHistory.Add(new BattleRecord  { MissionName = "Skirmish" });
-        c.GmNotebook   .Add(new GmNote        { Title = "Note" });
+        c.MapNodes     .Add(new Territory   { Name = "Hab" });
+        c.BattleHistory.Add(new BattleRecord { MissionName = "Skirmish" });
+        c.GmNotebook   .Add(new GmNote      { Title = "Note" });
         await CreateService().SaveCampaignAsync(c);
 
         // Delete the campaign root. The FK ON DELETE CASCADE constraints on
@@ -251,7 +251,7 @@ public class CampaignManagerServiceTests : SqliteTestBase
         {
             (await ctx.Campaigns      .AnyAsync()).Should().BeFalse();
             (await ctx.CampaignPlayers.AnyAsync()).Should().BeFalse();
-            (await ctx.TerritoryNodes .AnyAsync()).Should().BeFalse();
+            (await ctx.Nodes          .AnyAsync()).Should().BeFalse();
             (await ctx.BattleRecords  .AnyAsync()).Should().BeFalse();
             (await ctx.GmNotes        .AnyAsync()).Should().BeFalse();
         }
