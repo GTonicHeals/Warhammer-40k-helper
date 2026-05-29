@@ -1,0 +1,100 @@
+/* Node type selector (Territory / Campaign Event) */
+.ce-type-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+.ce-type-tile {
+    background: #1e1e1e;
+    border: 1px solid #444;
+    border-radius: 5px;
+    padding: 10px 6px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    color: #888;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    transition: border-color 0.12s, color 0.12s, background 0.12s;
+    user-select: none;
+}
+.ce-type-tile i { font-size: 1.2rem; }
+.ce-type-tile:hover { border-color: #888; color: #ccc; background: #2a2a2a; }
+.ce-type-tile-on {
+    border-color: #d35400 !important;
+    color: #ffc107 !important;
+    background: rgba(211, 84, 0, 0.12) !important;
+    box-shadow: 0 0 0 1px rgba(211, 84, 0, 0.3) inset;
+}
+
+/* Event → Territory attachment grid */
+.ce-attachment-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+.ce-attachment-tile {
+    background: #1e1e1e;
+    border: 1px solid #3a3a3a;
+    border-radius: 5px;
+    padding: 8px 6px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    color: #888;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.3px;
+    text-align: center;
+    line-height: 1.2;
+    user-select: none;
+    transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+.ce-attachment-tile i { font-size: 1rem; }
+.ce-attachment-tile:hover { border-color: #777; color: #ccc; background: #2a2a2a; }
+.ce-attachment-tile-on {
+    border-color: #d35400 !important;
+    color: #ffc107 !important;
+    background: rgba(211, 84, 0, 0.12) !important;
+}
+
+/* Terrain type picker */
+.terrain-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+}
+.terrain-tile {
+    background: #1e1e1e;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    padding: 7px 4px 5px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.6rem;
+    color: #777;
+    text-align: center;
+    line-height: 1.2;
+    user-select: none;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.3px;
+    transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+.terrain-tile i { font-size: 1rem; }
+.terrain-tile:hover { border-color: #777; color: #ccc; background: #2a2a2a; }
+.terrain-tile-on {
+    border-color: #d35400 !important;
+    color: #ffc107 !important;
+    background: rgba(211, 84, 0, 0.12) !important;
+}

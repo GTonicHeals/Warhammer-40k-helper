@@ -1,0 +1,27 @@
+@typeparam TValue
+
+<div class="@CssClass">
+    @foreach (var option in Options)
+    {
+        var v = option.Value;
+        var isSelected = EqualityComparer<TValue>.Default.Equals(Selected, v);
+        <button type="button"
+                class="@TileClass @(isSelected ? OnClass : "")"
+                @onclick="() => SelectedChanged.InvokeAsync(v)">
+            @if (!string.IsNullOrEmpty(option.Icon))
+            {
+                <i class="bi @option.Icon"></i>
+            }
+            <span>@option.Label</span>
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<TilePickerOption<TValue>> Options { get; set; } = Array.Empty<TilePickerOption<TValue>>();
+    [Parameter] public TValue Selected { get; set; } = default!;
+    [Parameter] public EventCallback<TValue> SelectedChanged { get; set; }
+    [Parameter, EditorRequired] public string CssClass { get; set; } = "";
+    [Parameter, EditorRequired] public string TileClass { get; set; } = "";
+    [Parameter, EditorRequired] public string OnClass { get; set; } = "";
+}

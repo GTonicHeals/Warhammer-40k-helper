@@ -1,0 +1,139 @@
+.ce-biome-select { max-width: 160px; }
+
+/* Save confirmation chip */
+.ce-save-toast {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(34, 139, 34, 0.18);
+    color: #4ade80;
+    border: 1px solid rgba(34, 139, 34, 0.5);
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    animation: ce-save-toast-in 0.2s ease-out, ce-save-toast-out 0.4s ease-in 1.6s forwards;
+}
+@keyframes ce-save-toast-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ce-save-toast-out {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
+.campaign-title-input {
+    background: transparent;
+    border: 1px solid transparent;
+    color: #ffc107;
+    font-size: 1.6rem;
+    font-weight: bold;
+}
+.campaign-title-input:focus {
+    background: #1a1a1a;
+    border-color: #d35400;
+    color: #ffc107;
+    box-shadow: none;
+}
+
+.ce-form-panel {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 16px;
+}
+
+/* Unified editor card (Territory / Event / Map Note) */
+.ce-editor-card {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.ce-editor-header {
+    background: #1a1a1a;
+    padding: 8px 12px;
+    border-bottom: 1px solid #444;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+.ce-editor-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+    color: #d35400;
+    font-weight: bold;
+}
+.ce-editor-title i {
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+.ce-editor-title-input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    color: #ffc107;
+    font-size: 1.05rem;
+    font-weight: bold;
+    padding: 4px 6px;
+    border-radius: 4px;
+    outline: none;
+}
+.ce-editor-title-input::placeholder { color: #888; font-weight: normal; font-style: italic; }
+.ce-editor-title-input:focus {
+    background: #2a2a2a;
+    border-color: #d35400;
+    color: #ffc107;
+    box-shadow: none;
+}
+.ce-editor-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.ce-editor-body { padding: 10px 12px; color: #ddd; }
+
+.ce-badge {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+}
+
+.badge-p1      { background: #1a3a6a; color: #7fb3f5; }
+.badge-p2      { background: #6a1a1a; color: #f57b7b; }
+.badge-neutral { background: #3a3a3a; color: #aaa; }
+.badge-event   { background: #2e1a5a; color: #bd93f9; }
+
+.ce-connections-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.ce-connection-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background: #1e1e1e;
+    font-size: 0.82rem;
+    color: #aaa;
+    user-select: none;
+    transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+.ce-connection-item.linked {
+    border-color: #d35400;
+    color: #ffc107;
+    background: rgba(211, 84, 0, 0.12);
+}
+.ce-connection-item input[type="checkbox"] { accent-color: #d35400; }

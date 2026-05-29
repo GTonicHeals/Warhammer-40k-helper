@@ -18,7 +18,10 @@
                     nodeMap.TryGetValue(edge.To,   out var n2) &&
                     n1.X >= 0 && n2.X >= 0)
                 {
-                    <line class="map-edge"
+                    var edgeClass = edge.Kind == CampaignMapHelpers.EdgeKind.EventAttachment
+                        ? "map-edge map-edge-attachment"
+                        : "map-edge";
+                    <line class="@edgeClass"
                           x1="@Fmt(n1.X * 1000)" y1="@Fmt(n1.Y * 1000)"
                           x2="@Fmt(n2.X * 1000)" y2="@Fmt(n2.Y * 1000)" />
                 }
@@ -95,6 +98,13 @@
         stroke-width: 2.5;
         stroke-dasharray: 6 4;
         opacity: 0.7;
+    }
+    /* Event-attachment links: solid violet line, thinner, no dashes */
+    .map-edge-attachment {
+        stroke: #bd93f9;
+        stroke-width: 1.5;
+        stroke-dasharray: none;
+        opacity: 0.85;
     }
 
     .map-node {

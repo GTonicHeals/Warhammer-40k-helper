@@ -4,16 +4,23 @@ namespace Warhammer.Helpers;
 
 public static class CampaignMapHelpers
 {
-    public record JsEdge(string From, string To);
+    public enum EdgeKind { TerritoryLink, EventAttachment }
 
-    // Deduplicates bidirectional edges: for any pair (A,B) only one edge is emitted.
+    public record JsEdge(string From, string To, EdgeKind Kind = EdgeKind.TerritoryLink);
+
+    // Deduplicates bidirectional edges: for any pair (A,B) only one TerritoryLink edge is emitted.
+    // Events do not participate in ConnectedNodeIds; their only edge is to their AttachedToNodeId.
     public static IReadOnlyList<JsEdge> BuildEdges(IEnumerable<Node> nodes)
     {
-        var seen  = new HashSet<string>();
-        var edges = new List<JsEdge>();
+        var nodeList = nodes as IList<Node> ?? nodes.ToList();
+        var nodeIds  = new HashSet<string>(nodeList.Select(n => n.Id));
+        var seen     = new HashSet<string>();
+        var edges    = new List<JsEdge>();
 
-        foreach (var node in nodes)
+        foreach (var node in nodeList)
         {
+            if (node is CampaignEvent) continue;
+
             foreach (var targetId in node.ConnectedNodeIds)
             {
                 var key = string.CompareOrdinal(node.Id, targetId) < 0
@@ -21,8 +28,16 @@ public static class CampaignMapHelpers
                     : $"{targetId}|{node.Id}";
 
                 if (seen.Add(key))
-                    edges.Add(new JsEdge(node.Id, targetId));
+                    edges.Add(new JsEdge(node.Id, targetId, EdgeKind.TerritoryLink));
             }
+        }
+
+        foreach (var evt in nodeList.OfType<CampaignEvent>())
+        {
+            if (string.IsNullOrWhiteSpace(evt.AttachedToNodeId)) continue;
+            if (!nodeIds.Contains(evt.AttachedToNodeId)) continue;
+
+            edges.Add(new JsEdge(evt.AttachedToNodeId, evt.Id, EdgeKind.EventAttachment));
         }
 
         return edges;

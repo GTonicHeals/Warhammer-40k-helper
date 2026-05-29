@@ -1,0 +1,71 @@
+<NavigationLock ConfirmExternalNavigation="IsDirty"
+                OnBeforeInternalNavigation="HandleInternalNavigation" />
+
+@if (_showModal)
+{
+    <div class="modal-backdrop fade show" style="cursor:pointer" @onclick="Cancel"></div>
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" @onclick="Cancel">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-warning text-light" @onclick:stopPropagation="true">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>@Title
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="Cancel"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">@Message</p>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="Cancel">
+                        <i class="bi bi-x-lg me-1"></i>Stay
+                    </button>
+                    @if (OnSaveAndLeave.HasDelegate)
+                    {
+                        <button type="button" class="btn btn-warning" @onclick="SaveAndLeaveAsync">
+                            <i class="bi bi-floppy me-1"></i>Save &amp; Leave
+                        </button>
+                    }
+                    <button type="button" class="btn btn-danger" @onclick="Confirm">
+                        <i class="bi bi-box-arrow-right me-1"></i>Leave without saving
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsDirty { get; set; }
+    [Parameter] public string Title { get; set; } = "Unsaved Changes";
+    [Parameter] public string Message { get; set; } = "You have unsaved changes. Do you want to leave without saving?";
+    [Parameter] public EventCallback OnSaveAndLeave { get; set; }
+
+    private bool _showModal;
+    private TaskCompletionSource<bool>? _decision;
+
+    private async Task HandleInternalNavigation(LocationChangingContext context)
+    {
+        if (!IsDirty) return;
+        _decision  = new TaskCompletionSource<bool>();
+        _showModal = true;
+        StateHasChanged();
+
+        var leave = await _decision.Task;
+
+        _showModal = false;
+        _decision  = null;
+        StateHasChanged();
+
+        if (!leave) context.PreventNavigation();
+    }
+
+    private void Confirm() => _decision?.TrySetResult(true);
+    private void Cancel()  => _decision?.TrySetResult(false);
+
+    private async Task SaveAndLeaveAsync()
+    {
+        await OnSaveAndLeave.InvokeAsync();
+        _decision?.TrySetResult(true);
+    }
+}

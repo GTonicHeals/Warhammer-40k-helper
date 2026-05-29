@@ -57,4 +57,50 @@ public class CampaignMapHelpersTests
         edges.Should().HaveCount(1);
     }
 
+    [Fact]
+    public void BuildEdges_event_emits_attachment_edge_to_its_territory()
+    {
+        var t   = new Territory    { Id = "t" };
+        var evt = new CampaignEvent { Id = "e", AttachedToNodeId = "t" };
+
+        var edges = CampaignMapHelpers.BuildEdges([t, evt]);
+
+        edges.Should().HaveCount(1);
+        edges[0].From.Should().Be("t");
+        edges[0].To.Should().Be("e");
+        edges[0].Kind.Should().Be(CampaignMapHelpers.EdgeKind.EventAttachment);
+    }
+
+    [Fact]
+    public void BuildEdges_event_with_unattached_id_emits_no_edge()
+    {
+        var evt = new CampaignEvent { Id = "e", AttachedToNodeId = null };
+
+        var edges = CampaignMapHelpers.BuildEdges([evt]);
+
+        edges.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void BuildEdges_event_attached_to_missing_territory_emits_no_edge()
+    {
+        var evt = new CampaignEvent { Id = "e", AttachedToNodeId = "ghost" };
+
+        var edges = CampaignMapHelpers.BuildEdges([evt]);
+
+        edges.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void BuildEdges_event_ConnectedNodeIds_are_ignored()
+    {
+        var t   = new Territory    { Id = "t" };
+        var evt = new CampaignEvent { Id = "e", AttachedToNodeId = "t", ConnectedNodeIds = ["t"] };
+
+        var edges = CampaignMapHelpers.BuildEdges([t, evt]);
+
+        edges.Should().HaveCount(1);
+        edges[0].Kind.Should().Be(CampaignMapHelpers.EdgeKind.EventAttachment);
+    }
+
 }
