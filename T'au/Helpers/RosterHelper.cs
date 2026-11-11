@@ -22,7 +22,7 @@ namespace Warhammer.Helpers
                 ["DEVASTATING WOUNDS"] = "Each Critical Wound causes mortal wounds equal to the weapon's Damage; the attack sequence then ends.",
                 ["MELTA"]              = "Add [X] to the Damage characteristic when the target is within half the weapon's Range.",
                 ["INDIRECT FIRE"]      = "Can target units not visible to the bearer. Attacks against non-visible units have −1 to Hit.",
-                ["LANCE"]              = "If the bearer charged this turn, improve Armour Penetration by 1.",
+                ["LANCE"]              = "If the bearer made a Charge move this turn, add 1 to the Wound roll for each attack made with this weapon.",
                 ["ANTI"]               = "Wound rolls of [X]+ automatically succeed against the specified keyword target.",
                 ["HAZARDOUS"]          = "After shooting, roll 1D6 per Hazardous weapon fired: on a 1, the bearer's unit suffers 3 mortal wounds.",
                 ["ONE SHOT"]           = "This weapon can only be used once per battle.",

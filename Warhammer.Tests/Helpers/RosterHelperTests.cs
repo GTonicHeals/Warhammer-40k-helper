@@ -1,3 +1,5 @@
+using FluentAssertions;
+
 namespace Warhammer.Tests.Helpers;
 
 /// <summary>
@@ -124,6 +126,13 @@ public class RosterHelperTests
         Assert.Equal(2, tokens.Count);
         Assert.Equal("TORRENT", tokens[0].Raw);
         Assert.Equal("BLAST", tokens[1].Raw);
+    }
+
+    [Fact]
+    public void KeywordGlossary_Lance_IsPlusOneToWoundOnCharge()
+    {
+        RosterHelper.KeywordGlossary["LANCE"].Should().Be(
+            "If the bearer made a Charge move this turn, add 1 to the Wound roll for each attack made with this weapon.");
     }
 
     // ═════════════════════════════════════════════════════════════════════════
