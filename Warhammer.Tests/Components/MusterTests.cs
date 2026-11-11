@@ -1,6 +1,7 @@
 using Bunit;
 using FluentAssertions;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Warhammer.Components.Pages.Battle;
@@ -44,20 +45,20 @@ public class MusterTests : SqliteTestBase, IDisposable
         var cut = _ctx.RenderComponent<Muster>();
         cut.WaitForElement("#order1");
 
-        cut.Find("#order1").Change("A");
-        cut.Find("#order2").Change("B");
-        cut.Find("#points-limit").Change("1000");
-        cut.Find("input[data-card='a1']").Change(true);
-        cut.Find("input[data-card='a2']").Change(true);
-        cut.Find("input[data-card='b1']").Change(true);
+        await cut.Find("#order1").ChangeAsync(new ChangeEventArgs { Value = "A" });
+        await cut.Find("#order2").ChangeAsync(new ChangeEventArgs { Value = "B" });
+        await cut.Find("#points-limit").ChangeAsync(new ChangeEventArgs { Value = "1000" });
+        await cut.Find("input[data-card='a1']").ChangeAsync(new ChangeEventArgs { Value = true });
+        await cut.Find("input[data-card='a2']").ChangeAsync(new ChangeEventArgs { Value = true });
+        await cut.Find("input[data-card='b1']").ChangeAsync(new ChangeEventArgs { Value = true });
 
         cut.Find("#points1").TextContent.Should().Contain("1040 / 1000");
         cut.Find("#begin-battle").HasAttribute("disabled").Should().BeTrue();
 
-        cut.Find("input[data-card='a2']").Change(false);
+        await cut.Find("input[data-card='a2']").ChangeAsync(new ChangeEventArgs { Value = false });
         cut.Find("#begin-battle").HasAttribute("disabled").Should().BeFalse();
 
-        cut.Find("#begin-battle").Click();
+        await cut.Find("#begin-battle").ClickAsync(new MouseEventArgs());
 
         cut.WaitForAssertion(() =>
             _ctx.Services.GetRequiredService<NavigationManager>().Uri.Should().MatchRegex("/battle/.+/post$"));
@@ -78,8 +79,8 @@ public class MusterTests : SqliteTestBase, IDisposable
         var cut = _ctx.RenderComponent<Muster>();
         cut.WaitForElement("#order1");
 
-        cut.Find("#order1").Change("A");
-        cut.Find("#order2").Change("A");
+        await cut.Find("#order1").ChangeAsync(new ChangeEventArgs { Value = "A" });
+        await cut.Find("#order2").ChangeAsync(new ChangeEventArgs { Value = "A" });
 
         cut.Find("#begin-battle").HasAttribute("disabled").Should().BeTrue();
         cut.FindAll(".muster-no-character").Should().NotBeEmpty();

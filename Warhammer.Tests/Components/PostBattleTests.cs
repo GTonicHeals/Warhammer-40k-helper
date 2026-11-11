@@ -1,6 +1,7 @@
 using Bunit;
 using FluentAssertions;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Warhammer.Components.Pages.Battle;
@@ -72,7 +73,12 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         return battle.Id;
     }
 
-    private static void Next(IRenderedComponent<PostBattle> cut) => cut.Find("#pb-next").Click();
+    // Awaited event helpers: they wait for the handler and the re-render, and surface handler exceptions.
+    private static Task Next(IRenderedComponent<PostBattle> cut) => Click(cut, "#pb-next");
+    private static Task Click(IRenderedComponent<PostBattle> cut, string selector) =>
+        cut.Find(selector).ClickAsync(new MouseEventArgs());
+    private static Task Change(IRenderedComponent<PostBattle> cut, string selector, object value) =>
+        cut.Find(selector).ChangeAsync(new ChangeEventArgs { Value = value });
 
     [Fact]
     public async Task Walking_the_flow_completes_the_battle()
@@ -82,38 +88,38 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         cut.WaitForElement("#pb-next");
 
         // 1. Result
-        cut.Find("input[name='winner'][value='p1']").Change("p1");
-        cut.Find("#territory").Change("t1");
-        Next(cut);
+        await Change(cut, "input[name='winner'][value='p1']", "p1");
+        await Change(cut, "#territory", "t1");
+        await Next(cut);
 
         // 2. Casualties
-        cut.Find("input[data-destroyed='a2']").Change(true);
-        cut.Find("input[data-destroyed='b1']").Change(true);
-        Next(cut);
+        await Change(cut, "input[data-destroyed='a2']", true);
+        await Change(cut, "input[data-destroyed='b1']", true);
+        await Next(cut);
 
         // 3. Tallies
-        cut.Find("input[data-tally='a1']").Change("3");
-        cut.Find("input[data-mark='a1']").Change("a1");
-        Next(cut);
+        await Change(cut, "input[data-tally='a1']", "3");
+        await Change(cut, "input[data-mark='a1']", "a1");
+        await Next(cut);
 
         // 4. Out of Action
         cut.Find("#pb-next").HasAttribute("disabled").Should().BeTrue();
-        cut.Find("button[data-ooa-fail='a2']").Click();
-        cut.Find("button[data-penalty-scar='a2']").Click();
-        cut.Find("select[data-scar='a2']").Change("Crippled");
-        cut.Find("button[data-ooa-fail='b1']").Click();
+        await Click(cut, "button[data-ooa-fail='a2']");
+        await Click(cut, "button[data-penalty-scar='a2']");
+        await Change(cut, "select[data-scar='a2']", "Crippled");
+        await Click(cut, "button[data-ooa-fail='b1']");
         cut.Markup.Should().Contain("struck from the Order of Battle");
-        Next(cut);
+        await Next(cut);
 
         // 5. Rank-ups: a1 goes 14 → 19, one honour owed
         cut.Find("#pb-next").HasAttribute("disabled").Should().BeTrue();
-        cut.Find("[data-rankup='a1'] .hp-type").Change(CrusadeTraitTypes.BattleTrait);
-        cut.Find("[data-rankup='a1'] .hp-trait").Change("Hardened");
-        cut.Find("[data-rankup='a1'] .hp-add").Click();
-        Next(cut);
+        await Change(cut, "[data-rankup='a1'] .hp-type", CrusadeTraitTypes.BattleTrait);
+        await Change(cut, "[data-rankup='a1'] .hp-trait", "Hardened");
+        await Click(cut, "[data-rankup='a1'] .hp-add");
+        await Next(cut);
 
         // 6. Review
-        cut.Find("#pb-complete").Click();
+        await Click(cut, "#pb-complete");
 
         cut.WaitForAssertion(() =>
             _ctx.Services.GetRequiredService<NavigationManager>().Uri.Should().EndWith("/war-room"));
@@ -134,10 +140,10 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         var id = await SeedAsync();
         var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
         cut.WaitForElement("#pb-next");
-        Next(cut); Next(cut);
+        await Next(cut); await Next(cut);
 
-        cut.Find("input[data-mark='a1']").Change("a1");
-        cut.Find("input[data-mark='a2']").Change("a2");
+        await Change(cut, "input[data-mark='a1']", "a1");
+        await Change(cut, "input[data-mark='a2']", "a2");
 
         cut.Find("input[data-mark='a1']").HasAttribute("checked").Should().BeFalse();
         cut.Find("input[data-mark='a2']").HasAttribute("checked").Should().BeTrue();
