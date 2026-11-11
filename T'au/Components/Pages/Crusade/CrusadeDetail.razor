@@ -195,6 +195,11 @@
                                                class="form-control form-control-sm bg-dark text-white border-secondary"
                                                value="@unit.CrusadePoints" />
                                     </div>
+                                    <div class="col-12 small text-secondary">
+                                        Battles @unit.BattlesPlayed · Survived @unit.BattlesSurvived · Destroyed @unit.UnitsDestroyed
+                                        @if (unit.IsTitanic) { <span class="badge bg-secondary ms-1">TITANIC</span> }
+                                        @if (!unit.XpEligible) { <span class="badge bg-secondary ms-1" title="EPIC HERO, FORTIFICATION and SWARM units never gain XP">No XP</span> }
+                                    </div>
 
                                     <div class="col-6 d-flex align-items-end pb-1">
                                         <label class="form-check-label small">
@@ -433,7 +438,7 @@
                         {
                             var selected = string.Equals(u.Name, _selectedUnitKey, StringComparison.OrdinalIgnoreCase);
                             <div class="wc-tile @(selected ? "wc-tile-atk-on" : "")"
-                                 @onclick="() => _selectedUnitKey = u.Name">
+                                 @onclick="() => PickUnit(u.Name)">
                                 <div class="wc-tile-top">
                                     <i class="bi bi-person-fill wc-tile-ico"></i>
                                     <span class="wc-tile-name">@u.Name</span>
@@ -686,6 +691,18 @@
         await SaveAsync();
     }
 
+    private CrusadeUnitFlags FlagsFor(string unitName) =>
+        CrusadeUnitFlags.FromKeywords(_selectionsByName.TryGetValue(unitName, out var sel)
+            ? RosterHelper.GetKeywords(sel)
+            : []);
+
+    // Picking a tile defaults the CHARACTER checkbox from the datasheet keywords.
+    private void PickUnit(string name)
+    {
+        _selectedUnitKey = name;
+        _newUnitCharacter = FlagsFor(name).IsCharacter;
+    }
+
     private async Task AddUnit()
     {
         if (_crusade is null || string.IsNullOrEmpty(_selectedUnitKey)) return;
@@ -693,12 +710,15 @@
         var available = _availableUnits.FirstOrDefault(u => string.Equals(u.Name, _selectedUnitKey, StringComparison.OrdinalIgnoreCase));
         if (available is null) return;
 
+        var flags = FlagsFor(available.Name);
         _crusade.Units.Add(new CrusadeUnitCard
         {
             UnitName = available.Name,
             DatasheetName = available.Name,
             TotalPoints = available.Points,
-            IsCharacter = _newUnitCharacter
+            IsCharacter = _newUnitCharacter,
+            IsTitanic = flags.IsTitanic,
+            XpEligible = flags.XpEligible
         });
 
         CloseAddUnitModal();

@@ -64,6 +64,13 @@ Navigation links appear dynamically based on which factions are loaded in the ac
 ### Scenarios
 Battle scenario reference for matched and crusade play.
 
+### Crusade
+- Orders of Battle and Crusade Cards are stored in the SQLite campaign database (`T'au/campaign.db`) next to the Campaign Map, so every browser sees the same forces.
+- Orders of Battle created in an older version (browser localStorage) are imported into the database automatically the first time the app is opened in that browser.
+- Crusade Points are derived from Battle Honours (+1, +2 if TITANIC; relics +1/+2/+3 by tier) and Battle Scars (−1); they are never typed.
+- Each Crusade Card shows Battles played, Battles survived and enemy units destroyed. TITANIC and XP-ineligible units (EPIC HERO, FORTIFICATION, SWARM) are flagged from the datasheet keywords.
+- The schema is managed with EF Core migrations; the app applies pending migrations at startup.
+
 ---
 
 ## Tech Stack
