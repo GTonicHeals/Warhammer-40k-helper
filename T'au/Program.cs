@@ -25,6 +25,7 @@ builder.Services.AddScoped<GameStateService>();
 builder.Services.AddScoped<StratagemService>();
 builder.Services.AddScoped<WoundCalcStateService>();
 builder.Services.AddScoped<CrusadeManagerService>();
+builder.Services.AddScoped<CrusadeLocalStorageImporter>();
 builder.Services.AddScoped<CampaignManagerService>();
 builder.Services.AddScoped<GmNoteSeeder>();
 builder.Services.AddScoped<NodeSeeder>();

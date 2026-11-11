@@ -7,6 +7,7 @@
 @inject FactionStateService FactionState
 @inject RosterLoadService RosterLoader
 @inject CrusadeManagerService Crusades
+@inject CrusadeLocalStorageImporter CrusadeImporter
 @implements IDisposable
 
 <style>
@@ -259,14 +260,16 @@
         }
     }
 
-    // CrusadeManagerService.LoadAllCrusadesAsync needs JS interop (localStorage),
-    // so it has to run after first render, not in OnInitializedAsync.
+    // The localStorage import needs JS interop, so it has to run after first render,
+    // not in OnInitializedAsync. The nav menu is on every page, so whichever page the
+    // Game Master opens first moves any legacy Orders of Battle into SQLite.
     private bool _crusadesLoaded;
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender || _crusadesLoaded) return;
         _crusadesLoaded = true;
 
+        await CrusadeImporter.ImportAsync();
         await Crusades.LoadAllCrusadesAsync();
         RefreshCrusades();
         if (_crusades.Count > 0) StateHasChanged();
