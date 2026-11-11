@@ -70,6 +70,8 @@ Battle scenario reference for matched and crusade play.
 - Crusade Points are derived from Battle Honours (+1, +2 if TITANIC; relics +1/+2/+3 by tier) and Battle Scars (−1); they are never typed.
 - Each Crusade Card shows Battles played, Battles survived and enemy units destroyed. TITANIC and XP-ineligible units (EPIC HERO, FORTIFICATION, SWARM) are flagged from the datasheet keywords.
 - The schema is managed with EF Core migrations; the app applies pending migrations at startup.
+- **Muster a Battle** (`/battle/muster`): pick two Orders of Battle, a points limit (1000/2000/3000) and a mission (a primary mission or free text), then tick each side's Crusade Army. The Battle cannot begin while a side is over the limit; a side with no CHARACTER gets a warning.
+- **Post-battle Sequence** (`/battle/{id}/post`, also reachable from the War Room's Engagement log): a guided flow of Result → Casualties → Tallies (enemy units destroyed, one Marked for Greatness per side) → Out of Action tests (typed in; a fail takes a Battle Scar or a Devastating Blow, three scars force the blow, and a unit with three scars and no honour is struck off) → Rank-ups (pick the Battle Honours owed) → Review. Completing it awards XP (Battle Experience, Dealers of Death, Marked for Greatness; EPIC HERO/FORTIFICATION/SWARM gain none), updates the tallies, adds +1 Requisition Point per side (max 10), records wins and losses, and hands the captured territory to the winner. A Battle is completed once and never applied twice.
 
 ---
 
