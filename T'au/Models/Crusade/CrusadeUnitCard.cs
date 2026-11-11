@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace Warhammer.Models.Crusade;
@@ -13,13 +15,23 @@ public enum CrusadeRank
 
 public class CrusadeUnitCard
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    [Key] public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string OrderOfBattleId { get; set; } = "";
     public string UnitName { get; set; } = "";
     public string DatasheetName { get; set; } = "";
     public int TotalPoints { get; set; }
     public int Xp { get; set; }
     public int UnitsDestroyed { get; set; }
-    public int CrusadePoints { get; set; }
+    public int BattlesPlayed { get; set; }
+    public int BattlesSurvived { get; set; }
+    public bool IsTitanic { get; set; }
+    // EPIC HERO, FORTIFICATION and SWARM units never gain XP.
+    public bool XpEligible { get; set; } = true;
+
+    // Derived; legacy JSON carrying a typed "crusadePoints" number is ignored on read.
+    [NotMapped, JsonIgnore]
+    public int CrusadePoints => CrusadePointsCalculator.For(this);
+
     [JsonConverter(typeof(AppliedTraitListConverter))]
     public List<AppliedTrait> BattleHonours { get; set; } = new();
 
@@ -28,7 +40,7 @@ public class CrusadeUnitCard
     public bool IsCharacter { get; set; }
     public bool LegendaryVeteransUsed { get; set; }
 
-    [JsonIgnore]
+    [NotMapped, JsonIgnore]
     public CrusadeRank Rank => RankCalculator.RankFor(Xp, IsCharacter, LegendaryVeteransUsed);
 }
 

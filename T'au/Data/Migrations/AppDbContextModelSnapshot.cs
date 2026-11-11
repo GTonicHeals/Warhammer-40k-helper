@@ -211,6 +211,112 @@ namespace Warhammer.Data.Migrations
                     b.UseTphMappingStrategy();
                 });
 
+            modelBuilder.Entity("Warhammer.Models.Crusade.CrusadeUnitCard", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BattleHonours")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BattleScars")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("BattlesPlayed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("BattlesSurvived")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DatasheetName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsCharacter")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsTitanic")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("LegendaryVeteransUsed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("OrderOfBattleId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TotalPoints")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UnitName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UnitsDestroyed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Xp")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("XpEligible")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderOfBattleId");
+
+                    b.ToTable("CrusadeUnitCards");
+                });
+
+            modelBuilder.Entity("Warhammer.Models.Crusade.OrderOfBattle", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ArmyName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CampaignId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CustomTraits")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DetachmentName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Faction")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PlayerId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RequisitionPoints")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SupplyLimit")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampaignId");
+
+                    b.ToTable("OrdersOfBattle");
+                });
+
             modelBuilder.Entity("Warhammer.Models.Campaign.CampaignEvent", b =>
                 {
                     b.HasBaseType("Warhammer.Models.Campaign.Node");
@@ -292,6 +398,24 @@ namespace Warhammer.Data.Migrations
                     b.Navigation("Campaign");
                 });
 
+            modelBuilder.Entity("Warhammer.Models.Crusade.CrusadeUnitCard", b =>
+                {
+                    b.HasOne("Warhammer.Models.Crusade.OrderOfBattle", null)
+                        .WithMany("Units")
+                        .HasForeignKey("OrderOfBattleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Warhammer.Models.Crusade.OrderOfBattle", b =>
+                {
+                    b.HasOne("Warhammer.Models.Campaign.Campaign", null)
+                        .WithMany()
+                        .HasForeignKey("CampaignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Warhammer.Models.Campaign.Campaign", b =>
                 {
                     b.Navigation("BattleHistory");
@@ -301,6 +425,11 @@ namespace Warhammer.Data.Migrations
                     b.Navigation("MapNodes");
 
                     b.Navigation("Players");
+                });
+
+            modelBuilder.Entity("Warhammer.Models.Crusade.OrderOfBattle", b =>
+                {
+                    b.Navigation("Units");
                 });
 #pragma warning restore 612, 618
         }

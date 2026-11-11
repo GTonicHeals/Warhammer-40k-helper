@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace Warhammer.Models.Crusade;
@@ -6,7 +8,8 @@ public class OrderOfBattle
 {
     public const int RequisitionPointsMax = 10;
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    [Key] public string Id { get; set; } = Guid.NewGuid().ToString();
+    public int CampaignId { get; set; }
     public string ArmyName { get; set; } = "";
     public string Faction { get; set; } = "";
     public string DetachmentName { get; set; } = "";
@@ -18,9 +21,9 @@ public class OrderOfBattle
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
 
-    [JsonIgnore]
+    [NotMapped, JsonIgnore]
     public int SupplyUsed => Units.Sum(u => u.TotalPoints);
 
-    [JsonIgnore]
+    [NotMapped, JsonIgnore]
     public int SupplyRemaining => SupplyLimit - SupplyUsed;
 }

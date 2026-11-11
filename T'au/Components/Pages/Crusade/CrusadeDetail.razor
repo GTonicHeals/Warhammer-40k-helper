@@ -191,8 +191,9 @@
                                     </div>
                                     <div class="col-3">
                                         <label class="form-label small text-warning mb-0">Crusade Pts</label>
-                                        <input type="number" class="form-control form-control-sm bg-dark text-white border-secondary"
-                                               @bind="unit.CrusadePoints" @bind:after="SaveAsync" />
+                                        <input type="number" readonly title="Derived from honours and scars"
+                                               class="form-control form-control-sm bg-dark text-white border-secondary"
+                                               value="@unit.CrusadePoints" />
                                     </div>
 
                                     <div class="col-6 d-flex align-items-end pb-1">
@@ -778,7 +779,7 @@
     private static string OptionLabel(CrusadeTrait t)
     {
         var baseLabel = IsCategoryMeaningful(t) ? $"{t.Name} ({t.Category})" : t.Name;
-        var cost = CrusadePointsCostOf(t.Type, t.Category);
+        var cost = CrusadePointsCalculator.CostOf(t.Type, t.Category, isTitanic: false);
         return cost == 1 ? baseLabel : $"{baseLabel} +{cost} CP";
     }
 
@@ -786,21 +787,6 @@
         !string.IsNullOrWhiteSpace(t.Category) &&
         !string.Equals(t.Category, t.Type, StringComparison.OrdinalIgnoreCase);
 
-    // Tier-based Crusade Points cost for honours.
-    // Crusade Relics: Artificer +1, Antiquity +2, Legendary +3 (per crusade_rules.json).
-    // All other honour types: +1. Scars are handled separately and always −1.
-    private static int CrusadePointsCostOf(string type, string category)
-    {
-        if (!string.Equals(type, CrusadeTraitTypes.CrusadeRelic, StringComparison.OrdinalIgnoreCase))
-            return 1;
-
-        var cat = category ?? "";
-        if (cat.Contains("Legendary", StringComparison.OrdinalIgnoreCase)) return 3;
-        if (cat.Contains("Antiquity", StringComparison.OrdinalIgnoreCase)) return 2;
-        return 1; // Artificer or unrecognized
-    }
-
-    private static int CrusadePointsCostOf(AppliedTrait t) => CrusadePointsCostOf(t.Type, t.Category);
 
     private async Task AddHonour(CrusadeUnitCard unit)
     {
@@ -823,7 +809,6 @@
 
         var applied = AppliedTrait.FromTrait(trait, weaponName);
         unit.BattleHonours.Add(applied);
-        unit.CrusadePoints += CrusadePointsCostOf(applied); // TODO: ×2 if TITANIC (no IsTitanic flag yet)
         _honourTrait[unit.Id] = "";
         _honourWeapon[unit.Id] = "";
         await SaveAsync();
@@ -834,7 +819,6 @@
         if (_crusade is null || index < 0 || index >= unit.BattleHonours.Count) return;
         var removed = unit.BattleHonours[index];
         unit.BattleHonours.RemoveAt(index);
-        unit.CrusadePoints -= CrusadePointsCostOf(removed);
         await SaveAsync();
     }
 
@@ -852,7 +836,6 @@
         if (trait is null) return;
 
         unit.BattleScars.Add(AppliedTrait.FromTrait(trait));
-        unit.CrusadePoints -= 1;
         _scarChoice[unit.Id] = "";
         await SaveAsync();
     }
@@ -861,7 +844,6 @@
     {
         if (_crusade is null || index < 0 || index >= unit.BattleScars.Count) return;
         unit.BattleScars.RemoveAt(index);
-        unit.CrusadePoints += 1;
         await SaveAsync();
     }
 
