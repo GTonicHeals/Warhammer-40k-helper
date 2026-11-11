@@ -1,0 +1,235 @@
+/* Datasheet design tokens: the "datasheet duel" look (prototype variant A).
+   Bone card faces on a dark table, black header bands with a player-colour stripe,
+   boxed stat strip, roll tiles on a spine. Bootstrap stays underneath. */
+:root {
+    --ds-table: #1c1e21;
+    --ds-card: #ebe5d7;
+    --ds-card-2: #e1dacb;
+    --ds-ink: #141414;
+    --ds-ink-2: #5a564e;
+    --ds-rule: #b9b1a1;
+    --ds-tone-easy: #dff0d2;
+    --ds-tone-mid: #f6ecc4;
+    --ds-tone-hard: #f2cfc4;
+    --ds-font-display: 'Barlow Condensed', system-ui, sans-serif;
+    --ds-font-body: 'Barlow', system-ui, sans-serif;
+}
+.ds-root {
+        font-family: var(--ds-font-body);
+        color: var(--ds-ink);
+        background: var(--ds-table);
+        margin: 0 -1.5rem;
+        padding: 1.25rem 1.5rem 7rem;
+        min-height: calc(100vh - 3.5rem);
+    }
+
+    .ds-arena {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        gap: 1rem;
+        align-items: start;
+        max-width: 1280px;
+        margin: 0 auto;
+    }
+
+    /* The sheet is the physical datasheet card: bone face, black band, squared corners. */
+    .ds-sheet {
+        background: var(--ds-card);
+        border-radius: 3px;
+        box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 12px 30px rgba(0,0,0,0.45);
+        overflow: hidden;
+        min-height: 12rem;
+    }
+
+    .ds-band {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.55rem 0.9rem;
+        background: #0f0f0f;
+        color: #f2eee4;
+        border-bottom: 4px solid var(--ds-accent);
+        cursor: pointer;
+    }
+    .ds-band:hover .ds-name { color: #fff; }
+    .ds-role {
+        font: 600 0.72rem/1 var(--ds-font-display);
+        letter-spacing: 0.06em;
+        color: var(--ds-accent);
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+    }
+    .ds-name {
+        margin: 0;
+        font: 700 1.5rem/1.05 var(--ds-font-display);
+        color: #ece7da;
+    }
+    .ds-player {
+        font: 700 0.95rem/1 var(--ds-font-display);
+        color: #0f0f0f;
+        background: var(--ds-accent);
+        padding: 0.3rem 0.5rem;
+        border-radius: 2px;
+    }
+
+    /* Stat boxes exactly as the printed sheet: label over a boxed number. */
+    .ds-stats {
+        display: flex;
+        gap: 0.4rem;
+        padding: 0.75rem 0.9rem 0.5rem;
+    }
+    .ds-stat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 3rem;
+    }
+    .ds-stat span {
+        font: 600 0.7rem/1 var(--ds-font-display);
+        color: var(--ds-ink-2);
+        margin-bottom: 0.25rem;
+    }
+    .ds-stat strong {
+        font: 700 1.35rem/1 var(--ds-font-display);
+        background: #fff;
+        border: 2px solid var(--ds-ink);
+        padding: 0.35rem 0.4rem;
+        min-width: 2.8rem;
+        text-align: center;
+    }
+    .ds-stat-inv strong { border-style: double; border-width: 4px; }
+
+    .ds-weapons { padding: 0.25rem 0.9rem 0.5rem; }
+    .ds-wgroup { margin-top: 0.5rem; }
+    .ds-whead, .ds-wrow {
+        display: grid;
+        grid-template-columns: 1fr 3.2rem 2.4rem 2.6rem 2.2rem 2.4rem 2.4rem;
+        gap: 0.25rem;
+        align-items: center;
+        text-align: center;
+    }
+    .ds-whead {
+        font: 600 0.72rem/1 var(--ds-font-display);
+        color: #ece7da;
+        background: var(--ds-ink);
+        padding: 0.3rem 0.5rem;
+    }
+    .ds-wtitle { text-align: left; }
+    .ds-wrow {
+        width: 100%;
+        border: 0;
+        border-bottom: 1px solid var(--ds-rule);
+        background: transparent;
+        padding: 0.45rem 0.5rem;
+        font: 600 0.95rem/1.1 var(--ds-font-display);
+        color: var(--ds-ink);
+        cursor: pointer;
+        text-align: center;
+    }
+    .ds-wrow:nth-child(odd) { background: var(--ds-card-2); }
+    .ds-wrow:hover { background: #d8d0bf; }
+    .ds-wrow-on { background: var(--ds-ink) !important; color: #f2eee4; }
+    .ds-wrow-on .ds-wname small { color: #d9d2c2; }
+    .ds-wname { text-align: left; display: flex; flex-direction: column; }
+    .ds-wname small { font: 400 0.75rem/1.1 var(--ds-font-body); color: var(--ds-ink-2); }
+
+    .ds-abilities { display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0.25rem 0.9rem 0.5rem; }
+    .ds-ability {
+        font: 400 0.8rem/1 var(--ds-font-body);
+        border: 1px solid var(--ds-rule);
+        padding: 0.3rem 0.5rem;
+        cursor: help;
+    }
+
+    /* Modifier chips: one per rule that touches a die; tone = state. */
+    .ds-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.9rem 0.9rem; border-top: 1px solid var(--ds-rule); }
+    .ds-chip {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        border: 1.5px solid var(--ds-ink);
+        background: transparent;
+        color: var(--ds-ink);
+        padding: 0.35rem 0.6rem;
+        font: 600 0.85rem/1 var(--ds-font-body);
+        cursor: pointer;
+    }
+    .ds-chip-die { font: 600 0.65rem/1 var(--ds-font-display); color: var(--ds-ink-2); }
+    .ds-chip em { font: 600 0.65rem/1 var(--ds-font-display); font-style: normal; background: var(--ds-ink); color: #f2eee4; padding: 0.15rem 0.3rem; }
+    .ds-chip-on, .ds-chip-auto { background: var(--ds-ink); color: #f2eee4; }
+    .ds-chip-on .ds-chip-die, .ds-chip-auto .ds-chip-die { color: #c9c1ae; }
+    .ds-chip-auto em { background: #f2eee4; color: var(--ds-ink); }
+    .ds-chip-waiting { border-style: dashed; }
+    .ds-chip-blocked { opacity: 0.35; text-decoration: line-through; cursor: not-allowed; }
+    .ds-chip:disabled:not(.ds-chip-blocked) { cursor: default; }
+
+    /* The spine: three rolls bridging the sheets. */
+    .ds-spine {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        align-items: center;
+        padding-top: 0.5rem;
+        position: sticky;
+        top: 1rem;
+    }
+    .ds-roll {
+        width: 6.2rem;
+        aspect-ratio: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: var(--ds-card);
+        border: 3px solid var(--ds-ink);
+        border-radius: 3px;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.45);
+        transition: background 0.15s ease;
+    }
+    .ds-roll span { font: 600 0.75rem/1 var(--ds-font-display); color: var(--ds-ink-2); }
+    .ds-roll strong { font: 700 2.6rem/1 var(--ds-font-display); color: var(--ds-ink); }
+    .ds-roll-easy { background: var(--ds-tone-easy); }
+    .ds-roll-mid { background: var(--ds-tone-mid); }
+    .ds-roll-hard { background: var(--ds-tone-hard); }
+    .ds-roll-auto strong { font-size: 1.4rem; }
+    .ds-roll-none { opacity: 0.45; }
+    .ds-swap {
+        margin-top: 0.4rem;
+        border: 1.5px solid #6c6760;
+        background: transparent;
+        color: #c9c1ae;
+        width: 2.4rem; height: 2.4rem;
+        font-size: 1.2rem;
+        cursor: pointer;
+    }
+    .ds-swap:hover { color: #fff; border-color: #fff; }
+
+    /* Unit picker, inline inside the sheet. */
+    .ds-units { padding: 0.5rem 0.9rem 0.9rem; max-height: 60vh; overflow: auto; }
+    .ds-ugroup + .ds-ugroup { margin-top: 0.6rem; }
+    .ds-uplayer { font: 700 0.8rem/1 var(--ds-font-display); margin: 0.4rem 0 0.3rem; }
+    .ds-unit {
+        display: flex; justify-content: space-between; align-items: center;
+        width: 100%;
+        border: 0; border-left: 4px solid var(--ds-accent);
+        background: var(--ds-card-2);
+        color: var(--ds-ink);
+        padding: 0.55rem 0.6rem;
+        margin-bottom: 0.25rem;
+        font: 600 1rem/1.1 var(--ds-font-display);
+        text-align: left;
+        cursor: pointer;
+    }
+    .ds-unit:hover { background: #d8d0bf; }
+    .ds-unit-on { background: var(--ds-ink); color: #f2eee4; }
+    .ds-unit-t { font: 400 0.8rem/1 var(--ds-font-body); color: var(--ds-ink-2); }
+    .ds-unit-on .ds-unit-t { color: #c9c1ae; }
+
+    .ds-chip:focus-visible, .ds-wrow:focus-visible, .ds-unit:focus-visible, .ds-band:focus-visible { outline: 3px solid #ff9f1c; outline-offset: 1px; }
+
+    @media (max-width: 900px) {
+        .ds-arena { grid-template-columns: 1fr; }
+        .ds-spine { flex-direction: row; justify-content: center; position: static; }
+        .ds-roll { width: 5rem; }
+        .ds-role { writing-mode: horizontal-tb; transform: none; }
+    }
+    @media (prefers-reduced-motion: reduce) { .ds-roll { transition: none; } }
