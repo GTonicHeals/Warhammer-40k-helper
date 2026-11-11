@@ -1,0 +1,70 @@
+@using Warhammer.Models
+@using Warhammer.Models.Calculator
+
+@* One datasheet card: black band with the player stripe, boxed stat strip, then the
+   page-supplied fragments (weapons, chips, body) in that order. Tapping the band opens the picker. *@
+<section class="ds-sheet" data-role="@Role.ToLowerInvariant()" style="--ds-accent:@Accent">
+    <header class="ds-band" role="button" tabindex="0" aria-expanded="@(PickerOpen ? "true" : "false")"
+            @onclick="() => BandClicked.InvokeAsync()">
+        <span class="ds-role">@Role</span>
+        <h2 class="ds-name">@(Unit?.Label ?? $"Choose the {(Role == "Attacker" ? "attacking" : "target")} unit")</h2>
+        <span class="ds-player">@(Unit is not null ? PlayerTheme.GetLabel(Unit.PlayerId) : "▾")</span>
+    </header>
+
+    @if (PickerOpen || Unit is null)
+    {
+        @Picker
+    }
+    else
+    {
+        <div class="ds-stats">
+            @foreach (var (label, key) in StatOrder)
+            {
+                var value = StatOverrides?.GetValueOrDefault(key) ?? RosterHelper.GetChar(_profile, key);
+                var mods = StatMods?.GetValueOrDefault(label);
+                <div class="ds-stat @(mods is { Count: > 0 } ? "ds-stat-crusade" : "")" title="@(mods is { Count: > 0 } ? "Crusade: " + string.Join(", ", mods) : null)">
+                    <span>@label</span>
+                    <strong>@value@(mods is { Count: > 0 } ? "*" : "")</strong>
+                </div>
+            }
+            @if (Invuln is int inv)
+            {
+                <div class="ds-stat ds-stat-inv"><span>Invuln</span><strong>@(inv)+</strong></div>
+            }
+        </div>
+        @Weapons
+        @Chips
+        @Body
+        <div class="ds-sheet-foot">
+            <button type="button" class="ds-link" @onclick="() => DatasheetClicked.InvokeAsync()">
+                <i class="bi bi-file-text me-1"></i>Datasheet
+            </button>
+        </div>
+    }
+</section>
+
+@code {
+    private static readonly (string Label, string Key)[] StatOrder =
+        [("M", "M"), ("T", "T"), ("Sv", "SV"), ("W", "W"), ("Ld", "LD"), ("OC", "OC")];
+
+    [Parameter, EditorRequired] public string Role { get; set; } = "Attacker";
+    [Parameter] public UnitEntry? Unit { get; set; }
+    [Parameter] public bool PickerOpen { get; set; }
+    [Parameter] public int? Invuln { get; set; }
+    // Values after Crusade modifiers keyed by profile stat (e.g. "T", "SV"), and the honours behind them keyed by label.
+    [Parameter] public IReadOnlyDictionary<string, string>? StatOverrides { get; set; }
+    [Parameter] public IReadOnlyDictionary<string, List<string>>? StatMods { get; set; }
+    [Parameter] public EventCallback BandClicked { get; set; }
+    [Parameter] public RenderFragment? Picker { get; set; }
+    [Parameter] public RenderFragment? Weapons { get; set; }
+    [Parameter] public RenderFragment? Body { get; set; }
+    [Parameter] public RenderFragment? Chips { get; set; }
+    [Parameter] public EventCallback DatasheetClicked { get; set; }
+
+    private Profile? _profile;
+
+    private string Accent => Unit is null ? "#777" : PlayerTheme.GetColor(Unit.PlayerId);
+
+    protected override void OnParametersSet() =>
+        _profile = Unit is null ? null : RosterHelper.GetAllProfilesRecursive(Unit.Unit, "Unit").FirstOrDefault();
+}

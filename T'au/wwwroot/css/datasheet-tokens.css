@@ -233,3 +233,27 @@
         .ds-role { writing-mode: horizontal-tb; transform: none; }
     }
     @media (prefers-reduced-motion: reduce) { .ds-roll { transition: none; } }
+
+/* Player filter inside the picker. */
+.ds-filter { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.4rem; }
+.ds-filter-btn {
+    border: 1.5px solid var(--ds-accent, var(--ds-ink));
+    background: transparent;
+    color: var(--ds-ink);
+    padding: 0.25rem 0.6rem;
+    font: 600 0.85rem/1 var(--ds-font-display);
+    cursor: pointer;
+}
+.ds-filter-on { background: var(--ds-accent, var(--ds-ink)); color: #0f0f0f; }
+
+/* Crusade honour modifiers keep their gold marker. */
+.ds-crusade-mark { color: #b8860b; margin-left: 0.3rem; font-size: 0.8em; }
+.ds-stat-crusade strong { border-color: #b8860b; color: #6b4e00; }
+
+.ds-sheet-foot { display: flex; justify-content: flex-end; padding: 0.4rem 0.9rem 0.7rem; }
+.ds-link {
+    border: 0; background: transparent; color: var(--ds-ink-2);
+    font: 600 0.85rem/1 var(--ds-font-display); cursor: pointer; text-decoration: underline;
+}
+.ds-link:hover { color: var(--ds-ink); }
+.ds-filter-btn:focus-visible, .ds-link:focus-visible, .ds-swap:focus-visible { outline: 3px solid #ff9f1c; outline-offset: 1px; }

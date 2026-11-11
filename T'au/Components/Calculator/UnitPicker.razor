@@ -1,0 +1,52 @@
+@using Warhammer.Models
+@using Warhammer.Models.Calculator
+
+@* Player filter + the units grouped by player, one row each with T/Sv and the player stripe. *@
+<div class="ds-units">
+    <div class="ds-filter" role="group" aria-label="Filter by player">
+        <button type="button" class="ds-filter-btn @(PlayerFilter is null ? "ds-filter-on" : "")"
+                @onclick="() => FilterChanged.InvokeAsync(null)">All</button>
+        @foreach (var p in Players)
+        {
+            var id = p.Id;
+            <button type="button" class="ds-filter-btn @(PlayerFilter == id ? "ds-filter-on" : "")" data-filter="@id"
+                    style="--ds-accent:@PlayerTheme.GetColor(id)" @onclick="() => FilterChanged.InvokeAsync(id)">
+                Player @p.Index
+            </button>
+        }
+    </div>
+    @foreach (var p in Players.Where(p => PlayerFilter is null || p.Id == PlayerFilter))
+    {
+        var color = PlayerTheme.GetColor(p.Id);
+        <div class="ds-ugroup">
+            <div class="ds-uplayer" style="color:@color">Player @p.Index</div>
+            @foreach (var u in Units.Where(x => x.PlayerId == p.Id))
+            {
+                var unit = u;
+                var profile = RosterHelper.GetAllProfilesRecursive(u.Unit, "Unit").FirstOrDefault();
+                <button type="button" class="ds-unit @(Selected?.Key == u.Key ? "ds-unit-on" : "")" data-unit="@u.Key"
+                        style="--ds-accent:@color" @onclick="() => Picked.InvokeAsync(unit)">
+                    <span>
+                        @u.Label
+                        @if (u.CrusadeData is not null)
+                        {
+                            <i class="bi bi-shield-shaded ds-crusade-mark" title="Crusade Card"></i>
+                        }
+                    </span>
+                    <span class="ds-unit-t">T@(RosterHelper.GetChar(profile, "T")) Sv@(RosterHelper.GetChar(profile, "SV"))</span>
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<UnitEntry> Units { get; set; } = [];
+    [Parameter] public string? PlayerFilter { get; set; }
+    [Parameter] public UnitEntry? Selected { get; set; }
+    [Parameter] public EventCallback<string?> FilterChanged { get; set; }
+    [Parameter] public EventCallback<UnitEntry> Picked { get; set; }
+
+    private IEnumerable<(string Id, int Index)> Players =>
+        Units.Select(u => (u.PlayerId, u.PlayerIndex)).DistinctBy(x => x.PlayerId).OrderBy(x => x.PlayerIndex);
+}

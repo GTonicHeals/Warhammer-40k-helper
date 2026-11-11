@@ -1,0 +1,39 @@
+@* The three rolls needed, bridging the two datasheets, plus the swap button. *@
+<aside class="ds-spine" aria-live="polite">
+    @Tile("hit", "Hit", Hit)
+    @Tile("wound", "Wound", Wound)
+    @Tile("save", "Save", Save)
+    <button type="button" class="ds-swap" title="Swap attacker and defender" aria-label="Swap attacker and defender"
+            @onclick="() => Swap.InvokeAsync()">⇄</button>
+</aside>
+
+@code {
+    [Parameter] public string? Hit { get; set; }
+    [Parameter] public string? Wound { get; set; }
+    [Parameter] public string? Save { get; set; }
+    [Parameter] public EventCallback Swap { get; set; }
+
+    // 2–3 easy, 4 mid, 5+ (and impossible) hard, AUTO small text, nothing yet dimmed.
+    public static string Tone(string? roll) => roll switch
+    {
+        null or "" => "none",
+        "AUTO"     => "auto",
+        "N/A"      => "hard",
+        _ => int.TryParse(roll.TrimEnd('+'), out var n) ? (n <= 3 ? "easy" : n == 4 ? "mid" : "hard") : "none"
+    };
+
+    private static string Face(string? roll) => roll switch
+    {
+        null or "" => "–",
+        "N/A"      => "—",
+        _          => roll
+    };
+
+    private RenderFragment Tile(string key, string label, string? roll) => __builder =>
+    {
+        <div class="ds-roll ds-roll-@Tone(roll)" data-roll="@key">
+            <span>@label</span>
+            <strong>@Face(roll)</strong>
+        </div>
+    };
+}

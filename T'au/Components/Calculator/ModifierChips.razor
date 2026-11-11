@@ -1,0 +1,30 @@
+@using Warhammer.Models.Calculator
+
+@* One chip per rule that touches a die. Tone = state: Off outline, On/Auto filled,
+   Waiting dashed (tap to set the situation), Blocked struck through. *@
+<div class="ds-chips">
+    @foreach (var c in Chips)
+    {
+        var chip = c;
+        <button type="button" class="ds-chip ds-chip-@chip.State.ToString().ToLowerInvariant()" data-chip="@chip.Key"
+                title="@chip.Detail" aria-pressed="@(chip.State is ChipState.On or ChipState.Auto ? "true" : "false")"
+                disabled="@(!IsToggleable(chip))" @onclick="() => Toggled.InvokeAsync(chip.Key)">
+            <span class="ds-chip-die">@chip.Die</span>
+            @chip.Label
+            @if (chip.State == ChipState.Auto)
+            {
+                <em>auto</em>
+            }
+        </button>
+    }
+</div>
+
+@code {
+    // Chips that are pure datasheet facts: nothing at the table can switch them.
+    private static readonly HashSet<string> ReadOnlyKeys = ["torrent", "anti", "stealth", "invuln"];
+
+    [Parameter, EditorRequired] public IReadOnlyList<ModChip> Chips { get; set; } = [];
+    [Parameter] public EventCallback<string> Toggled { get; set; }
+
+    private static bool IsToggleable(ModChip c) => c.State != ChipState.Blocked && !ReadOnlyKeys.Contains(c.Key);
+}
