@@ -1,84 +1,105 @@
-using System.Text.Json;
-using Microsoft.JSInterop;
+using Microsoft.EntityFrameworkCore;
+using Warhammer.Data;
 using Warhammer.Models.Crusade;
 
 namespace Warhammer.Services;
 
-public class CrusadeManagerService
+// Orders of Battle and their Crusade Cards, stored in the SQLite campaign database
+// (ADR 0001). Pages hold the detached graphs from the snapshot, mutate them, and hand
+// them back to SaveCrusadeAsync, which reconciles the cards by Id.
+public class CrusadeManagerService(
+    IDbContextFactory<AppDbContext>  dbFactory,
+    CampaignManagerService           campaigns,
+    ILogger<CrusadeManagerService>   logger)
 {
-    private const string LocalStoragePrefix = "crusade_";
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
-    private readonly IJSRuntime _js;
-    private readonly ILogger<CrusadeManagerService> _logger;
-    private readonly Dictionary<string, OrderOfBattle> _cache = new();
-    private bool _loaded;
+    private readonly Dictionary<string, OrderOfBattle> _snapshot = new();
 
     public event Action? OnCrusadesChanged;
 
-    public CrusadeManagerService(IJSRuntime js, ILogger<CrusadeManagerService> logger)
-    {
-        _js = js;
-        _logger = logger;
-    }
+    // Snapshot of the last load/save.
+    public IReadOnlyCollection<OrderOfBattle> Crusades => _snapshot.Values;
 
-    // Must be called from OnAfterRenderAsync(firstRender: true), not OnInitializedAsync —
-    // JS interop is unavailable during Blazor Server prerender.
+    public OrderOfBattle? GetCrusade(string id) => _snapshot.GetValueOrDefault(id);
+
     public async Task<IReadOnlyCollection<OrderOfBattle>> LoadAllCrusadesAsync()
     {
-        if (_loaded) return _cache.Values;
+        await using var ctx = await dbFactory.CreateDbContextAsync();
+        var orders = await ctx.OrdersOfBattle
+            .Include(o => o.Units)
+            .AsNoTracking()
+            .OrderBy(o => o.CreatedUtc)
+            .ToListAsync();
 
-        try
-        {
-            var entries = await _js.InvokeAsync<Dictionary<string, string>>("crusadeStorage.getAll");
-            foreach (var (key, json) in entries)
-            {
-                try
-                {
-                    var crusade = JsonSerializer.Deserialize<OrderOfBattle>(json, JsonOptions);
-                    if (crusade != null) _cache[crusade.Id] = crusade;
-                }
-                catch (JsonException ex)
-                {
-                    _logger.LogError(ex, "Bad crusade JSON for key {Key}; ignoring", key);
-                }
-            }
-            _loaded = true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load crusades from localStorage");
-        }
-
-        return _cache.Values;
+        _snapshot.Clear();
+        foreach (var o in orders) _snapshot[o.Id] = o;
+        return _snapshot.Values;
     }
-
-    public IReadOnlyCollection<OrderOfBattle> Crusades => _cache.Values;
-
-    public OrderOfBattle? GetCrusade(string id) => _cache.GetValueOrDefault(id);
 
     public async Task SaveCrusadeAsync(OrderOfBattle crusade)
     {
         ArgumentNullException.ThrowIfNull(crusade);
 
+        if (crusade.CampaignId == 0)
+            crusade.CampaignId = (campaigns.Campaign ?? await campaigns.LoadCampaignAsync()).Id;
         crusade.UpdatedUtc = DateTime.UtcNow;
-        _cache[crusade.Id] = crusade;
 
-        var json = JsonSerializer.Serialize(crusade, JsonOptions);
-        await _js.InvokeVoidAsync("crusadeStorage.save", LocalStoragePrefix + crusade.Id, json);
+        await using var ctx = await dbFactory.CreateDbContextAsync();
+        var existing = await ctx.OrdersOfBattle
+            .Include(o => o.Units)
+            .FirstOrDefaultAsync(o => o.Id == crusade.Id);
 
+        if (existing is null)
+        {
+            ctx.OrdersOfBattle.Add(crusade);
+        }
+        else
+        {
+            ctx.Entry(existing).CurrentValues.SetValues(crusade);
+            ReconcileUnits(ctx, existing.Units, crusade.Units);
+        }
+
+        await ctx.SaveChangesAsync();
+        logger.LogDebug("Saved Order of Battle {Id}", crusade.Id);
+
+        _snapshot[crusade.Id] = crusade;
         OnCrusadesChanged?.Invoke();
     }
 
     public async Task DeleteCrusadeAsync(string id)
     {
-        if (!_cache.Remove(id)) return;
+        await using var ctx = await dbFactory.CreateDbContextAsync();
+        var existing = await ctx.OrdersOfBattle.FirstOrDefaultAsync(o => o.Id == id);
+        if (existing is not null)
+        {
+            ctx.Remove(existing);   // cards cascade
+            await ctx.SaveChangesAsync();
+        }
 
-        await _js.InvokeVoidAsync("crusadeStorage.remove", LocalStoragePrefix + id);
-        OnCrusadesChanged?.Invoke();
+        if (_snapshot.Remove(id) || existing is not null)
+            OnCrusadesChanged?.Invoke();
+    }
+
+    // Same diff as CampaignManagerService.Reconcile: delete missing, update present, insert new.
+    private static void ReconcileUnits(AppDbContext ctx, List<CrusadeUnitCard> tracked, List<CrusadeUnitCard> incoming)
+    {
+        var trackedById  = tracked.ToDictionary(u => u.Id);
+        var incomingById = incoming.ToDictionary(u => u.Id);
+
+        foreach (var (id, card) in trackedById)
+            if (!incomingById.ContainsKey(id))
+                ctx.Remove(card);
+
+        foreach (var (id, card) in incomingById)
+        {
+            if (trackedById.TryGetValue(id, out var t))
+            {
+                card.OrderOfBattleId = t.OrderOfBattleId;
+                ctx.Entry(t).CurrentValues.SetValues(card);
+            }
+            else
+            {
+                tracked.Add(card);
+            }
+        }
     }
 }
