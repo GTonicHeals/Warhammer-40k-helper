@@ -1,6 +1,7 @@
 using Bunit;
 using FluentAssertions;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Warhammer.Components.UI;
 using TestContext = Bunit.TestContext;
@@ -76,7 +77,7 @@ public class UnsavedChangesGuardTests : TestContext
     // ═════════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void ClickingStay_HidesModal_AndPreventsNavigation()
+    public async Task ClickingStay_HidesModal_AndPreventsNavigation()
     {
         var nav = Services.GetRequiredService<NavigationManager>();
         var originalUri = nav.Uri;
@@ -85,14 +86,14 @@ public class UnsavedChangesGuardTests : TestContext
         nav.NavigateTo("/elsewhere");
         cut.WaitForAssertion(() => cut.FindAll(".modal").Should().NotBeEmpty());
 
-        cut.Find("button.btn-outline-secondary").Click();
+        await cut.Find("button.btn-outline-secondary").ClickAsync(new MouseEventArgs());
 
         cut.WaitForAssertion(() => cut.FindAll(".modal").Should().BeEmpty());
         nav.Uri.Should().Be(originalUri);
     }
 
     [Fact]
-    public void ClickingLeaveWithoutSaving_HidesModal_AndAllowsNavigation()
+    public async Task ClickingLeaveWithoutSaving_HidesModal_AndAllowsNavigation()
     {
         var nav = Services.GetRequiredService<NavigationManager>();
         var cut = RenderComponent<UnsavedChangesGuard>(p => p.Add(x => x.IsDirty, true));
@@ -100,13 +101,13 @@ public class UnsavedChangesGuardTests : TestContext
         nav.NavigateTo("/elsewhere");
         cut.WaitForAssertion(() => cut.FindAll(".modal").Should().NotBeEmpty());
 
-        cut.Find("button.btn-danger").Click();
+        await cut.Find("button.btn-danger").ClickAsync(new MouseEventArgs());
 
-        cut.WaitForAssertion(() => nav.Uri.Should().EndWith("/elsewhere"));
+        WaitForUri(nav, "/elsewhere");
     }
 
     [Fact]
-    public void ClickingSaveAndLeave_InvokesCallback_ThenAllowsNavigation()
+    public async Task ClickingSaveAndLeave_InvokesCallback_ThenAllowsNavigation()
     {
         var saveInvoked = false;
         var nav = Services.GetRequiredService<NavigationManager>();
@@ -117,14 +118,14 @@ public class UnsavedChangesGuardTests : TestContext
         nav.NavigateTo("/elsewhere");
         cut.WaitForAssertion(() => cut.FindAll(".modal").Should().NotBeEmpty());
 
-        cut.Find("button.btn-warning").Click();
+        await cut.Find("button.btn-warning").ClickAsync(new MouseEventArgs());
 
         cut.WaitForAssertion(() => saveInvoked.Should().BeTrue());
-        cut.WaitForAssertion(() => nav.Uri.Should().EndWith("/elsewhere"));
+        WaitForUri(nav, "/elsewhere");
     }
 
     [Fact]
-    public void ClickingBackdrop_BehavesLikeStay()
+    public async Task ClickingBackdrop_BehavesLikeStay()
     {
         var nav = Services.GetRequiredService<NavigationManager>();
         var originalUri = nav.Uri;
@@ -133,14 +134,14 @@ public class UnsavedChangesGuardTests : TestContext
         nav.NavigateTo("/elsewhere");
         cut.WaitForAssertion(() => cut.FindAll(".modal").Should().NotBeEmpty());
 
-        cut.Find(".modal-backdrop").Click();
+        await cut.Find(".modal-backdrop").ClickAsync(new MouseEventArgs());
 
         cut.WaitForAssertion(() => cut.FindAll(".modal").Should().BeEmpty());
         nav.Uri.Should().Be(originalUri);
     }
 
     [Fact]
-    public void ClickingCloseButton_BehavesLikeStay()
+    public async Task ClickingCloseButton_BehavesLikeStay()
     {
         var nav = Services.GetRequiredService<NavigationManager>();
         var originalUri = nav.Uri;
@@ -149,7 +150,7 @@ public class UnsavedChangesGuardTests : TestContext
         nav.NavigateTo("/elsewhere");
         cut.WaitForAssertion(() => cut.FindAll(".modal").Should().NotBeEmpty());
 
-        cut.Find("button.btn-close").Click();
+        await cut.Find("button.btn-close").ClickAsync(new MouseEventArgs());
 
         cut.WaitForAssertion(() => cut.FindAll(".modal").Should().BeEmpty());
         nav.Uri.Should().Be(originalUri);
@@ -223,7 +224,7 @@ public class UnsavedChangesGuardTests : TestContext
     // ═════════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void ModalCanBeReopened_AfterStay()
+    public async Task ModalCanBeReopened_AfterStay()
     {
         var nav = Services.GetRequiredService<NavigationManager>();
         var cut = RenderComponent<UnsavedChangesGuard>(p => p.Add(x => x.IsDirty, true));
@@ -231,11 +232,19 @@ public class UnsavedChangesGuardTests : TestContext
         // First attempt → Stay
         nav.NavigateTo("/first-attempt");
         cut.WaitForAssertion(() => cut.FindAll(".modal").Should().NotBeEmpty());
-        cut.Find("button.btn-outline-secondary").Click();
+        await cut.Find("button.btn-outline-secondary").ClickAsync(new MouseEventArgs());
         cut.WaitForAssertion(() => cut.FindAll(".modal").Should().BeEmpty());
 
         // Second attempt → modal reopens
         nav.NavigateTo("/second-attempt");
         cut.WaitForAssertion(() => cut.FindAll(".modal").Should().NotBeEmpty());
+    }
+
+    // The guard renders before the fake NavigationManager updates Uri, and WaitForAssertion only
+    // re-checks on renders, so poll the Uri on a timer instead.
+    private static void WaitForUri(NavigationManager nav, string suffix)
+    {
+        SpinWait.SpinUntil(() => nav.Uri.EndsWith(suffix, StringComparison.Ordinal), TimeSpan.FromSeconds(5));
+        nav.Uri.Should().EndWith(suffix);
     }
 }
