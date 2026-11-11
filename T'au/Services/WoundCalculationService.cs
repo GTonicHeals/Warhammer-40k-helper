@@ -24,7 +24,8 @@ public record WoundCalcResult(
     string? WoundRoll,
     string? EffectiveHitRoll,
     string? EffectiveWoundRoll,
-    string? FinalSaveRoll
+    string? FinalSaveRoll,
+    bool CoverApplied = false
 );
 
 public static class WoundCalculationService
@@ -76,11 +77,13 @@ public static class WoundCalculationService
 
         // Final save: armour vs invuln, take the better
         string? finalSaveRoll = null;
+        bool coverApplied = false;
         if (i.DefenderSave.HasValue && i.WeaponAp.HasValue)
         {
             int rawArmour      = i.DefenderSave.Value + Math.Abs(effectiveAp);
             bool coverApplies  = i.HasCover && i.IsRanged && !i.IgnoresCover
                                  && !(i.DefenderSave.Value <= 3 && effectiveAp == 0);
+            coverApplied       = coverApplies;
             int armourSave     = coverApplies ? rawArmour - 1 : rawArmour;
 
             int finalSaveNum = i.InvulnSave > 0
@@ -94,7 +97,7 @@ public static class WoundCalculationService
             finalSaveRoll = $"{i.InvulnSave}+";
         }
 
-        return new WoundCalcResult(netHit, netWound, woundRoll, effectiveHitRoll, effectiveWoundRoll, finalSaveRoll);
+        return new WoundCalcResult(netHit, netWound, woundRoll, effectiveHitRoll, effectiveWoundRoll, finalSaveRoll, coverApplied);
     }
 
     public static int ParseRollNum(string roll) =>

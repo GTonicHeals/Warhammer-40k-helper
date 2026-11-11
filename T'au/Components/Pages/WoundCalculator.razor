@@ -60,7 +60,7 @@
                     {
                         <span class="wc-seq-arrow">→</span>
                         <div class="wc-seq-step">
-                            <span class="wc-seq-label">SAVE@((_hasCover || _defReduceAp || _invulnSave > 0) ? " ✦" : "")</span>
+                            <span class="wc-seq-label">SAVE@((_coverApplied || _defReduceAp || _invulnSave > 0) ? " ✦" : "")</span>
                             <span class="wc-seq-roll seq-save">@FinalSaveRoll</span>
                         </div>
                     }
@@ -497,7 +497,7 @@
                                 title="@CoverButtonTitle"
                                 @onclick="ToggleCover">
                             <i class="bi @(_hasCover ? "bi-tree-fill" : "bi-tree") me-1"></i>
-                            IN COVER @(_hasCover ? "(+1 Sv)" : "")
+                            IN COVER @(_hasCover && _coverApplied ? "(+1 Sv)" : "")
                         </button>
 
                         <!-- Defender modifiers -->
@@ -746,6 +746,7 @@
     private int? DefenderSave;
     private List<(int? Count, string W)>? DefenderWounds;
     private bool _hasCover;
+    private bool _coverApplied;
     private string? WoundRoll;
     private string? FinalSaveRoll;
     private string SelectedWeaponMeta = "";
@@ -1325,6 +1326,7 @@
         EffectiveHitRoll   = result.EffectiveHitRoll;
         EffectiveWoundRoll = result.EffectiveWoundRoll;
         FinalSaveRoll      = result.FinalSaveRoll;
+        _coverApplied      = result.CoverApplied;
     }
 
     private bool SelectedWeaponIsRanged => SelectedWeapon?.TypeName == "Ranged Weapons";
@@ -2111,9 +2113,14 @@
         transition: border-color 0.15s, color 0.15s, background 0.15s;
     }
 
-    .wc-cover-btn:hover {
+    .wc-cover-btn:not(:disabled):hover {
         border-color: #2ecc71;
         color: #2ecc71;
+    }
+
+    .wc-cover-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
     }
 
     .wc-cover-on {

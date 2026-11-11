@@ -427,6 +427,16 @@ public class WoundCalculationServiceTests
         var r = WoundCalculationService.Calculate(BaseInput(ap: -1, save: 3) with { HasCover = true, ReduceAp = true });
         Assert.Equal("3+", r.FinalSaveRoll); }
 
+    [Fact] public void Calculate_CoverApplied_True_Save4_Ap0_Ranged()
+        => Assert.True(WoundCalculationService.Calculate(BaseInput(ap: 0, save: 4) with { HasCover = true }).CoverApplied);
+    [Fact] public void Calculate_CoverApplied_False_Save3_Ap0()
+        => Assert.False(WoundCalculationService.Calculate(BaseInput(ap: 0, save: 3) with { HasCover = true }).CoverApplied);
+    [Fact] public void Calculate_CoverApplied_False_Melee()
+        => Assert.False(WoundCalculationService.Calculate(BaseInput(ap: 0, save: 4) with { HasCover = true, IsRanged = false }).CoverApplied);
+    [Fact] public void Calculate_CoverApplied_False_IgnoresCover()
+        => Assert.False(WoundCalculationService.Calculate(BaseInput(ap: -1, save: 4) with { HasCover = true, IgnoresCover = true }).CoverApplied);
+    [Fact] public void Calculate_CoverApplied_False_NoCover()
+        => Assert.False(WoundCalculationService.Calculate(BaseInput(ap: 0, save: 4)).CoverApplied);
     [Fact] public void Calculate_Cover_DoesNotTouchInvulnerableSave()
     {   // Sv 6+, AP -2 -> armour 8, cover -> 7 (N/A); invuln 5+ wins unchanged
         var r = WoundCalculationService.Calculate(BaseInput(ap: -2, save: 6) with { HasCover = true, InvulnSave = 5 });
