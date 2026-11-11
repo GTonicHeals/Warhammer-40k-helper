@@ -1,0 +1,140 @@
+@using Warhammer.Helpers
+@using Warhammer.Models
+@using Warhammer.Models.Crusade
+@using Warhammer.Services
+@inject CrusadeTraitsService Traits
+
+@* Type → honour → (weapon, when the honour targets one) → "+". Raises Picked with the
+   AppliedTrait and resets. Used by the Crusade Card and the Post-battle rank-up step. *@
+
+@{
+    var options = OptionsFor(_type).ToList();
+    var selected = options.FirstOrDefault(t => t.Name == _trait);
+    var needsWeapon = NeedsWeaponPick(selected);
+    var weapons = needsWeapon ? WeaponsFor(selected!) : new List<string>();
+    var canAdd = selected is not null && (!needsWeapon || !string.IsNullOrEmpty(_weapon));
+}
+<div class="row g-1">
+    <div class="col-5">
+        <select class="form-select form-select-sm bg-dark text-white border-secondary hp-type"
+                value="@_type" @onchange="e => SetType(e.Value?.ToString() ?? string.Empty)">
+            <option value="">— Type —</option>
+            @foreach (var t in CrusadeTraitTypes.HonourTypes)
+            {
+                <option value="@t">@t</option>
+            }
+        </select>
+    </div>
+    <div class="col-5">
+        <select @key="@($"honour-{Card.Id}-{_type}")"
+                class="form-select form-select-sm border-secondary hp-trait @(string.IsNullOrEmpty(_type) || options.Count == 0 ? "bg-secondary text-muted" : "bg-dark text-white")"
+                value="@_trait" @onchange="e => SetTrait(e.Value?.ToString() ?? string.Empty)"
+                disabled="@(string.IsNullOrEmpty(_type) || options.Count == 0)">
+            <option value="">
+                @(options.Count == 0 && !string.IsNullOrEmpty(_type) ? "— None available —" : "— Honour —")
+            </option>
+            @foreach (var group in options.GroupBy(t => string.IsNullOrWhiteSpace(t.Category) ? "General" : t.Category))
+            {
+                <optgroup label="@group.Key">
+                    @foreach (var t in group)
+                    {
+                        <option value="@t.Name" title="@t.Effect">@OptionLabel(t, Card.IsTitanic)</option>
+                    }
+                </optgroup>
+            }
+        </select>
+    </div>
+    <div class="col-2 d-grid">
+        <button class="btn btn-sm btn-outline-success hp-add" @onclick="AddAsync" disabled="@(!canAdd)">+</button>
+    </div>
+</div>
+@if (needsWeapon)
+{
+    <div class="row g-1 mt-1">
+        <div class="col-12">
+            <select @key="@($"honour-weapon-{Card.Id}-{selected!.Name}")"
+                    class="form-select form-select-sm border-secondary hp-weapon @(weapons.Count == 0 ? "bg-secondary text-muted" : "bg-dark text-white")"
+                    value="@_weapon" @onchange="e => _weapon = e.Value?.ToString() ?? string.Empty"
+                    disabled="@(weapons.Count == 0)">
+                <option value="">
+                    @(weapons.Count == 0 ? "— No matching weapon on this datasheet —" : "— Choose weapon to modify —")
+                </option>
+                @foreach (var w in weapons)
+                {
+                    <option value="@w">@w</option>
+                }
+            </select>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public OrderOfBattle? Order { get; set; }
+    [Parameter, EditorRequired] public CrusadeUnitCard Card { get; set; } = default!;
+    // The unit's roster Selection, for the weapon list a per-weapon honour needs.
+    [Parameter] public Selection? RosterUnit { get; set; }
+    [Parameter] public EventCallback<AppliedTrait> Picked { get; set; }
+
+    private string _type = "", _trait = "", _weapon = "";
+
+    protected override Task OnInitializedAsync() => Traits.EnsureLoadedAsync();
+
+    private void SetType(string value) { _type = value; _trait = ""; _weapon = ""; }
+    private void SetTrait(string value) { _trait = value; _weapon = ""; }
+
+    private static bool NeedsWeaponPick(CrusadeTrait? trait) =>
+        trait?.WeaponScope is "weapon" or "weapon-ranged" or "weapon-melee";
+
+    // Names of the roster unit's weapons matching the trait's scope.
+    private List<string> WeaponsFor(CrusadeTrait trait)
+    {
+        if (RosterUnit is null) return new();
+
+        IEnumerable<Profile> weapons = trait.WeaponScope switch
+        {
+            "weapon-ranged" => RosterHelper.GetAllProfilesRecursive(RosterUnit, "Ranged Weapons"),
+            "weapon-melee"  => RosterHelper.GetAllProfilesRecursive(RosterUnit, "Melee Weapons"),
+            _ => RosterHelper.GetAllProfilesRecursive(RosterUnit, "Ranged Weapons")
+                    .Concat(RosterHelper.GetAllProfilesRecursive(RosterUnit, "Melee Weapons"))
+        };
+
+        return weapons.Select(w => w.Name).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n).ToList();
+    }
+
+    // Static traits of the chosen type, plus the Order of Battle's custom traits of that type.
+    private IEnumerable<CrusadeTrait> OptionsFor(string type)
+    {
+        if (string.IsNullOrEmpty(type)) return Enumerable.Empty<CrusadeTrait>();
+
+        var custom = Order?.CustomTraits.Where(t => string.Equals(t.Type, type, StringComparison.OrdinalIgnoreCase))
+                     ?? Enumerable.Empty<CrusadeTrait>();
+
+        return Traits.ByType(type).Concat(custom).OrderBy(t => t.Name);
+    }
+
+    // Labels show the sub-category when it adds information and the Crusade Points cost when it is not 1.
+    private static string OptionLabel(CrusadeTrait t, bool isTitanic)
+    {
+        var meaningful = !string.IsNullOrWhiteSpace(t.Category) &&
+                         !string.Equals(t.Category, t.Type, StringComparison.OrdinalIgnoreCase);
+        var baseLabel = meaningful ? $"{t.Name} ({t.Category})" : t.Name;
+        var cost = CrusadePointsCalculator.CostOf(t.Type, t.Category, isTitanic);
+        return cost == 1 ? baseLabel : $"{baseLabel} +{cost} CP";
+    }
+
+    private async Task AddAsync()
+    {
+        var trait = OptionsFor(_type).FirstOrDefault(t => t.Name == _trait);
+        if (trait is null) return;
+        string? weapon = null;
+        if (NeedsWeaponPick(trait))
+        {
+            if (string.IsNullOrEmpty(_weapon)) return;
+            weapon = _weapon;
+        }
+
+        _trait = "";
+        _weapon = "";
+        await Picked.InvokeAsync(AppliedTrait.FromTrait(trait, weapon));
+    }
+}

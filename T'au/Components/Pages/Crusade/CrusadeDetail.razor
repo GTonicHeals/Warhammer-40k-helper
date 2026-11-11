@@ -4,6 +4,7 @@
 @using Warhammer.Models
 @using Warhammer.Models.Crusade
 @using Warhammer.Services
+@using Warhammer.Components.Pages.Battle
 @inject CrusadeManagerService CrusadeMgr
 @inject RosterLoadService RosterLoader
 @inject CrusadeTraitsService Traits
@@ -267,79 +268,8 @@
                                                 </span>
                                             }
                                         </div>
-                                        @{
-                                            var honourType = GetHonourType(unit.Id);
-                                            var honourOptions = HonourOptionsFor(honourType).ToList();
-                                            var selectedTrait = honourOptions.FirstOrDefault(t => t.Name == GetHonourTrait(unit.Id));
-                                            var needsWeaponPick = NeedsWeaponPick(selectedTrait);
-                                            var weaponOptions = needsWeaponPick ? WeaponsForTrait(unit, selectedTrait!) : new List<string>();
-                                            var picked = GetHonourWeapon(unit.Id);
-                                            var canAdd = !string.IsNullOrEmpty(GetHonourTrait(unit.Id))
-                                                         && (!needsWeaponPick || !string.IsNullOrEmpty(picked));
-                                        }
-                                        <div class="row g-1">
-                                            <div class="col-5">
-                                                <select class="form-select form-select-sm bg-dark text-white border-secondary"
-                                                        value="@honourType"
-                                                        @onchange="e => SetHonourType(unit.Id, e.Value?.ToString() ?? string.Empty)">
-                                                    <option value="">— Type —</option>
-                                                    @foreach (var t in CrusadeTraitTypes.HonourTypes)
-                                                    {
-                                                        <option value="@t">@t</option>
-                                                    }
-                                                </select>
-                                            </div>
-                                            <div class="col-5">
-                                                <select @key="@($"honour-{unit.Id}-{honourType}")"
-                                                        class="form-select form-select-sm border-secondary @(string.IsNullOrEmpty(honourType) || honourOptions.Count == 0 ? "bg-secondary text-muted" : "bg-dark text-white")"
-                                                        value="@GetHonourTrait(unit.Id)"
-                                                        @onchange="e => SetHonourTrait(unit.Id, e.Value?.ToString() ?? string.Empty)"
-                                                        disabled="@(string.IsNullOrEmpty(honourType) || honourOptions.Count == 0)">
-                                                    <option value="">
-                                                        @(honourOptions.Count == 0 && !string.IsNullOrEmpty(honourType)
-                                                            ? "— None available —"
-                                                            : "— Honour —")
-                                                    </option>
-                                                    @foreach (var group in honourOptions.GroupBy(t =>
-                                                        string.IsNullOrWhiteSpace(t.Category) ? "General" : t.Category))
-                                                    {
-                                                        <optgroup label="@group.Key">
-                                                            @foreach (var t in group)
-                                                            {
-                                                                <option value="@t.Name" title="@t.Effect">@OptionLabel(t)</option>
-                                                            }
-                                                        </optgroup>
-                                                    }
-                                                </select>
-                                            </div>
-                                            <div class="col-2 d-grid">
-                                                <button class="btn btn-sm btn-outline-success"
-                                                        @onclick="() => AddHonour(unit)"
-                                                        disabled="@(!canAdd)">+</button>
-                                            </div>
-                                        </div>
-                                        @if (needsWeaponPick)
-                                        {
-                                            <div class="row g-1 mt-1">
-                                                <div class="col-12">
-                                                    <select @key="@($"honour-weapon-{unit.Id}-{selectedTrait!.Name}")"
-                                                            class="form-select form-select-sm border-secondary @(weaponOptions.Count == 0 ? "bg-secondary text-muted" : "bg-dark text-white")"
-                                                            value="@picked"
-                                                            @onchange="e => SetHonourWeapon(unit.Id, e.Value?.ToString() ?? string.Empty)"
-                                                            disabled="@(weaponOptions.Count == 0)">
-                                                        <option value="">
-                                                            @(weaponOptions.Count == 0
-                                                                ? "— No matching weapon on this datasheet —"
-                                                                : "— Choose weapon to modify —")
-                                                        </option>
-                                                        @foreach (var w in weaponOptions)
-                                                        {
-                                                            <option value="@w">@w</option>
-                                                        }
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        }
+                                        <HonourPicker Order="_crusade" Card="unit" RosterUnit="RosterUnitOf(unit)"
+                                                      Picked="t => AddHonour(unit, t)" />
                                     </div>
 
                                     <div class="col-12">
@@ -616,9 +546,6 @@
     private void CloseAddUnitModal() { _showAddUnitModal = false; _selectedUnitKey = ""; }
 
     // Per-unit dropdown state (transient — not persisted)
-    private readonly Dictionary<string, string> _honourType = new();
-    private readonly Dictionary<string, string> _honourTrait = new();
-    private readonly Dictionary<string, string> _honourWeapon = new();
     private readonly Dictionary<string, string> _scarChoice = new();
 
     // Per-unit upgrade panel open/closed state (transient)
@@ -732,105 +659,17 @@
         var confirmed = await JS.InvokeAsync<bool>("confirm", "Remove this unit from the Order of Battle?");
         if (!confirmed) return;
         _crusade.Units.RemoveAll(u => u.Id == unitId);
-        _honourType.Remove(unitId);
-        _honourTrait.Remove(unitId);
-        _honourWeapon.Remove(unitId);
         _scarChoice.Remove(unitId);
         await SaveAsync();
     }
 
-    // ── Honour dropdown state ──────────────────────────────────────────
-    private string GetHonourType(string unitId) => _honourType.TryGetValue(unitId, out var v) ? v : "";
+    private Selection? RosterUnitOf(CrusadeUnitCard unit) =>
+        _selectionsByName.TryGetValue(unit.DatasheetName ?? "", out var sel) ? sel : null;
 
-    private void SetHonourType(string unitId, string value)
-    {
-        _honourType[unitId] = value;
-        _honourTrait[unitId] = "";  // reset dependent dropdown when type changes
-        _honourWeapon[unitId] = ""; // reset weapon picker too
-    }
-
-    private string GetHonourTrait(string unitId) => _honourTrait.TryGetValue(unitId, out var v) ? v : "";
-
-    private void SetHonourTrait(string unitId, string value)
-    {
-        _honourTrait[unitId] = value;
-        _honourWeapon[unitId] = ""; // reset weapon when trait changes
-    }
-
-    private string GetHonourWeapon(string unitId) => _honourWeapon.TryGetValue(unitId, out var v) ? v : "";
-    private void SetHonourWeapon(string unitId, string value) => _honourWeapon[unitId] = value;
-
-    private static bool NeedsWeaponPick(CrusadeTrait? trait) =>
-        trait?.WeaponScope is "weapon" or "weapon-ranged" or "weapon-melee";
-
-    // Resolves the crusade unit back to its roster Selection and returns the names
-    // of weapons matching the trait's scope ("weapon" = any, "weapon-melee" = melee, etc).
-    private List<string> WeaponsForTrait(CrusadeUnitCard unit, CrusadeTrait trait)
-    {
-        if (!_selectionsByName.TryGetValue(unit.DatasheetName ?? "", out var sel))
-            return new();
-
-        IEnumerable<Profile> weapons = trait.WeaponScope switch
-        {
-            "weapon-ranged" => RosterHelper.GetAllProfilesRecursive(sel, "Ranged Weapons"),
-            "weapon-melee"  => RosterHelper.GetAllProfilesRecursive(sel, "Melee Weapons"),
-            _ => RosterHelper.GetAllProfilesRecursive(sel, "Ranged Weapons")
-                    .Concat(RosterHelper.GetAllProfilesRecursive(sel, "Melee Weapons"))
-        };
-
-        return weapons.Select(w => w.Name).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n).ToList();
-    }
-
-    // Static traits of the chosen type, plus any custom traits of that type from this crusade.
-    private IEnumerable<CrusadeTrait> HonourOptionsFor(string type)
-    {
-        if (string.IsNullOrEmpty(type)) return Enumerable.Empty<CrusadeTrait>();
-
-        var custom = _crusade?.CustomTraits
-            .Where(t => string.Equals(t.Type, type, StringComparison.OrdinalIgnoreCase))
-            ?? Enumerable.Empty<CrusadeTrait>();
-
-        return Traits.ByType(type).Concat(custom).OrderBy(t => t.Name);
-    }
-
-    // Trait dropdown labels show the sub-category in parens when it adds information
-    // (e.g. "Artificer Armour (Artificer)", "Born Hunter (Character)"), and append CP cost
-    // when it differs from the default of 1 (i.e. Antiquity/Legendary relics).
-    private static string OptionLabel(CrusadeTrait t)
-    {
-        var baseLabel = IsCategoryMeaningful(t) ? $"{t.Name} ({t.Category})" : t.Name;
-        var cost = CrusadePointsCalculator.CostOf(t.Type, t.Category, isTitanic: false);
-        return cost == 1 ? baseLabel : $"{baseLabel} +{cost} CP";
-    }
-
-    private static bool IsCategoryMeaningful(CrusadeTrait t) =>
-        !string.IsNullOrWhiteSpace(t.Category) &&
-        !string.Equals(t.Category, t.Type, StringComparison.OrdinalIgnoreCase);
-
-
-    private async Task AddHonour(CrusadeUnitCard unit)
+    private async Task AddHonour(CrusadeUnitCard unit, AppliedTrait applied)
     {
         if (_crusade is null) return;
-        var type = GetHonourType(unit.Id);
-        var name = GetHonourTrait(unit.Id);
-        if (string.IsNullOrEmpty(type) || string.IsNullOrEmpty(name)) return;
-
-        var trait = HonourOptionsFor(type).FirstOrDefault(t => t.Name == name);
-        if (trait is null) return;
-
-        // If the trait targets a specific weapon, require the user to have picked one.
-        // Unit-wide / all-of-type traits pass through with weaponName=null.
-        string? weaponName = null;
-        if (NeedsWeaponPick(trait))
-        {
-            weaponName = GetHonourWeapon(unit.Id);
-            if (string.IsNullOrEmpty(weaponName)) return;
-        }
-
-        var applied = AppliedTrait.FromTrait(trait, weaponName);
         unit.BattleHonours.Add(applied);
-        _honourTrait[unit.Id] = "";
-        _honourWeapon[unit.Id] = "";
         await SaveAsync();
     }
 
