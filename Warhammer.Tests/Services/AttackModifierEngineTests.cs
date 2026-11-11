@@ -120,6 +120,14 @@ public class AttackModifierEngineTests
     }
 
     [Fact]
+    public void Bgnt_applies_when_shooting_a_vehicle_or_monster_in_engagement_range()
+    {
+        Chip(Resolve(Facts(defKw: ["Monster"]), Sit()), "bgnt").State.Should().Be(ChipState.Waiting);
+        Resolve(Facts(defKw: ["Vehicle"]), Sit(engaged: true)).Input.BgntApplied.Should().BeTrue();
+        Resolve(Facts(defKw: ["Vehicle"], kw: ["Pistol"]), Sit(engaged: true)).Chips.Should().NotContain(c => c.Key == "bgnt");
+    }
+
+    [Fact]
     public void Heavy_and_bgnt_both_show_and_net_to_zero()
     {
         var r = Resolve(Facts(kw: ["Heavy"], atkKw: ["Vehicle"]), Sit(stationary: true, engaged: true));

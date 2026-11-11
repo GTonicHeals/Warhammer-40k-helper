@@ -9,7 +9,7 @@ namespace Warhammer.Services;
 //   Heavy          +1 hit, ranged, when the attacker remained stationary
 //   Indirect Fire  -1 hit and the target has cover, ranged, when the target is not visible
 //   Stealth        -1 hit against ranged attacks
-//   Big Guns Never Tire  -1 hit for a VEHICLE/MONSTER firing a non-Pistol ranged weapon in Engagement Range
+//   Big Guns Never Tire  -1 hit for non-Pistol ranged attacks by or against a VEHICLE/MONSTER in Engagement Range
 //   Lance          +1 wound, melee, when the bearer charged this turn
 //   Anti-X N+      wound roll capped at N+ when the defender has keyword X (whole keyword)
 //   Ignores Cover  cover cannot apply; melee never gets cover
@@ -56,7 +56,10 @@ public static partial class AttackModifierEngine
             minusHit = true;
         }
 
-        if (f.IsRanged && !Has("Pistol") && (AttackerIs("Vehicle") || AttackerIs("Monster")))
+        bool DefenderIs(string kw) => f.DefenderKeywords.Any(k => string.Equals(k, kw, StringComparison.OrdinalIgnoreCase));
+        // Applies to attacks made by, or targeting, a VEHICLE/MONSTER that is within Engagement Range.
+        if (f.IsRanged && !Has("Pistol") &&
+            (AttackerIs("Vehicle") || AttackerIs("Monster") || DefenderIs("Vehicle") || DefenderIs("Monster")))
         {
             hit.Add(new(Die.Hit, ChipSide.Attacker, "bgnt", "Big Guns −1", "−1 to hit while within Engagement Range",
                 s.InEngagementRange ? ChipState.Auto : ChipState.Waiting));

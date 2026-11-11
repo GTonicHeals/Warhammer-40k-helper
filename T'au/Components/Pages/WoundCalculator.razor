@@ -1,7 +1,9 @@
 ﻿@page "/woundcalc"
 @rendermode InteractiveServer
 @using System.Text.RegularExpressions
+@using Warhammer.Components.Calculator
 @using Warhammer.Models
+@using Warhammer.Models.Calculator
 @using Warhammer.Models.Crusade
 @using Warhammer.Services
 @using Warhammer.Helpers
@@ -10,13 +12,9 @@
 @inject RosterLoadService RosterLoader
 @inject CrusadeManagerService Crusades
 
-<div class="wc-page">
+<PageTitle>Wound Calculator</PageTitle>
 
-    <div class="wc-header">
-        <h2 class="wc-title"><i class="bi bi-crosshair me-2"></i>WOUND CALCULATOR</h2>
-        <p class="wc-subtitle">Warhammer 40,000 — 10th Edition</p>
-    </div>
-
+<div class="ds-root">
     @if (!AllUnits.Any())
     {
         <div class="wc-loading">
@@ -26,572 +24,52 @@
     }
     else
     {
-        <!-- Full-width attack sequence banner -->
-        @if (SelectedWeapon != null)
-        {
-            var bannerClass = GetResultClass(FinalSaveRoll ?? WoundRoll);
-            <div class="wc-full-result @bannerClass">
-                <div class="wc-fr-title">
-                    <span class="wc-fr-weapon">@(GetCleanWeaponName(_selectedWeaponName ?? "Weapon"))</span>
-                    @if (SelectedDefender != null)
-                    {
-                        <span class="wc-fr-sep">vs</span>
-                        <span class="wc-fr-defender">@SelectedDefender.Unit.Name</span>
-                    }
-                </div>
-                <div class="wc-sequence">
-                    <div class="wc-seq-step">
-                        <span class="wc-seq-label">
-                            HIT@(NetHitMod > 0 ? " ▲" : NetHitMod < 0 ? " ▼" : "")
-                        </span>
-                        <span class="wc-seq-roll seq-hit">@(EffectiveHitRoll ?? "—")</span>
-                    </div>
-                    @if (EffectiveWoundRoll != null)
-                    {
-                        <span class="wc-seq-arrow">→</span>
-                        <div class="wc-seq-step">
-                            <span class="wc-seq-label">
-                                WOUND@(NetWoundMod > 0 ? " ▲" : NetWoundMod < 0 ? " ▼" : "")
-                            </span>
-                            <span class="wc-seq-roll seq-wound">@EffectiveWoundRoll</span>
-                        </div>
-                    }
-                    @if (FinalSaveRoll != null)
-                    {
-                        <span class="wc-seq-arrow">→</span>
-                        <div class="wc-seq-step">
-                            <span class="wc-seq-label">SAVE@((_coverApplied || _defReduceAp || _invulnSave > 0) ? " ✦" : "")</span>
-                            <span class="wc-seq-roll seq-save">@FinalSaveRoll</span>
-                        </div>
-                    }
-                </div>
-            </div>
-        }
-
-        <div class="wc-arena">
+        <div class="ds-arena">
 
             <!-- ── ATTACKER ───────────────────────────── -->
-            <div class="wc-card">
-                <div class="wc-card-header attacker-header">
-                    <i class="bi bi-crosshair2"></i> ATTACKER
-                    @if (SelectedAttacker != null)
-                    {
-                        <span class="wc-header-unit">— @SelectedAttacker.Unit.Name</span>
-                        <button class="wc-info-btn" title="View Datasheet" @onclick="() => ShowUnitDetails(SelectedAttacker)" @onclick:stopPropagation="true">
-                            <i class="bi bi-card-list me-1"></i> DATASHEET
-                        </button>
-                    }
-                </div>
-                <div class="wc-card-body">
-
-                    <!-- Player filter -->
-                    <div class="wc-player-filter">
-                        <button class="wc-fbtn @(AttackerPlayerFilter == null ? "wc-fbtn-on" : "")"
-                                @onclick="() => SetAttackerFilter(null)">All</button>
-                        @foreach (var p in LoadedPlayers)
-                        {
-                            var active = AttackerPlayerFilter == p.Id;
-                            <button class="wc-fbtn @(active ? "wc-fbtn-on" : "")"
-                                    style="@(active ? $"--pbtn-color:{GetPlayerColor(p.Id)};" : "")"
-                                    @onclick="() => SetAttackerFilter(p.Id)">@PlayerTheme.GetLabel(p.Id)</button>
-                        }
-                    </div>
-
-                    <!-- Unit grid -->
-                    <div class="wc-grid-label">Unit</div>
-                    <div class="wc-unit-grid">
-                        @foreach (var entry in FilteredAttackerUnits)
-                        {
-                            var sel = SelectedAttacker?.Key == entry.Key;
-                            <div class="wc-tile @(sel ? "wc-tile-atk-on" : "")"
-                                 @onclick="() => SelectAttackerUnit(entry)">
-                                <div class="wc-tile-top">
-                                    <i class="bi bi-person-fill wc-tile-ico"></i>
-                                    <span class="wc-tile-name">@entry.Label</span>
-                                </div>
-                                <div class="wc-tile-foot">
-                                    <span class="wc-tile-pid" style="color:@GetPlayerColor(entry.PlayerId)">P@(entry.PlayerIndex)</span>
-                                </div>
-                            </div>
-                        }
-                    </div>
-
-                    <!-- Weapon grid (only after unit selected) -->
-                    @if (AttackerWeapons.Any())
-                    {
-                        <div class="wc-grid-label mt-2">Weapon</div>
-                        <div class="wc-weapon-grid">
-                            @foreach (var w in AttackerWeapons)
-                            {
-                                var sel = _selectedWeaponName == w.Name;
-                                var sVal = GetChar(w, "S");
-                                var wt  = w.TypeName == "Ranged Weapons" ? "RNG" : "MEL";
-                                <div class="wc-wtile @(sel ? "wc-tile-atk-on" : "")"
-                                     @onclick="() => SelectWeapon(w)">
-                                    <span class="wc-wtype @(wt == "RNG" ? "wt-rng" : "wt-mel")">@wt</span>
-                                    <span class="wc-wname">@GetCleanWeaponName(w.Name)</span>
-                                    <span class="wc-ws">S@(sVal)</span>
-                                </div>
-                            }
-                        </div>
-                    }
-
-                    <!-- Weapon stat bar -->
+            <DatasheetPanel Role="Attacker" Unit="SelectedAttacker" PickerOpen="_attackerPickerOpen"
+                            BandClicked="() => _attackerPickerOpen = !_attackerPickerOpen"
+                            DatasheetClicked="() => ShowUnitDetails(SelectedAttacker!)">
+                <Picker>
+                    <UnitPicker Units="AllUnits" PlayerFilter="@AttackerPlayerFilter" Selected="SelectedAttacker"
+                                FilterChanged="SetAttackerFilter" Picked="PickAttacker" />
+                </Picker>
+                <Weapons>@AttackerWeaponsTable</Weapons>
+                <Chips>
                     @if (SelectedWeapon != null)
                     {
-                        <div class="wc-statbar atk-statbar">
-                            @if (!string.IsNullOrEmpty(WeaponAttacks) && WeaponAttacks != "-")
-                            {
-                                <div class="wc-sb-stat">
-                                    <span class="wc-sb-lbl">A</span>
-                                    <span class="wc-sb-val wc-sb-atk">@WeaponAttacks</span>
-                                </div>
-                                <div class="wc-sb-divider"></div>
-                            }
-                            @if (HitRoll != null)
-                            {
-                                var hitMods = StatModInfo("Hit", isDefender: false);
-                                <div class="wc-sb-stat">
-                                    <span class="wc-sb-lbl">@(SelectedWeapon.TypeName == "Ranged Weapons" ? "BS" : "WS")</span>
-                                    @if (hitMods != null)
-                                    {
-                                        <span class="kw-tag-wrapper">
-                                            <span class="wc-sb-val wc-sb-hit wc-crusade-mod">@HitRoll<sup>*</sup></span>
-                                            <div class="kw-tooltip">
-                                                <div class="kw-tooltip-title">Hit — Crusade</div>
-                                                <div class="kw-tooltip-body">@string.Join(", ", hitMods)</div>
-                                            </div>
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="wc-sb-val wc-sb-hit">@HitRoll</span>
-                                    }
-                                </div>
-                                <div class="wc-sb-divider"></div>
-                            }
-                            @if (WeaponStrength.HasValue)
-                            {
-                                var sMods = StatModInfo("S", isDefender: false);
-                                <div class="wc-sb-stat">
-                                    <span class="wc-sb-lbl">S</span>
-                                    @if (sMods != null)
-                                    {
-                                        <span class="kw-tag-wrapper">
-                                            <span class="wc-sb-val wc-crusade-mod">@WeaponStrength<sup>*</sup></span>
-                                            <div class="kw-tooltip">
-                                                <div class="kw-tooltip-title">S — Crusade</div>
-                                                <div class="kw-tooltip-body">@string.Join(", ", sMods)</div>
-                                            </div>
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="wc-sb-val">@WeaponStrength</span>
-                                    }
-                                </div>
-                            }
-                            @if (WeaponAp.HasValue)
-                            {
-                                var apMods = StatModInfo("AP", isDefender: false);
-                                <div class="wc-sb-divider"></div>
-                                <div class="wc-sb-stat">
-                                    <span class="wc-sb-lbl">AP</span>
-                                    @if (apMods != null)
-                                    {
-                                        <span class="kw-tag-wrapper">
-                                            <span class="wc-sb-val wc-sb-ap wc-crusade-mod">@WeaponAp<sup>*</sup></span>
-                                            <div class="kw-tooltip">
-                                                <div class="kw-tooltip-title">AP — Crusade</div>
-                                                <div class="kw-tooltip-body">@string.Join(", ", apMods)</div>
-                                            </div>
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="wc-sb-val wc-sb-ap">@WeaponAp</span>
-                                    }
-                                </div>
-                            }
-                            
-                            @if (!string.IsNullOrEmpty(SelectedWeaponMeta))
-                            {
-                                <span class="wc-sb-meta">@SelectedWeaponMeta</span>
-                            }
-                        </div>
-                        @if (SelectedWeaponKeywords.Any())
-                        {
-                            <div class="wc-kw-row">
-                                @foreach (var kw in SelectedWeaponKeywords)
-                                {
-                                    @if (kw.Definition != null)
-                                    {
-                                        <span class="kw-tag-wrapper">
-                                            <span class="wc-kw-tag kw-tag-glossary">@kw.Raw</span>
-                                            <div class="kw-tooltip">
-                                                <div class="kw-tooltip-title">@kw.Raw</div>
-                                                <div class="kw-tooltip-body">@kw.Definition</div>
-                                            </div>
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="wc-kw-tag">@kw.Raw</span>
-                                    }
-                                }
-                            </div>
-                        }
+                        <ModifierChips Chips="ChipsFor(ChipSide.Attacker)" Toggled="Toggled" />
                     }
+                </Chips>
+                <Body>
+                    @StratagemList(AttackerStratagems)
+                    @AbilityList(AttackerDetachmentRule, AttackerAbilities)
+                </Body>
+            </DatasheetPanel>
 
-                    <!-- Attacker modifiers -->
-                    @if (SelectedWeapon != null)
-                    {
-                        <div class="wc-mods-section">
-                            <div class="wc-mods-label">Modifiers</div>
-                            <div class="wc-mods-row">
-                                <button class="wc-mod-btn @(_atkPlusOneHit ? "wc-mod-on" : "")"
-                                        @onclick="() => { _atkPlusOneHit = !_atkPlusOneHit; Recalculate(); }">
-                                    <i class="bi bi-arrow-up-circle"></i> +1 HIT
-                                </button>
-                                <button class="wc-mod-btn @(_atkPlusOneWound ? "wc-mod-on" : "")"
-                                        @onclick="() => { _atkPlusOneWound = !_atkPlusOneWound; Recalculate(); }">
-                                    <i class="bi bi-arrow-up-circle"></i> +1 WOUND
-                                </button>
-                                @if (CanApplyBgnt())
-                                {
-                                    <span class="kw-tag-wrapper">
-                                        <button class="wc-mod-btn @(_bgntPenalty ? "wc-mod-on" : "")"
-                                                @onclick="() => { _bgntPenalty = !_bgntPenalty; Recalculate(); }">
-                                            <i class="bi bi-truck"></i> BGNT (-1 HIT)
-                                        </button>
-                                        <div class="kw-tooltip">
-                                            <div class="kw-tooltip-title">Big Guns Never Tire</div>
-                                            <div class="kw-tooltip-body">Vehicles and Monsters suffer a -1 to Hit penalty when firing Ranged weapons (excluding Pistols) while within Engagement Range of enemy units, or when targeted by Ranged weapons while in Engagement Range.</div>
-                                        </div>
-                                    </span>
-                                }
-                            </div>
-                        </div>
-                    }
-
-                    <!-- Attacker Stratagems -->
-                    @if (AttackerStratagems.Any())
-                    {
-                        <div class="wc-strat-section">
-                            <div class="wc-mods-label">Stratagems</div>
-                            <div class="strat-list">
-                                @foreach (var s in AttackerStratagems)
-                                {
-                                    <button class="strat-badge @StratClass(s)" @onclick="() => ShowStratagem(s)">
-                                        <span class="strat-name-text">@s.Name</span>
-                                        <span class="cp-badge">@s.Cost CP</span>
-                                    </button>
-                                }
-                            </div>
-                        </div>
-                    }
-
-                    <!-- Attacker Detachment Rule + Abilities -->
-                    @if (AttackerDetachmentRule != null || AttackerAbilities.Any())
-                    {
-                        <div class="wc-mods-section">
-                            <div class="wc-mods-label"><i class="bi bi-lightning-fill me-1"></i>Abilities</div>
-                            <div class="wc-ability-list">
-                                @if (AttackerDetachmentRule != null)
-                                {
-                                    var dr = AttackerDetachmentRule;
-                                    <span class="kw-tag-wrapper">
-                                        <button class="wc-ability-btn wc-detachment-btn" @onclick="() => ShowRule(dr)">[DETACHMENT] @dr.Name</button>
-                                        <div class="kw-tooltip">
-                                            <div class="kw-tooltip-title">@dr.Name</div>
-                                            <div class="kw-tooltip-body">@((MarkupString)FormatText(dr.Description))</div>
-                                        </div>
-                                    </span>
-                                }
-                                @foreach (var rule in AttackerAbilities)
-                                {
-                                    var r = rule;
-                                    <span class="kw-tag-wrapper">
-                                        <button class="wc-ability-btn" @onclick="() => ShowRule(r)">@r.Name</button>
-                                        <div class="kw-tooltip">
-                                            <div class="kw-tooltip-title">@r.Name</div>
-                                            <div class="kw-tooltip-body">@((MarkupString)FormatText(r.Description))</div>
-                                        </div>
-                                    </span>
-                                }
-                            </div>
-                        </div>
-                    }
-
-                </div>
-            </div>
-
-            <!-- ── VS COL ──────────────────────────────── -->
-            <div class="wc-vs-col">
-                <div class="wc-vs-badge">VS</div>
-                <button class="wc-swap-btn"
-                        title="Swap Attacker and Defender"
-                        disabled="@(SelectedAttacker == null && SelectedDefender == null)"
-                        @onclick="SwapRoles">
-                    <i class="bi bi-arrow-left-right"></i>
-                    <span class="wc-swap-label">SWAP</span>
-                </button>
-                @if (EffectiveWoundRoll != null)
-                {
-                    <div class="wc-mini-result @GetResultClass(EffectiveWoundRoll)">
-                        <div class="wc-mr-label">wound</div>
-                        <div class="wc-mr-roll">@EffectiveWoundRoll</div>
-                        @if (FinalSaveRoll != null)
-                        {
-                            <div class="wc-mr-label">save @FinalSaveRoll</div>
-                        }
-                    </div>
-                }
-                <!-- Quick reference table -->
-                <div class="wc-reference">
-                    <table class="wc-ref-table">
-                        <tbody>
-                            <tr class="@(WoundRoll == "2+" ? "wc-ref-on" : "")">
-                                <td>S≥2T</td><td class="roll-2">2+</td>
-                            </tr>
-                            <tr class="@(WoundRoll == "3+" ? "wc-ref-on" : "")">
-                                <td>S&gt;T</td><td class="roll-3">3+</td>
-                            </tr>
-                            <tr class="@(WoundRoll == "4+" ? "wc-ref-on" : "")">
-                                <td>S=T</td><td class="roll-4">4+</td>
-                            </tr>
-                            <tr class="@(WoundRoll == "5+" ? "wc-ref-on" : "")">
-                                <td>S&lt;T</td><td class="roll-5">5+</td>
-                            </tr>
-                            <tr class="@(WoundRoll == "6+" ? "wc-ref-on" : "")">
-                                <td>S≤½T</td><td class="roll-6">6+</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <!-- ── ROLL SPINE ─────────────────────────── -->
+            <RollSpine Hit="@EffectiveHitRoll" Wound="@EffectiveWoundRoll" Save="@FinalSaveRoll" Swap="SwapRoles" />
 
             <!-- ── DEFENDER ───────────────────────────── -->
-            <div class="wc-card">
-                <div class="wc-card-header defender-header">
-                    <i class="bi bi-shield-fill"></i> DEFENDER
-                    @if (SelectedDefender != null)
-                    {
-                        <span class="wc-header-unit">— @SelectedDefender.Unit.Name</span>
-                        <button class="wc-info-btn" title="View Datasheet" @onclick="() => ShowUnitDetails(SelectedDefender)" @onclick:stopPropagation="true">
-                            <i class="bi bi-card-list me-1"></i> DATASHEET
-                        </button>
-                    }
-                </div>
-                <div class="wc-card-body">
-
-                    <!-- Player filter -->
-                    <div class="wc-player-filter">
-                        <button class="wc-fbtn @(DefenderPlayerFilter == null ? "wc-fbtn-on" : "")"
-                                @onclick="() => SetDefenderFilter(null)">All</button>
-                        @foreach (var p in LoadedPlayers)
-                        {
-                            var active = DefenderPlayerFilter == p.Id;
-                            <button class="wc-fbtn @(active ? "wc-fbtn-on" : "")"
-                                    style="@(active ? $"--pbtn-color:{GetPlayerColor(p.Id)};" : "")"
-                                    @onclick="() => SetDefenderFilter(p.Id)">@PlayerTheme.GetLabel(p.Id)</button>
-                        }
-                    </div>
-
-                    <!-- Unit grid -->
-                    <div class="wc-grid-label">Unit</div>
-                    <div class="wc-unit-grid">
-                        @foreach (var entry in FilteredDefenderUnits)
-                        {
-                            var sel = SelectedDefender?.Key == entry.Key;
-                            <div class="wc-tile @(sel ? "wc-tile-def-on" : "")"
-                                 @onclick="() => SelectDefenderUnit(entry)">
-                                <div class="wc-tile-top">
-                                    <i class="bi bi-shield-fill wc-tile-ico"></i>
-                                    <span class="wc-tile-name">@entry.Label</span>
-                                </div>
-                                <div class="wc-tile-foot">
-                                    <span class="wc-tile-pid" style="color:@GetPlayerColor(entry.PlayerId)">P@(entry.PlayerIndex)</span>
-                                </div>
-                            </div>
-                        }
-                    </div>
-
-                    <!-- Defender stat bar + cover toggle -->
-                    @if (DefenderToughness.HasValue)
-                    {
-                        var tMods = StatModInfo("T", isDefender: true);
-                        var svMods = StatModInfo("Sv", isDefender: true);
-                        <div class="wc-statbar def-statbar">
-                            <div class="wc-sb-stat">
-                                <span class="wc-sb-lbl">T</span>
-                                @if (tMods != null)
-                                {
-                                    <span class="kw-tag-wrapper">
-                                        <span class="wc-sb-val wc-crusade-mod">@DefenderToughness<sup>*</sup></span>
-                                        <div class="kw-tooltip">
-                                            <div class="kw-tooltip-title">T — Crusade</div>
-                                            <div class="kw-tooltip-body">@string.Join(", ", tMods)</div>
-                                        </div>
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="wc-sb-val">@DefenderToughness</span>
-                                }
-                            </div>
-                            @if (DefenderSave.HasValue)
-                            {
-                                <div class="wc-sb-divider"></div>
-                                <div class="wc-sb-stat">
-                                    <span class="wc-sb-lbl">Sv</span>
-                                    @if (svMods != null)
-                                    {
-                                        <span class="kw-tag-wrapper">
-                                            <span class="wc-sb-val wc-sb-sv wc-crusade-mod">@(DefenderSave)+<sup>*</sup></span>
-                                            <div class="kw-tooltip">
-                                                <div class="kw-tooltip-title">Sv — Crusade</div>
-                                                <div class="kw-tooltip-body">@string.Join(", ", svMods)</div>
-                                            </div>
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="wc-sb-val wc-sb-sv">@(DefenderSave)@("+")</span>
-                                    }
-                                </div>
-                            }
-                            @if (DefenderWounds is { Count: > 0 })
-                            {
-                                var isMixed = DefenderWounds.Count > 1;
-                                <div class="wc-sb-divider"></div>
-                                <div class="wc-sb-stat @(isMixed ? "wc-w-help" : "")">
-                                    <span class="wc-sb-lbl">W</span>
-                                    @if (isMixed)
-                                    {
-                                        <div class="wc-w-tooltip">
-                                            <div class="wc-w-tooltip-title">Wounds per model</div>
-                                            <div class="wc-w-tooltip-body">For mixed units: <strong>count|wounds</strong>.<br/>e.g. <strong>1|2</strong> means 1 model with 2 wounds each.</div>
-                                        </div>
-                                    }
-                                    <span class="wc-sb-val">
-                                        @for (int i = 0; i < DefenderWounds.Count; i++)
-                                        {
-                                            var part = DefenderWounds[i];
-                                            if (i > 0)
-                                            {
-                                                <span class="wc-sb-w-sep">,&nbsp;</span>
-                                            }
-                                            if (part.Count.HasValue)
-                                            {
-                                                <span class="wc-sb-w-count">@part.Count|</span>
-                                            }
-                                            <span class="text-danger">@part.W</span>
-                                        }
-                                    </span>
-                                </div>
-                            }
-                        </div>
-                        <button class="wc-cover-btn @(_hasCover ? "wc-cover-on" : "")"
-                                disabled="@(!CoverCanApply)"
-                                title="@CoverButtonTitle"
-                                @onclick="ToggleCover">
-                            <i class="bi @(_hasCover ? "bi-tree-fill" : "bi-tree") me-1"></i>
-                            IN COVER @(_hasCover && _coverApplied ? "(+1 Sv)" : "")
-                        </button>
-
-                        <!-- Defender modifiers -->
-                        <div class="wc-mods-section">
-                            <div class="wc-mods-label">Modifiers</div>
-                            <div class="wc-mods-row">
-                                <button class="wc-mod-btn @(_defMinusOneHit ? "wc-mod-on" : "")"
-                                        @onclick="() => { _defMinusOneHit = !_defMinusOneHit; Recalculate(); }">
-                                    <i class="bi bi-arrow-down-circle"></i> -1 vs HIT
-                                </button>
-                                <button class="wc-mod-btn @(_defMinusOneWound ? "wc-mod-on" : "")"
-                                        @onclick="() => { _defMinusOneWound = !_defMinusOneWound; Recalculate(); }">
-                                    <i class="bi bi-arrow-down-circle"></i> -1 vs WND
-                                </button>
-                                <button class="wc-mod-btn @(_defReduceAp ? "wc-mod-on" : "")"
-                                        @onclick="() => { _defReduceAp = !_defReduceAp; Recalculate(); }">
-                                    <i class="bi bi-shield-plus"></i> AP -1
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Invulnerable save -->
-                        <div class="wc-mods-section">
-                            <div class="wc-mods-label">
-                                Invuln Save
-                                @if (_autoInvulnSave.HasValue)
-                                {
-                                    <span class="wc-auto-badge">auto @(_autoInvulnSave)@("+")</span>
-                                }
-                            </div>
-                            <div class="wc-mods-row">
-                                <button class="wc-fbtn @(_invulnSave == 0 ? "wc-fbtn-on" : "")"
-                                        @onclick="() => { _invulnSave = 0; Recalculate(); }">None</button>
-                                @foreach (var inv in new[] { 3, 4, 5, 6 })
-                                {
-                                    <button class="wc-fbtn @(_invulnSave == inv ? "wc-fbtn-on" : "")"
-                                            style="@(_invulnSave == inv ? "--pbtn-color:#a855f7;" : "")"
-                                            @onclick="() => { _invulnSave = inv; Recalculate(); }">@(inv)@("+")</button>
-                                }
-                            </div>
-                        </div>
-                    }
-
-                    <!-- Defender Stratagems -->
-                    @if (DefenderStratagems.Any())
-                    {
-                        <div class="wc-strat-section">
-                            <div class="wc-mods-label">Stratagems</div>
-                            <div class="strat-list">
-                                @foreach (var s in DefenderStratagems)
-                                {
-                                    <button class="strat-badge @StratClass(s)" @onclick="() => ShowStratagem(s)">
-                                        <span class="strat-name-text">@s.Name</span>
-                                        <span class="cp-badge">@s.Cost CP</span>
-                                    </button>
-                                }
-                            </div>
-                        </div>
-                    }
-
-                    <!-- Defender Detachment Rule + Abilities -->
-                    @if (DefenderDetachmentRule != null || DefenderAbilities.Any())
-                    {
-                        <div class="wc-mods-section">
-                            <div class="wc-mods-label"><i class="bi bi-lightning-fill me-1"></i>Abilities</div>
-                            <div class="wc-ability-list">
-                                @if (DefenderDetachmentRule != null)
-                                {
-                                    var dr = DefenderDetachmentRule;
-                                    <span class="kw-tag-wrapper">
-                                        <button class="wc-ability-btn wc-detachment-btn" @onclick="() => ShowRule(dr)">[DETACHMENT] @dr.Name</button>
-                                        <div class="kw-tooltip">
-                                            <div class="kw-tooltip-title">@dr.Name</div>
-                                            <div class="kw-tooltip-body">@((MarkupString)FormatText(dr.Description))</div>
-                                        </div>
-                                    </span>
-                                }
-                                @foreach (var rule in DefenderAbilities)
-                                {
-                                    var r = rule;
-                                    <span class="kw-tag-wrapper">
-                                        <button class="wc-ability-btn" @onclick="() => ShowRule(r)">@r.Name</button>
-                                        <div class="kw-tooltip">
-                                            <div class="kw-tooltip-title">@r.Name</div>
-                                            <div class="kw-tooltip-body">@((MarkupString)FormatText(r.Description))</div>
-                                        </div>
-                                    </span>
-                                }
-                            </div>
-                        </div>
-                    }
-
-                </div>
-            </div>
+            <DatasheetPanel Role="Defender" Unit="SelectedDefender" PickerOpen="_defenderPickerOpen"
+                            Invuln="@(_invulnSave > 0 ? _invulnSave : null)"
+                            StatOverrides="DefenderStatOverrides" StatMods="_defenderStatMods"
+                            BandClicked="() => _defenderPickerOpen = !_defenderPickerOpen"
+                            DatasheetClicked="() => ShowUnitDetails(SelectedDefender!)">
+                <Picker>
+                    <UnitPicker Units="AllUnits" PlayerFilter="@DefenderPlayerFilter" Selected="SelectedDefender"
+                                FilterChanged="SetDefenderFilter" Picked="PickDefender" />
+                </Picker>
+                <Weapons>@DefenderWoundsRow</Weapons>
+                <Chips>
+                    <ModifierChips Chips="ChipsFor(ChipSide.Defender)" Toggled="Toggled" />
+                    @InvulnOverride
+                </Chips>
+                <Body>
+                    @StratagemList(DefenderStratagems)
+                    @AbilityList(DefenderDetachmentRule, DefenderAbilities)
+                </Body>
+            </DatasheetPanel>
 
         </div>
     }
@@ -726,13 +204,13 @@
 }
 
 @code {
-    private record UnitEntry(string Key, string Label, string PlayerId, int PlayerIndex, Selection Unit, string DetachmentName, CrusadeUnitCard? CrusadeData = null);
-
     private List<UnitEntry> AllUnits = new();
     private List<Profile> AttackerWeapons = new();
 
     private string? AttackerPlayerFilter;
     private string? DefenderPlayerFilter;
+    private bool _attackerPickerOpen;
+    private bool _defenderPickerOpen;
 
     private UnitEntry? SelectedAttacker;
     private UnitEntry? SelectedDefender;
@@ -745,34 +223,24 @@
     private int? DefenderToughness;
     private int? DefenderSave;
     private List<(int? Count, string W)>? DefenderWounds;
-    private bool _hasCover;
-    private bool _coverApplied;
-    private string? WoundRoll;
-    private string? FinalSaveRoll;
-    private string SelectedWeaponMeta = "";
     private string? WeaponAttacks;
     private string? WeaponKeywords;
     private List<KeywordToken> SelectedWeaponKeywords = new();
 
-    // Modifier toggles
-    private bool _atkPlusOneHit;
-    private bool _atkPlusOneWound;
-    private bool _bgntPenalty;
-    private bool _defMinusOneHit;
-    private bool _defMinusOneWound;
-    private bool _defReduceAp;
-    private int  _invulnSave;       // 0 = None, else 3/4/5/6
+    // Situation Toggles and manual modifiers; every automatic modifier is derived by AttackModifierEngine.
+    private Situation _situation = Situation.None;
+    private int  _invulnSave;       // 0 = None, else 3/4/5/6 (defaults to the datasheet value)
     private int? _autoInvulnSave;   // detected from unit profile
 
-    // Effective display rolls (post-modifier)
-    private int    NetHitMod;
-    private int    NetWoundMod;
+    // Engine output
+    private IReadOnlyList<ModChip> _chips = [];
     private string? EffectiveHitRoll;
     private string? EffectiveWoundRoll;
+    private string? FinalSaveRoll;
 
     // Per-stat list of crusade traits that contributed a modifier (for the
-    // gold asterisk + hover tooltip on the stat bar). Cleared and re-populated
-    // every time a weapon or defender unit is (re-)selected.
+    // gold asterisk + hover tooltip). Cleared and re-populated every time a
+    // weapon or defender unit is (re-)selected.
     private readonly Dictionary<string, List<string>> _attackerStatMods = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, List<string>> _defenderStatMods = new(StringComparer.OrdinalIgnoreCase);
 
@@ -792,21 +260,6 @@
     private Dictionary<string, Rule> DetachmentRules = new();
     private Rule? AttackerDetachmentRule;
     private Rule? DefenderDetachmentRule;
-
-    private IEnumerable<(string Id, int Index)> LoadedPlayers =>
-        AllUnits.Select(u => (u.PlayerId, u.PlayerIndex))
-                .DistinctBy(x => x.Item1)
-                .OrderBy(x => x.Item2);
-
-    private IEnumerable<UnitEntry> FilteredAttackerUnits =>
-        AttackerPlayerFilter == null
-            ? AllUnits
-            : AllUnits.Where(u => u.PlayerId == AttackerPlayerFilter);
-
-    private IEnumerable<UnitEntry> FilteredDefenderUnits =>
-        DefenderPlayerFilter == null
-            ? AllUnits
-            : AllUnits.Where(u => u.PlayerId == DefenderPlayerFilter);
 
     protected override async Task OnInitializedAsync()
     {
@@ -843,7 +296,43 @@
             playerIndex++;
         }
 
+        await AddCrusadeUnitsAsync();
         RestoreFromState();
+    }
+
+    // Crusade Cards (SQLite) become extra "pc" entries carrying their honour and scar modifiers.
+    private async Task AddCrusadeUnitsAsync()
+    {
+        await Crusades.LoadAllCrusadesAsync();
+
+        foreach (var crusade in Crusades.Crusades)
+        {
+            if (string.IsNullOrEmpty(crusade.PlayerId)) continue;
+
+            var roster = await RosterLoader.LoadRosterAsync(crusade.PlayerId);
+            if (roster == null) continue;
+
+            var selectionsByName = RosterLoadService.GetPlayableUnits(roster)
+                .DistinctBy(u => u.Name)
+                .ToDictionary(u => u.Name, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var card in crusade.Units)
+            {
+                if (string.IsNullOrEmpty(card.DatasheetName)) continue;
+                if (!selectionsByName.TryGetValue(card.DatasheetName, out var selection)) continue;
+
+                var label = string.IsNullOrWhiteSpace(card.UnitName) ? card.DatasheetName : card.UnitName;
+                AllUnits.Add(new UnitEntry(
+                    Key:            $"pc_{crusade.Id}_{card.Id}",
+                    Label:          label,
+                    PlayerId:       "pc",
+                    PlayerIndex:    0,
+                    Unit:           selection,
+                    DetachmentName: crusade.DetachmentName,
+                    CrusadeData:    card
+                ));
+            }
+        }
     }
 
     private void RestoreFromState()
@@ -873,58 +362,6 @@
         }
     }
 
-    // Crusade units live in localStorage and require JS interop, which isn't
-    // available during prerender — so we defer their load to first render
-    // (matches the pattern used by CrusadeManager.razor / CrusadeDetail.razor).
-    private bool _crusadeUnitsLoaded;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender || _crusadeUnitsLoaded) return;
-        _crusadeUnitsLoaded = true;
-
-        await Crusades.LoadAllCrusadesAsync();
-
-        var added = 0;
-        foreach (var crusade in Crusades.Crusades)
-        {
-            if (string.IsNullOrEmpty(crusade.PlayerId)) continue;
-
-            var roster = await RosterLoader.LoadRosterAsync(crusade.PlayerId);
-            if (roster == null) continue;
-
-            var selectionsByName = RosterLoadService.GetPlayableUnits(roster)
-                .DistinctBy(u => u.Name)
-                .ToDictionary(u => u.Name, StringComparer.OrdinalIgnoreCase);
-
-            foreach (var card in crusade.Units)
-            {
-                if (string.IsNullOrEmpty(card.DatasheetName)) continue;
-                if (!selectionsByName.TryGetValue(card.DatasheetName, out var selection)) continue;
-
-                var label = string.IsNullOrWhiteSpace(card.UnitName) ? card.DatasheetName : card.UnitName;
-                AllUnits.Add(new UnitEntry(
-                    Key:            $"pc_{crusade.Id}_{card.Id}",
-                    Label:          label,
-                    PlayerId:       "pc",
-                    PlayerIndex:    0,
-                    Unit:           selection,
-                    DetachmentName: crusade.DetachmentName,
-                    CrusadeData:    card
-                ));
-                added++;
-            }
-        }
-
-        if (added > 0)
-        {
-            // The user may have left a PC unit selected last session — try once
-            // more now that the entries exist. RestoreFromState is idempotent.
-            RestoreFromState();
-            StateHasChanged();
-        }
-    }
-
     private void SetAttackerFilter(string? playerId)
     {
         AttackerPlayerFilter = playerId;
@@ -941,31 +378,53 @@
         CalcState.DefenderFilter = DefenderPlayerFilter;
     }
 
+    private void PickAttacker(UnitEntry entry)
+    {
+        _attackerPickerOpen = false;
+        if (SelectedAttacker?.Key != entry.Key) SelectAttackerUnit(entry);
+    }
+
+    private void PickDefender(UnitEntry entry)
+    {
+        _defenderPickerOpen = false;
+        if (SelectedDefender?.Key != entry.Key) SelectDefenderUnit(entry);
+    }
+
     private void SelectAttackerUnit(UnitEntry entry)
     {
-        if (SelectedAttacker?.Key == entry.Key) { ClearAttacker(); return; }
-
         SelectedAttacker = entry;
-        _selectedWeaponName = null;
-        SelectedWeapon = null;
-        WeaponStrength = null;
-        SelectedWeaponMeta = "";
-        WeaponAttacks = null;
-        WeaponKeywords = null;
-        SelectedWeaponKeywords = new();
-        _atkPlusOneHit = false;
-        _atkPlusOneWound = false;
-        _bgntPenalty = false;
+        ResetWeaponFields();
+        _situation = _situation with
+        {
+            PlusHit = false, PlusWound = false, Stationary = false, Charged = false,
+            NotVisible = false, InEngagementRange = false
+        };
         AttackerWeapons = GetAllWeapons(entry.Unit);
-        AttackerStratagems = StratagemSvc.GetStratagemsForUnit(entry.Unit.Name, entry.DetachmentName)
-            .Where(s => s.Turn.Contains("your", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(s => s.Phase).ThenBy(s => s.Name)
-            .ToList();
+        AttackerStratagems = StratagemsFor(entry, "your");
         AttackerAbilities = GetAbilities(entry.Unit);
         AttackerDetachmentRule = DetachmentRules.TryGetValue(entry.DetachmentName, out var adr) ? adr : null;
         CalcState.AttackerUnitKey = entry.Key;
         CalcState.WeaponName = null;
         Recalculate();
+    }
+
+    private List<StratagemModelWithDetachment> StratagemsFor(UnitEntry entry, string turn) =>
+        StratagemSvc.GetStratagemsForUnit(entry.Unit.Name, entry.DetachmentName)
+            .Where(s => s.Turn.Contains(turn, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(s => s.Phase).ThenBy(s => s.Name)
+            .ToList();
+
+    private void ResetWeaponFields()
+    {
+        _selectedWeaponName = null;
+        SelectedWeapon = null;
+        WeaponStrength = null;
+        WeaponAp = null;
+        HitRoll = null;
+        WeaponAttacks = null;
+        WeaponKeywords = null;
+        SelectedWeaponKeywords = new();
+        _attackerStatMods.Clear();
     }
 
     private void SelectWeapon(Profile w)
@@ -983,24 +442,17 @@
 
         var skillStat = w.TypeName == "Ranged Weapons" ? "BS" : "WS";
         var skillRaw  = GetChar(w, skillStat);
-        if (skillRaw == "N/A" || skillRaw == "-")
-        {
-            HitRoll = "AUTO";
-        }
-        else
-        {
-            HitRoll = skillRaw; // stored as-is e.g. "3+"
-        }
+        HitRoll = skillRaw is "N/A" or "-" ? "AUTO" : skillRaw;
 
         WeaponAttacks  = GetChar(w, "A");
         WeaponKeywords = GetChar(w, "Keywords");
         SelectedWeaponKeywords = RosterHelper.ParseWeaponKeywords(WeaponKeywords ?? "");
-        var range = GetChar(w, "Range");
-        var dmg   = GetChar(w, "D");
-        SelectedWeaponMeta = $"{range}  D:{dmg}";
         CalcState.WeaponName = _selectedWeaponName;
         ApplyAttackerCrusadeMods();
-        if (!CoverCanApply) _hasCover = false;
+
+        // Remained stationary, target not visible and engagement range only matter for ranged attacks.
+        if (!SelectedWeaponIsRanged)
+            _situation = _situation with { Stationary = false, NotVisible = false, InEngagementRange = false };
         Recalculate();
     }
 
@@ -1138,34 +590,38 @@
 
     private void SelectDefenderUnit(UnitEntry entry)
     {
-        if (SelectedDefender?.Key == entry.Key) { ClearDefender(); return; }
-
         SelectedDefender = entry;
-        _hasCover        = false;
-        _defMinusOneHit  = false;
-        _defMinusOneWound = false;
-        _defReduceAp     = false;
+        _situation = _situation with { Cover = false, MinusHit = false, MinusWound = false, ReduceAp = false };
+        LoadDefenderStats(entry);
 
-        var unitProfile = GetAllProfilesRecursive(entry.Unit, "Unit").FirstOrDefault();
-        var tVal  = GetChar(unitProfile, "T");
-        var svVal = GetChar(unitProfile, "SV");
-        DefenderToughness = int.TryParse(tVal, out var t)  ? t  : null;
-        DefenderSave      = int.TryParse(svVal.TrimEnd('+'), out var sv) ? sv : null;
-        DefenderWounds    = BuildDefenderWounds(entry.Unit);
-
-        _autoInvulnSave = ParseInvulnSave(entry.Unit);
-        _invulnSave     = _autoInvulnSave ?? 0;
-
-        DefenderStratagems = StratagemSvc.GetStratagemsForUnit(entry.Unit.Name, entry.DetachmentName)
-            .Where(s => s.Turn.Contains("opponent", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(s => s.Phase).ThenBy(s => s.Name)
-            .ToList();
+        DefenderStratagems = StratagemsFor(entry, "opponent");
         DefenderAbilities = GetAbilities(entry.Unit);
         DefenderDetachmentRule = DetachmentRules.TryGetValue(entry.DetachmentName, out var ddr) ? ddr : null;
 
         CalcState.DefenderUnitKey = entry.Key;
         ApplyDefenderCrusadeMods();
         Recalculate();
+    }
+
+    private void LoadDefenderStats(UnitEntry? entry)
+    {
+        if (entry == null)
+        {
+            DefenderToughness = null;
+            DefenderSave      = null;
+            DefenderWounds    = null;
+            _autoInvulnSave   = null;
+            _invulnSave       = 0;
+            return;
+        }
+        var unitProfile = GetAllProfilesRecursive(entry.Unit, "Unit").FirstOrDefault();
+        var tVal  = GetChar(unitProfile, "T");
+        var svVal = GetChar(unitProfile, "SV");
+        DefenderToughness = int.TryParse(tVal, out var t) ? t : null;
+        DefenderSave      = int.TryParse(svVal.TrimEnd('+'), out var sv) ? sv : null;
+        DefenderWounds    = BuildDefenderWounds(entry.Unit);
+        _autoInvulnSave   = ParseInvulnSave(entry.Unit);
+        _invulnSave       = _autoInvulnSave ?? 0;
     }
 
     private void ClearAttacker()
@@ -1175,40 +631,23 @@
         AttackerStratagems = new();
         AttackerAbilities = new();
         AttackerDetachmentRule = null;
-        _bgntPenalty = false;
         CalcState.AttackerUnitKey = null;
         ClearWeapon();
     }
 
     private void ClearWeapon()
     {
-        SelectedWeapon = null;
-        _selectedWeaponName = null;
-        WeaponStrength = null;
-        WeaponAp = null;
-        HitRoll = null;
-        SelectedWeaponMeta = "";
-        WeaponAttacks = null;
-        WeaponKeywords = null;
-        SelectedWeaponKeywords = new();
-        _bgntPenalty = false;
-        _attackerStatMods.Clear();
+        ResetWeaponFields();
+        _situation = _situation with { InEngagementRange = false };
         CalcState.WeaponName = null;
         Recalculate();
     }
 
     private void ClearDefender()
     {
-        SelectedDefender  = null;
-        DefenderToughness = null;
-        DefenderSave      = null;
-        DefenderWounds    = null;
-        _hasCover         = false;
-        _defMinusOneHit   = false;
-        _defMinusOneWound = false;
-        _defReduceAp      = false;
-        _invulnSave       = 0;
-        _autoInvulnSave   = null;
+        SelectedDefender = null;
+        LoadDefenderStats(null);
+        _situation = _situation with { Cover = false, MinusHit = false, MinusWound = false, ReduceAp = false };
         DefenderStratagems = new();
         DefenderAbilities = new();
         DefenderDetachmentRule = null;
@@ -1219,70 +658,27 @@
 
     private void SwapRoles()
     {
-        var oldAttacker       = SelectedAttacker;
-        var oldDefender       = SelectedDefender;
-        var oldAttackerFilter = AttackerPlayerFilter;
-        var oldDefenderFilter = DefenderPlayerFilter;
+        if (SelectedAttacker == null && SelectedDefender == null) return;
 
-        // Cross the player filters
-        AttackerPlayerFilter = oldDefenderFilter;
-        DefenderPlayerFilter = oldAttackerFilter;
+        var oldAttacker = SelectedAttacker;
+        var oldDefender = SelectedDefender;
+        (AttackerPlayerFilter, DefenderPlayerFilter) = (DefenderPlayerFilter, AttackerPlayerFilter);
 
-        // Old Defender → new Attacker (weapon selection reset; user must pick one)
-        SelectedAttacker    = oldDefender;
-        _selectedWeaponName = null;
-        SelectedWeapon      = null;
-        WeaponStrength      = null;
-        WeaponAp            = null;
-        HitRoll             = null;
-        SelectedWeaponMeta  = "";
-        WeaponAttacks       = null;
-        WeaponKeywords      = null;
-        SelectedWeaponKeywords = new();
-        _atkPlusOneHit      = false;
-        _atkPlusOneWound    = false;
-        _bgntPenalty        = false;
-        AttackerWeapons     = oldDefender != null ? GetAllWeapons(oldDefender.Unit) : new();
+        // Old Defender → new Attacker (weapon selection reset; the user picks one).
+        SelectedAttacker = oldDefender;
+        ResetWeaponFields();
+        _situation = Situation.None;
+        AttackerWeapons = oldDefender != null ? GetAllWeapons(oldDefender.Unit) : new();
 
-        // Old Attacker → new Defender (re-derive T, Sv, invuln)
-        SelectedDefender  = oldAttacker;
-        _hasCover         = false;
-        _defMinusOneHit   = false;
-        _defMinusOneWound = false;
-        _defReduceAp      = false;
-        if (oldAttacker != null)
-        {
-            var unitProfile = GetAllProfilesRecursive(oldAttacker.Unit, "Unit").FirstOrDefault();
-            var tVal  = GetChar(unitProfile, "T");
-            var svVal = GetChar(unitProfile, "SV");
-            DefenderToughness = int.TryParse(tVal, out var t) ? t : null;
-            DefenderSave      = int.TryParse(svVal.TrimEnd('+'), out var sv) ? sv : null;
-            DefenderWounds    = BuildDefenderWounds(oldAttacker.Unit);
-            _autoInvulnSave   = ParseInvulnSave(oldAttacker.Unit);
-            _invulnSave       = _autoInvulnSave ?? 0;
-        }
-        else
-        {
-            DefenderToughness = null;
-            DefenderSave      = null;
-            DefenderWounds    = null;
-            _autoInvulnSave   = null;
-            _invulnSave       = 0;
-        }
+        // Old Attacker → new Defender (re-derive T, Sv, invuln, wounds).
+        SelectedDefender = oldAttacker;
+        LoadDefenderStats(oldAttacker);
 
-        AttackerStratagems = SelectedAttacker != null
-            ? StratagemSvc.GetStratagemsForUnit(SelectedAttacker.Unit.Name, SelectedAttacker.DetachmentName)
-                .Where(s => s.Turn.Contains("your", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(s => s.Phase).ThenBy(s => s.Name).ToList()
-            : new();
+        AttackerStratagems = SelectedAttacker != null ? StratagemsFor(SelectedAttacker, "your") : new();
         AttackerAbilities = SelectedAttacker != null ? GetAbilities(SelectedAttacker.Unit) : new();
         AttackerDetachmentRule = SelectedAttacker != null && DetachmentRules.TryGetValue(SelectedAttacker.DetachmentName, out var sadr) ? sadr : null;
 
-        DefenderStratagems = SelectedDefender != null
-            ? StratagemSvc.GetStratagemsForUnit(SelectedDefender.Unit.Name, SelectedDefender.DetachmentName)
-                .Where(s => s.Turn.Contains("opponent", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(s => s.Phase).ThenBy(s => s.Name).ToList()
-            : new();
+        DefenderStratagems = SelectedDefender != null ? StratagemsFor(SelectedDefender, "opponent") : new();
         DefenderAbilities = SelectedDefender != null ? GetAbilities(SelectedDefender.Unit) : new();
         DefenderDetachmentRule = SelectedDefender != null && DetachmentRules.TryGetValue(SelectedDefender.DetachmentName, out var sddr) ? sddr : null;
 
@@ -1292,54 +688,245 @@
         CalcState.DefenderUnitKey = SelectedDefender?.Key;
         CalcState.WeaponName = null;
 
-        // Old attacker (now defender) keeps its crusade-based defender mods;
-        // weapon mods don't apply until the user picks a weapon again.
-        _attackerStatMods.Clear();
+        // Old attacker (now defender) keeps its crusade-based defender mods.
         ApplyDefenderCrusadeMods();
-
         Recalculate();
     }
 
+    // ── Modifier engine ────────────────────────────────────────────────────
+    private AttackFacts BuildFacts() => new(
+        Skill:              HitRoll,
+        Strength:           WeaponStrength,
+        Ap:                 WeaponAp,
+        // Before a weapon is picked, defender chips are shown as for a ranged attack.
+        IsRanged:           SelectedWeapon == null || SelectedWeaponIsRanged,
+        WeaponKeywords:     SelectedWeaponKeywords.Select(k => k.Raw).ToList(),
+        AttackerKeywords:   SelectedAttacker != null ? GetKeywords(SelectedAttacker.Unit) : [],
+        DefenderKeywords:   SelectedDefender != null ? GetKeywords(SelectedDefender.Unit) : [],
+        DefenderHasStealth: SelectedDefender != null && RosterHelper.GetAbilities(SelectedDefender.Unit)
+                                .Any(r => r.Name.StartsWith("Stealth", StringComparison.OrdinalIgnoreCase)),
+        DefenderToughness:  DefenderToughness,
+        DefenderSave:       DefenderSave,
+        DefenderInvuln:     _invulnSave > 0 ? _invulnSave : null);
+
     private void Recalculate()
     {
-        var result = WoundCalculationService.Calculate(new WoundCalcInput(
-            HitRoll:         HitRoll,
-            WeaponStrength:  WeaponStrength,
-            WeaponAp:        WeaponAp,
-            DefenderToughness: DefenderToughness,
-            DefenderSave:    DefenderSave,
-            PlusOneHit:      _atkPlusOneHit,
-            PlusOneWound:    _atkPlusOneWound,
-            BgntApplied:     _bgntPenalty && CanApplyBgnt(),
-            MinusOneHit:     _defMinusOneHit,
-            MinusOneWound:   _defMinusOneWound,
-            ReduceAp:        _defReduceAp,
-            HasCover:        _hasCover,
-            InvulnSave:      _invulnSave,
-            IsRanged:        SelectedWeaponIsRanged,
-            IgnoresCover:    SelectedWeaponIgnoresCover
-        ));
+        var resolution = AttackModifierEngine.Resolve(BuildFacts(), _situation);
+        var result = WoundCalculationService.Calculate(resolution.Input);
 
-        NetHitMod          = result.NetHitMod;
-        NetWoundMod        = result.NetWoundMod;
-        WoundRoll          = result.WoundRoll;
-        EffectiveHitRoll   = result.EffectiveHitRoll;
+        _chips = resolution.Chips;
+        EffectiveHitRoll = SelectedWeapon != null ? result.EffectiveHitRoll : null;
+        FinalSaveRoll = result.FinalSaveRoll;
+
+        // Anti-X: a critical wound on N+ means the roll needed is never worse than N+.
         EffectiveWoundRoll = result.EffectiveWoundRoll;
-        FinalSaveRoll      = result.FinalSaveRoll;
-        _coverApplied      = result.CoverApplied;
+        if (resolution.AntiThreshold is int anti && EffectiveWoundRoll is not null &&
+            (EffectiveWoundRoll == "N/A" || WoundCalculationService.ParseRollNum(EffectiveWoundRoll) > anti))
+            EffectiveWoundRoll = $"{anti}+";
     }
 
+    private IReadOnlyList<ModChip> ChipsFor(ChipSide side) => _chips.Where(c => c.Side == side).ToList();
+
+    // A chip tap flips the Situation Toggle or manual modifier it stands for.
+    private void Toggled(string key)
+    {
+        var s = _situation;
+        _situation = key switch
+        {
+            "heavy"      => s with { Stationary = !s.Stationary },
+            "lance"      => s with { Charged = !s.Charged },
+            "indirect"   => s with { NotVisible = !s.NotVisible },
+            "bgnt"       => s with { InEngagementRange = !s.InEngagementRange },
+            "cover"      => s with { Cover = !s.Cover },
+            "plusHit"    => s with { PlusHit = !s.PlusHit },
+            "plusWound"  => s with { PlusWound = !s.PlusWound },
+            "minusHit"   => s with { MinusHit = !s.MinusHit },
+            "minusWound" => s with { MinusWound = !s.MinusWound },
+            "reduceAp"   => s with { ReduceAp = !s.ReduceAp },
+            _ => s
+        };
+        Recalculate();
+    }
+
+    private void SetInvuln(int value) { _invulnSave = value; Recalculate(); }
+
     private bool SelectedWeaponIsRanged => SelectedWeapon?.TypeName == "Ranged Weapons";
-    private bool SelectedWeaponIgnoresCover =>
-        SelectedWeaponKeywords.Any(k => k.Raw.StartsWith("Ignores Cover", StringComparison.OrdinalIgnoreCase));
-    private bool CoverCanApply => SelectedWeapon == null || (SelectedWeaponIsRanged && !SelectedWeaponIgnoresCover);
-    private string CoverButtonTitle =>
-        SelectedWeapon != null && !SelectedWeaponIsRanged ? "No benefit of cover against melee"
-        : SelectedWeaponIgnoresCover ? "This weapon ignores cover"
-        : "";
 
-    private void ToggleCover() { _hasCover = !_hasCover; Recalculate(); }
+    private IReadOnlyDictionary<string, string>? DefenderStatOverrides
+    {
+        get
+        {
+            if (SelectedDefender == null) return null;
+            var d = new Dictionary<string, string>();
+            if (DefenderToughness is int t) d["T"] = t.ToString();
+            if (DefenderSave is int sv) d["SV"] = $"{sv}+";
+            if (DefenderWounds is { Count: > 1 })
+                d["W"] = string.Join(", ", DefenderWounds.Select(w => $"{w.Count}|{w.W}"));
+            return d;
+        }
+    }
 
+    // ── Render fragments ───────────────────────────────────────────────────
+    private RenderFragment AttackerWeaponsTable => __builder =>
+    {
+        if (!AttackerWeapons.Any()) return;
+        <div class="ds-weapons">
+            @foreach (var group in AttackerWeapons.GroupBy(w => w.TypeName == "Ranged Weapons"))
+            {
+                <div class="ds-wgroup">
+                    <div class="ds-whead">
+                        <span class="ds-wtitle">@(group.Key ? "Ranged weapons" : "Melee weapons")</span>
+                        <span>Range</span><span>A</span><span>@(group.Key ? "BS" : "WS")</span><span>S</span><span>AP</span><span>D</span>
+                    </div>
+                    @foreach (var w in group)
+                    {
+                        var weapon = w;
+                        var on = _selectedWeaponName == w.Name;
+                        <button type="button" class="ds-wrow @(on ? "ds-wrow-on" : "")" data-weapon="@w.Name"
+                                aria-pressed="@(on ? "true" : "false")" @onclick="() => SelectWeapon(weapon)">
+                            <span class="ds-wname">
+                                @GetCleanWeaponName(w.Name)
+                                @if (!on && GetChar(w, "Keywords") is { Length: > 0 } kws && kws != "-")
+                                {
+                                    <small>@kws</small>
+                                }
+                            </span>
+                            <span>@GetChar(w, "Range")</span>
+                            @StatCell(on ? WeaponAttacks : GetChar(w, "A"), on ? StatModInfo("A", false) : null)
+                            @StatCell(on ? HitRoll : GetChar(w, group.Key ? "BS" : "WS"), on ? StatModInfo("Hit", false) : null)
+                            @StatCell(on ? WeaponStrength?.ToString() : GetChar(w, "S"), on ? StatModInfo("S", false) : null)
+                            @StatCell(on ? WeaponAp?.ToString() : GetChar(w, "AP"), on ? StatModInfo("AP", false) : null)
+                            <span>@GetChar(w, "D")</span>
+                        </button>
+                    }
+                </div>
+            }
+            @if (SelectedWeapon != null && SelectedWeaponKeywords.Any())
+            {
+                <div class="ds-kw-row">
+                    @foreach (var kw in SelectedWeaponKeywords)
+                    {
+                        @if (kw.Definition != null)
+                        {
+                            <span class="kw-tag-wrapper">
+                                <span class="ds-kw">@kw.Raw</span>
+                                <div class="kw-tooltip">
+                                    <div class="kw-tooltip-title">@kw.Raw</div>
+                                    <div class="kw-tooltip-body">@kw.Definition</div>
+                                </div>
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="ds-kw">@kw.Raw</span>
+                        }
+                    }
+                    @if (StatModInfo("Keyword", false) is { } kwMods)
+                    {
+                        <span class="ds-kw ds-kw-crusade" title="Crusade: @string.Join(", ", kwMods)">* Crusade</span>
+                    }
+                </div>
+            }
+        </div>
+    };
+
+    // A weapon stat cell; a Crusade-modified value gets the gold asterisk and names the honours on hover.
+    private static RenderFragment StatCell(string? value, List<string>? mods) => __builder =>
+    {
+        if (mods is { Count: > 0 })
+        {
+            <span class="ds-wcrusade" title="Crusade: @string.Join(", ", mods)">@value<sup>*</sup></span>
+        }
+        else
+        {
+            <span>@value</span>
+        }
+    };
+
+    private RenderFragment DefenderWoundsRow => __builder =>
+    {
+        if (DefenderWounds is not { Count: > 1 }) return;
+        <div class="ds-wounds" title="Mixed unit: count|wounds per model">
+            Wounds per model:
+            @foreach (var part in DefenderWounds)
+            {
+                <span class="ds-wounds-part"><strong>@part.Count</strong>×@part.W W</span>
+            }
+        </div>
+    };
+
+    private RenderFragment InvulnOverride => __builder =>
+    {
+        if (SelectedDefender == null) return;
+        <div class="ds-invuln" role="group" aria-label="Invulnerable save">
+            <span class="ds-section-label">
+                Invuln
+                @if (_autoInvulnSave.HasValue)
+                {
+                    <em>datasheet @(_autoInvulnSave)+</em>
+                }
+            </span>
+            <button type="button" class="ds-filter-btn @(_invulnSave == 0 ? "ds-filter-on" : "")" @onclick="() => SetInvuln(0)">None</button>
+            @foreach (var inv in new[] { 3, 4, 5, 6 })
+            {
+                var v = inv;
+                <button type="button" class="ds-filter-btn @(_invulnSave == v ? "ds-filter-on" : "")" data-invuln="@v"
+                        @onclick="() => SetInvuln(v)">@(v)+</button>
+            }
+        </div>
+    };
+
+    private RenderFragment StratagemList(List<StratagemModelWithDetachment> stratagems) => __builder =>
+    {
+        if (!stratagems.Any()) return;
+        <div class="ds-section">
+            <div class="ds-section-label">Stratagems</div>
+            <div class="strat-list">
+                @foreach (var s in stratagems)
+                {
+                    var strat = s;
+                    <button type="button" class="strat-badge @StratClass(strat)" @onclick="() => ShowStratagem(strat)">
+                        <span class="strat-name-text">@strat.Name</span>
+                        <span class="cp-badge">@strat.Cost CP</span>
+                    </button>
+                }
+            </div>
+        </div>
+    };
+
+    private RenderFragment AbilityList(Rule? detachmentRule, List<Rule> abilities) => __builder =>
+    {
+        if (detachmentRule == null && !abilities.Any()) return;
+        <div class="ds-section">
+            <div class="ds-section-label"><i class="bi bi-lightning-fill me-1"></i>Abilities</div>
+            <div class="ds-abilities">
+                @if (detachmentRule != null)
+                {
+                    var dr = detachmentRule;
+                    <span class="kw-tag-wrapper">
+                        <button type="button" class="ds-ability ds-ability-detachment" @onclick="() => ShowRule(dr)">[DETACHMENT] @dr.Name</button>
+                        <div class="kw-tooltip">
+                            <div class="kw-tooltip-title">@dr.Name</div>
+                            <div class="kw-tooltip-body">@((MarkupString)FormatText(dr.Description))</div>
+                        </div>
+                    </span>
+                }
+                @foreach (var rule in abilities)
+                {
+                    var r = rule;
+                    <span class="kw-tag-wrapper">
+                        <button type="button" class="ds-ability" @onclick="() => ShowRule(r)">@r.Name</button>
+                        <div class="kw-tooltip">
+                            <div class="kw-tooltip-title">@r.Name</div>
+                            <div class="kw-tooltip-body">@((MarkupString)FormatText(r.Description))</div>
+                        </div>
+                    </span>
+                }
+            </div>
+        </div>
+    };
+
+    // ── Datasheet helpers ──────────────────────────────────────────────────
     private static string GetCleanWeaponName(string raw) => RosterHelper.GetCleanWeaponName(raw);
 
     private int? ParseInvulnSave(Selection unit)
@@ -1355,7 +942,7 @@
         }
 
         // Fall back: scan all rules text for "invulnerable ... X+"
-        var rules = CollectRules(unit);
+        var rules = RosterHelper.CollectRules(unit);
         foreach (var r in rules)
         {
             var text = r.Name + " " + r.Description;
@@ -1365,15 +952,6 @@
         }
         return null;
     }
-
-    private List<Rule> CollectRules(Selection sel) => RosterHelper.CollectRules(sel);
-
-    // ─────────────────────────────────────────────────────────────────────────
-    private string GetResultClass(string? roll) => roll switch
-    {
-        "2+" => "wfr-2", "3+" => "wfr-3", "4+" => "wfr-4",
-        "5+" => "wfr-5", "6+" => "wfr-6", "N/A" => "wfr-na", _ => ""
-    };
 
     private List<Profile> GetAllWeapons(Selection unit)
     {
@@ -1433,19 +1011,6 @@
 
     private List<string> GetKeywords(Selection unit) => RosterHelper.GetKeywords(unit);
 
-    private bool CanApplyBgnt()
-    {
-        if (SelectedWeapon == null || SelectedWeapon.TypeName != "Ranged Weapons") return false;
-        if (SelectedWeaponKeywords.Any(k => k.Raw.Contains("PISTOL", StringComparison.OrdinalIgnoreCase))) return false;
-
-        bool attackerBig = SelectedAttacker != null && GetKeywords(SelectedAttacker.Unit)
-            .Any(k => k.Equals("VEHICLE", StringComparison.OrdinalIgnoreCase) || k.Equals("MONSTER", StringComparison.OrdinalIgnoreCase));
-        bool defenderBig = SelectedDefender != null && GetKeywords(SelectedDefender.Unit)
-            .Any(k => k.Equals("VEHICLE", StringComparison.OrdinalIgnoreCase) || k.Equals("MONSTER", StringComparison.OrdinalIgnoreCase));
-
-        return attackerBig || defenderBig;
-    }
-
     private static MarkupString FormatText(string text) => RosterHelper.FormatText(text);
 
     private static string StratClass(StratagemModelWithDetachment s)
@@ -1455,823 +1020,44 @@
         if (t.Contains("opponent")) return "strat-red";
         return "strat-green";
     }
-
-    private static string GetPlayerColor(string playerId) => PlayerTheme.GetColor(playerId);
 }
 
 <style>
-    /* ── Page shell ─────────────────────────────────────────────────────── */
-    .wc-page {
-        max-width: 980px;
-        margin: 0 auto;
-        padding: 20px 14px 80px;
-        font-family: 'Oswald', sans-serif;
-        color: #e0e0e0;
-    }
+    .wc-loading { text-align: center; padding: 4rem 0; }
 
-    .wc-header { text-align: center; margin-bottom: 20px; }
-
-    .wc-title {
-        font-size: 1.9rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 3px;
-        color: #ffc107;
-        margin: 0;
-    }
-
-    .wc-subtitle {
-        color: #666;
-        font-size: 0.78rem;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        margin: 3px 0 0;
-    }
-
-    .wc-loading { text-align: center; padding: 60px; color: #666; }
-
-    /* ── Full-width result banner ───────────────────────────────────────── */
-    .wc-full-result {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-        border-radius: 6px;
-        border: 1px solid #444;
-        background: #1a1a1a;
-        padding: 14px 20px;
-        margin-bottom: 16px;
-        transition: border-color 0.2s, background 0.2s;
-    }
-
-    .wfr-2 { border-color: #f1c40f; background: rgba(241,196,15,0.07); }
-    .wfr-3 { border-color: #2ecc71; background: rgba(46,204,113,0.07); }
-    .wfr-4 { border-color: #3498db; background: rgba(52,152,219,0.07); }
-    .wfr-5 { border-color: #e67e22; background: rgba(230,126,34,0.07); }
-    .wfr-6 { border-color: #e74c3c; background: rgba(231,76,60,0.07);  }
-
-    .wc-fr-left {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .wc-fr-weapon {
-        font-weight: 700;
-        font-size: 0.95rem;
-        text-transform: uppercase;
-        color: #ffddaa;
-    }
-
-    .wc-fr-sep { color: #555; font-size: 0.75rem; }
-
-    .wc-fr-defender {
-        font-weight: 700;
-        font-size: 0.95rem;
-        text-transform: uppercase;
-        color: #aaccff;
-    }
-
-    .wc-fr-center {
-        display: flex;
-        align-items: baseline;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .wc-fr-annotation { font-size: 0.78rem; color: #777; }
-
-    .wc-fr-roll {
-        font-size: 1.8rem;
-        font-weight: 800;
-        color: #ffc107;
-        line-height: 1;
-    }
-
-    /* ── Three-column arena ─────────────────────────────────────────────── */
-    .wc-arena {
-        display: grid;
-        grid-template-columns: 1fr 120px 1fr;
-        gap: 12px;
-        align-items: start;
-    }
-
-    @@media (max-width: 700px) {
-        .wc-arena { grid-template-columns: 1fr; }
-        .wc-vs-col { flex-direction: row; justify-content: center; flex-wrap: wrap; }
-    }
-
-    /* ── Cards ──────────────────────────────────────────────────────────── */
-    .wc-card {
-        background: #1e1e1e;
-        border: 1px solid #333;
-        border-radius: 6px;
-        overflow: visible;
-    }
-
-    .wc-card-header {
-        padding: 9px 14px;
-        font-size: 0.8rem;
-        font-weight: 800;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-    }
-
-    .attacker-header {
-        background: linear-gradient(135deg, #5c1212 0%, #3a0a0a 100%);
-        border-bottom: 2px solid #c0392b;
-        color: #ffbbbb;
-    }
-
-    .defender-header {
-        background: linear-gradient(135deg, #0e2240 0%, #071428 100%);
-        border-bottom: 2px solid #2980b9;
-        color: #aad4ff;
-    }
-
-    .wc-header-unit {
-        font-size: 0.7rem;
-        font-weight: 400;
-        letter-spacing: 0;
-        opacity: 0.8;
-        text-transform: none;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 160px;
-    }
-
-    .wc-card-body { padding: 12px; }
-
-    /* ── Player filter buttons ──────────────────────────────────────────── */
-    .wc-player-filter {
-        display: flex;
-        gap: 5px;
-        flex-wrap: wrap;
-        margin-bottom: 10px;
-    }
-
-    .wc-fbtn {
-        background: #252525;
-        border: 1px solid #3a3a3a;
-        color: #777;
-        border-radius: 3px;
-        padding: 3px 10px;
-        font-size: 0.72rem;
-        font-weight: 700;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        cursor: pointer;
-        font-family: 'Oswald', sans-serif;
-        transition: border-color 0.15s, color 0.15s, background 0.15s;
-    }
-
-    .wc-fbtn:hover { border-color: #666; color: #ccc; background: #2e2e2e; }
-
-    .wc-fbtn-on {
-        border-color: var(--pbtn-color, #e0e0e0) !important;
-        color: var(--pbtn-color, #e0e0e0) !important;
-        background: rgba(255,255,255,0.05) !important;
-    }
-
-    /* ── Grid labels ────────────────────────────────────────────────────── */
-    .wc-grid-label {
-        font-size: 0.65rem;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        color: #555;
-        margin-bottom: 6px;
-    }
-
-    .mt-2 { margin-top: 10px; }
-
-    /* ── Unit tile grid ─────────────────────────────────────────────────── */
-    .wc-unit-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 5px;
-        max-height: 290px;
-        overflow-y: auto;
-        scrollbar-width: thin;
-        scrollbar-color: #3a3a3a #1a1a1a;
-        padding-right: 2px;
-    }
-
-    .wc-unit-grid::-webkit-scrollbar { width: 4px; }
-    .wc-unit-grid::-webkit-scrollbar-track { background: #1a1a1a; }
-    .wc-unit-grid::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 2px; }
-
-    .wc-tile {
-        background: #242424;
-        border: 1px solid #333;
-        border-radius: 4px;
-        padding: 7px 8px;
-        cursor: pointer;
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        min-height: 50px;
-        transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
-        user-select: none;
-    }
-
-    .wc-tile:hover { background: #2c2c2c; border-color: #555; }
-
-    .wc-tile-atk-on {
-        border-color: #c0392b !important;
-        background: rgba(192,57,43,0.14) !important;
-        box-shadow: 0 0 0 1px #c0392b inset;
-    }
-
-    .wc-tile-def-on {
-        border-color: #2980b9 !important;
-        background: rgba(41,128,185,0.14) !important;
-        box-shadow: 0 0 0 1px #2980b9 inset;
-    }
-
-    .wc-tile-top {
-        display: flex;
-        align-items: flex-start;
-        gap: 5px;
-    }
-
-    .wc-tile-ico {
-        font-size: 0.65rem;
-        color: #555;
-        flex-shrink: 0;
-        margin-top: 2px;
-    }
-
-    .wc-tile-name {
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: #d0d0d0;
-        line-height: 1.25;
-        word-break: break-word;
-    }
-
-    .wc-tile-foot { display: flex; justify-content: flex-end; }
-
-    .wc-tile-pid {
-        font-size: 0.6rem;
-        font-weight: 800;
-        letter-spacing: 0.5px;
-    }
-
-    /* ── Weapon tile grid ───────────────────────────────────────────────── */
-    .wc-weapon-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 5px;
-        max-height: 200px;
-        overflow-y: auto;
-        scrollbar-width: thin;
-        scrollbar-color: #3a3a3a #1a1a1a;
-        padding-right: 2px;
-    }
-
-    .wc-weapon-grid::-webkit-scrollbar { width: 4px; }
-    .wc-weapon-grid::-webkit-scrollbar-track { background: #1a1a1a; }
-    .wc-weapon-grid::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 2px; }
-
-    .wc-wtile {
-        background: #202020;
-        border: 1px solid #333;
-        border-radius: 4px;
-        padding: 6px 8px;
-        cursor: pointer;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
-        user-select: none;
-    }
-
-    .wc-wtile:hover { background: #2a2a2a; border-color: #555; }
-
-    .wc-wtype {
-        font-size: 0.58rem;
-        font-weight: 800;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        line-height: 1;
-    }
-
-    .wt-rng { color: #5dade2; }
-    .wt-mel { color: #e74c3c; }
-
-    .wc-wname {
-        font-size: 0.75rem;
-        color: #c8c8c8;
-        line-height: 1.25;
-        word-break: break-word;
-    }
-
-    .wc-ws {
-        font-size: 0.88rem;
-        font-weight: 800;
-        color: #ffc107;
-        align-self: flex-end;
-        line-height: 1;
-        margin-top: 2px;
-    }
-
-    /* ── Stat bar (S / T display) ───────────────────────────────────────── */
-    .wc-statbar {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-top: 10px;
-        padding: 8px 12px;
-        border-radius: 4px;
-    }
-
-    .atk-statbar {
-        background: rgba(192,57,43,0.12);
-        border: 1px solid rgba(192,57,43,0.4);
-    }
-
-    .def-statbar {
-        background: rgba(41,128,185,0.12);
-        border: 1px solid rgba(41,128,185,0.4);
-    }
-
-    .wc-sb-stat {
-        display: flex;
-        align-items: baseline;
-        gap: 5px;
-    }
-
-    .wc-w-help {
-        position: relative;
+    /* Page-only pieces of the datasheet look; shared tokens live in css/datasheet-tokens.css. */
+    .ds-kw-row { display: flex; flex-wrap: wrap; gap: 0.3rem; padding: 0.5rem 0 0.25rem; }
+    .ds-kw {
+        font: 600 0.75rem/1 var(--ds-font-display);
+        border: 1px solid var(--ds-ink);
+        padding: 0.25rem 0.45rem;
+        color: var(--ds-ink);
         cursor: help;
     }
+    .ds-kw-crusade, .ds-wcrusade { color: #8a6400; border-color: #b8860b; }
+    .ds-wrow-on .ds-wcrusade { color: #ffd166; }
+    .ds-wcrusade sup { font-size: 0.6em; }
 
-        .wc-w-help:hover {
-            z-index: 1200;
-        }
+    .ds-wounds { padding: 0.25rem 0.9rem 0.5rem; font: 400 0.85rem/1.3 var(--ds-font-body); color: var(--ds-ink-2); }
+    .ds-wounds-part { margin-left: 0.5rem; color: var(--ds-ink); }
 
-        .wc-w-help:hover .wc-w-tooltip {
-            display: block;
-        }
+    .ds-invuln { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; padding: 0 0.9rem 0.8rem; }
+    .ds-section { padding: 0.5rem 0.9rem; border-top: 1px solid var(--ds-rule); }
+    .ds-section-label { font: 600 0.75rem/1 var(--ds-font-display); color: var(--ds-ink-2); margin-right: 0.3rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .ds-section-label em { font-style: normal; color: var(--ds-ink); margin-left: 0.3rem; text-transform: none; }
+    .ds-section .strat-list { margin-top: 0.35rem; }
+    .ds-abilities { padding: 0.35rem 0 0; }
+    .ds-ability { background: transparent; color: var(--ds-ink); }
+    .ds-ability:hover { background: var(--ds-card-2); }
+    .ds-ability-detachment { border-color: var(--ds-ink); font-weight: 600; }
 
-    .wc-w-tooltip {
-        display: none;
-        position: absolute;
-        top: calc(100% + 6px);
-        left: 50%;
-        transform: translateX(-50%);
-        background: #12122a;
-        border: 1px solid #555;
-        border-radius: 5px;
-        padding: 8px 10px;
-        min-width: 220px;
-        max-width: 280px;
-        z-index: 1100;
-        box-shadow: 0 4px 14px rgba(0,0,0,0.8);
-        pointer-events: none;
-        white-space: normal;
-        text-align: left;
-    }
-
-    .wc-w-tooltip-title {
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: #e74c3c;
-        margin-bottom: 4px;
-        letter-spacing: 0.5px;
-    }
-
-    .wc-w-tooltip-body {
-        font-size: 0.72rem;
-        color: #ddd;
-        line-height: 1.4;
-        font-weight: normal;
-    }
-
-    .wc-sb-lbl {
-        font-size: 0.7rem;
-        font-weight: 800;
-        letter-spacing: 1px;
-        opacity: 0.65;
-    }
-
-    .wc-sb-val {
-        font-size: 1.8rem;
-        font-weight: 800;
-        line-height: 1;
-    }
-
-    /* Stat values modified by a Crusade Honour/Scar — gold tint + asterisk.
-       The asterisk is rendered as a sup element; tooltip uses .kw-tag-wrapper / .kw-tooltip. */
-    .wc-crusade-mod {
-        color: #ffd166 !important;
-        text-shadow: 0 0 6px rgba(255, 209, 102, 0.35);
-    }
-
-    .wc-sb-meta {
-        font-size: 0.72rem;
-        color: #777;
-        letter-spacing: 0.3px;
-    }
-
-    /* ── VS column ──────────────────────────────────────────────────────── */
-    .wc-vs-col {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 14px;
-        padding-top: 48px;
-    }
-
-    .wc-vs-badge {
-        background: #1a1a1a;
-        border: 2px solid #333;
-        color: #555;
-        font-weight: 800;
-        font-size: 0.9rem;
-        letter-spacing: 3px;
-        padding: 5px 10px;
-        border-radius: 4px;
-        width: 100%;
-        text-align: center;
-    }
-
-    .wc-swap-btn {
-        width: 100%;
-        background: #1e1e1e;
-        border: 1px solid #444;
-        color: #888;
-        border-radius: 4px;
-        padding: 7px 6px;
-        cursor: pointer;
-        font-family: 'Oswald', sans-serif;
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 1.5px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        transition: border-color 0.15s, color 0.15s, background 0.15s;
-    }
-
-    .wc-swap-btn:hover:not(:disabled) {
-        border-color: #ffc107;
-        color: #ffc107;
-        background: rgba(255, 193, 7, 0.08);
-    }
-
-    .wc-swap-btn:disabled {
-        opacity: 0.25;
-        cursor: not-allowed;
-    }
-
-    .wc-swap-label { font-size: 0.68rem; }
-
-    /* Mini result in VS column */
-    .wc-mini-result {
-        text-align: center;
-        padding: 10px 8px;
-        border-radius: 6px;
-        border: 1px solid #333;
-        background: #181818;
-        width: 100%;
-        transition: border-color 0.2s;
-    }
-
-    .wc-mini-result.wfr-2 { border-color: #f1c40f; }
-    .wc-mini-result.wfr-3 { border-color: #2ecc71; }
-    .wc-mini-result.wfr-4 { border-color: #3498db; }
-    .wc-mini-result.wfr-5 { border-color: #e67e22; }
-    .wc-mini-result.wfr-6 { border-color: #e74c3c; }
-
-    .wc-mr-label {
-        font-size: 0.62rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: #555;
-    }
-
-    .wc-mr-roll {
-        font-size: 2.4rem;
-        font-weight: 800;
-        color: #ffc107;
-        line-height: 1;
-    }
-
-    /* Quick reference table */
-    .wc-reference {
-        background: #161616;
-        border: 1px solid #2a2a2a;
-        border-radius: 4px;
-        padding: 8px 10px;
-        width: 100%;
-    }
-
-    .wc-ref-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.78rem;
-    }
-
-    .wc-ref-table td {
-        padding: 3px 4px;
-        border-bottom: 1px solid #222;
-        color: #555;
-    }
-
-    .wc-ref-table td:last-child {
-        text-align: right;
-        font-weight: 800;
-        font-size: 0.85rem;
-    }
-
-    .wc-ref-on td { color: #d0d0d0 !important; background: rgba(255,193,7,0.06); }
-
-    .roll-2 { color: #f1c40f; }
-    .roll-3 { color: #2ecc71; }
-    .roll-4 { color: #3498db; }
-    .roll-5 { color: #e67e22; }
-    .roll-6 { color: #e74c3c; }
-
-    /* ── Result banner N/A state ────────────────────────────────────────── */
-    .wfr-na { border-color: #555; background: rgba(100,100,100,0.06); }
-
-    /* ── Attack sequence banner layout ─────────────────────────────────── */
-    .wc-full-result {
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .wc-fr-title {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .wc-sequence {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-
-    .wc-seq-step {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1px;
-        min-width: 54px;
-    }
-
-    .wc-seq-label {
-        font-size: 0.58rem;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        color: #666;
-        line-height: 1;
-    }
-
-    .wc-seq-roll {
-        font-size: 1.6rem;
-        font-weight: 800;
-        line-height: 1;
-    }
-
-    .seq-hit   { color: #aaccff; }
-    .seq-wound { color: #ffc107; }
-    .seq-save  { color: #2ecc71; }
-
-    .wc-seq-arrow {
-        font-size: 1rem;
-        color: #444;
-        margin-bottom: 4px;
-    }
-
-    /* ── Stat bar additions ─────────────────────────────────────────────── */
-    .wc-sb-divider {
-        width: 1px;
-        height: 28px;
-        background: rgba(255,255,255,0.08);
-        flex-shrink: 0;
-    }
-
-    .wc-sb-hit { color: #aaccff; }
-    .wc-sb-ap  { color: #e74c3c; }
-    .wc-sb-sv  { color: #2ecc71; }
-    .wc-sb-atk { color: #f39c12; }
-
-    /* ── Weapon keyword badges ──────────────────────────────────────────── */
-    .wc-kw-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        margin-top: 7px;
-    }
-
-    .wc-kw-tag {
-        background: rgba(243,156,18,0.12);
-        border: 1px solid rgba(243,156,18,0.35);
-        color: #f39c12;
-        font-size: 0.62rem;
-        font-weight: 800;
-        letter-spacing: 0.8px;
-        text-transform: uppercase;
-        padding: 2px 6px;
-        border-radius: 3px;
-    }
-
-    /* ── Cover toggle button ────────────────────────────────────────────── */
-    .wc-cover-btn {
-        margin-top: 8px;
-        width: 100%;
-        background: #1a1a1a;
-        border: 1px dashed #3a3a3a;
-        color: #666;
-        border-radius: 4px;
-        padding: 6px 10px;
-        cursor: pointer;
-        font-family: 'Oswald', sans-serif;
-        font-size: 0.7rem;
-        font-weight: 700;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: border-color 0.15s, color 0.15s, background 0.15s;
-    }
-
-    .wc-cover-btn:not(:disabled):hover {
-        border-color: #2ecc71;
-        color: #2ecc71;
-    }
-
-    .wc-cover-btn:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-    }
-
-    .wc-cover-on {
-        border: 1px solid #2ecc71 !important;
-        color: #2ecc71 !important;
-        background: rgba(46, 204, 113, 0.08) !important;
-    }
-
-    /* ── Modifier section ───────────────────────────────────────────────── */
-    .wc-mods-section {
-        margin-top: 10px;
-    }
-
-    .wc-mods-label {
-        font-size: 0.62rem;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        color: #555;
-        margin-bottom: 5px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .wc-auto-badge {
-        background: rgba(168, 85, 247, 0.15);
-        border: 1px solid rgba(168, 85, 247, 0.4);
-        color: #c084fc;
-        font-size: 0.58rem;
-        padding: 1px 5px;
-        border-radius: 3px;
-        letter-spacing: 0.5px;
-    }
-
-    .wc-mods-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
-    }
-
-    /* ── Modifier toggle buttons ────────────────────────────────────────── */
-    .wc-mod-btn {
-        background: #1e1e1e;
-        border: 1px solid #3a3a3a;
-        color: #666;
-        border-radius: 3px;
-        padding: 4px 9px;
-        cursor: pointer;
-        font-family: 'Oswald', sans-serif;
-        font-size: 0.68rem;
-        font-weight: 700;
-        letter-spacing: 0.8px;
-        text-transform: uppercase;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        transition: border-color 0.12s, color 0.12s, background 0.12s;
-        user-select: none;
-    }
-
-    .wc-mod-btn:hover {
-        border-color: #666;
-        color: #bbb;
-        background: #272727;
-    }
-
-    .wc-mod-on {
-        border-color: #ffc107 !important;
-        color: #ffc107 !important;
-        background: rgba(255, 193, 7, 0.08) !important;
-    }
-
-    /* ── Ability buttons ────────────────────────────────────────────────── */
-    .wc-ability-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
-    }
-
-    .wc-ability-btn {
-        background: rgba(192, 132, 252, 0.1);
-        border: 1px solid rgba(192, 132, 252, 0.35);
-        color: #c084fc;
-        border-radius: 3px;
-        padding: 3px 8px;
-        cursor: pointer;
-        font-family: 'Oswald', sans-serif;
-        font-size: 0.68rem;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        transition: background 0.12s, border-color 0.12s, color 0.12s;
-        user-select: none;
-    }
-
-    .wc-ability-btn:hover {
-        background: rgba(192, 132, 252, 0.22);
-        border-color: rgba(192, 132, 252, 0.7);
-        color: #d8b4fe;
-    }
-
-    .wc-detachment-btn {
-        background: rgba(243, 156, 18, 0.1) !important;
-        border-color: rgba(243, 156, 18, 0.45) !important;
-        color: #f39c12 !important;
-    }
-
-    .wc-detachment-btn:hover {
-        background: rgba(243, 156, 18, 0.22) !important;
-        border-color: rgba(243, 156, 18, 0.75) !important;
-        color: #fbbf24 !important;
-    }
-
-    /* ── Stratagem section ──────────────────────────────────────────────── */
-    .wc-strat-section { margin-top: 10px; }
-
-    /* ── Info button (in card headers) ─────────────────────────────────── */
-    .wc-info-btn {
-        background: rgba(255,255,255,0.15);
-        border: 1px solid rgba(255,255,255,0.35);
-        color: #ffffff;
-        border-radius: 4px;
-        padding: 4px 10px;
-        cursor: pointer;
-        font-family: 'Oswald', sans-serif;
-        font-size: 0.68rem;
-        font-weight: 700;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        line-height: 1.4;
-        margin-left: auto;
-        display: flex;
-        align-items: center;
-        white-space: nowrap;
-        transition: background 0.15s, border-color 0.15s;
-    }
-
-    .wc-info-btn:hover {
-        background: rgba(255,255,255,0.28);
-        border-color: rgba(255,255,255,0.7);
-        color: #ffffff;
-    }
-
-    /* ── Unit Details modal ─────────────────────────────────────────────── */
+    /* ── Unit Details modal (unchanged look) ───────────────────────────── */
     .wc-ds-modal {
         background: #1c1c1c;
         border: 1px solid #444;
         color: #e0e0e0;
         font-family: 'Oswald', sans-serif;
     }
-
     .wc-ds-header {
         background: linear-gradient(135deg, #5c2c00 0%, #3a1800 100%);
         border-bottom: 3px solid #d35400;
@@ -2282,7 +1068,6 @@
         border-top-left-radius: 5px;
         border-top-right-radius: 5px;
     }
-
     .wc-ds-title {
         margin: 0;
         font-size: 1.4rem;
@@ -2291,7 +1076,6 @@
         letter-spacing: 1px;
         color: #fff;
     }
-
     .wc-ds-body {
         padding: 0;
         max-height: 78vh;
@@ -2299,12 +1083,6 @@
         scrollbar-width: thin;
         scrollbar-color: #444 #1c1c1c;
     }
-
-    .wc-ds-body::-webkit-scrollbar { width: 5px; }
-    .wc-ds-body::-webkit-scrollbar-track { background: #1c1c1c; }
-    .wc-ds-body::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
-
-    /* Stats strip */
     .ds-profile-name {
         background: #2a2a2a;
         color: #d35400;
@@ -2314,34 +1092,9 @@
         font-weight: bold;
         border-bottom: 1px solid #444;
     }
-
-    .ds-stats-strip {
-        display: flex;
-        background: #333;
-        border-bottom: 1px solid #555;
-    }
-
-    .ds-stat-cell {
-        flex: 1;
-        text-align: center;
-        padding: 6px 0;
-        border-right: 1px solid rgba(255,255,255,0.08);
-    }
-
+    .ds-stats-strip { display: flex; background: #333; border-bottom: 1px solid #555; }
+    .ds-stat-cell { flex: 1; text-align: center; padding: 6px 0; border-right: 1px solid rgba(255,255,255,0.08); }
     .ds-stat-cell:last-child { border-right: none; }
-
-    .ds-stat-label {
-        display: block;
-        font-size: 0.65rem;
-        font-weight: bold;
-        color: #aaa;
-    }
-
-    .ds-stat-value {
-        font-size: 1.5rem;
-        font-weight: 900;
-        color: #fff;
-    }
-
-
+    .ds-stat-label { display: block; font-size: 0.65rem; font-weight: bold; color: #aaa; }
+    .ds-stat-value { font-size: 1.5rem; font-weight: 900; color: #fff; }
 </style>
