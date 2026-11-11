@@ -14,18 +14,16 @@ A Blazor Server web application for Warhammer 40,000 10th Edition gameplay. Pars
 - Detachment rule display in context
 
 ### Wound Calculator
-- Three-column arena: Attacker | VS | Defender
-- Per-player filter buttons (All / P1 / P2 / …) on both sides; one-click attacker/defender swap
-- Unit tile grid — select attacker unit then choose a weapon; stat bar shows BS/WS, S, AP, A, Range, Damage
-- Weapon keyword badges with inline glossary tooltips (LETHAL HITS, BLAST, ANTI, PISTOL, etc.)
-- Strength vs. Toughness wound table (highlights active row)
-- Full HIT → WOUND → SAVE sequence banner, color-coded by difficulty
-- Attacker modifiers: +1 HIT, +1 WOUND, Big Guns Never Tire –1 HIT (shown only for VEHICLE/MONSTER units firing non-Pistol ranged weapons)
-- Defender modifiers: –1 vs HIT, –1 vs WOUND, AP –1 (reduces weapon AP by one step)
-- In Cover toggle (+1 Sv), auto-detected invulnerable save with manual 3+/4+/5+/6+ override
-- Inline stratagems for each side (attacker sees "your turn" stratagems; defender sees "opponent's turn" stratagems) — click to expand full stratagem detail modal
-- Inline unit abilities and detachment rule displayed as clickable buttons with hover tooltips
-- DATASHEET button opens a full modal with stats strip, ranged/melee weapon tables, abilities, and keywords
+- "Datasheet duel" look: the attacker and defender appear as two datasheet cards facing each other, with the three rolls (Hit, Wound, Save) on a spine between them. Three columns on tablet landscape (≥ 900px), stacked on phones. Fonts: Barlow Condensed and Barlow; tokens in `wwwroot/css/datasheet-tokens.css`
+- Shows the roll needed only (10th edition); hit and wound modifiers capped at ±1
+- Tap a card's header to pick a unit (player filter All / P1 / P2 / …); tap a weapon row to select it; ⇄ swaps attacker and defender
+- Automatic modifiers derived from the datasheets, shown as chips marked "auto": Torrent (auto-hit), Heavy, Lance, Indirect Fire, Stealth (ranged only), Anti-X (wound roll capped at X+ against the matching keyword), Ignores Cover, Big Guns Never Tire, invulnerable save
+- Situation toggles: tap a dashed (waiting) chip to say the attacker remained stationary, charged, the target is not visible, or the unit is in Engagement Range; In Cover is a chip on the defender (blocked against melee, Ignores Cover, and Sv 3+ vs AP 0)
+- Manual modifiers: +1 Hit, +1 Wound, −1 Hit, −1 Wound, AP −1; invulnerable save override None/3+/4+/5+/6+
+- Crusade Battle Honours and Battle Scars adjust stats automatically, with a gold asterisk naming the honour
+- Weapon keyword badges with glossary tooltips; per-model wounds for mixed units
+- Inline stratagems for each side, unit abilities and detachment rule with tooltips and detail modals; Datasheet button opens the full datasheet
+- Selections persist when you navigate away and back
 
 ### Stratagem Management
 - Database of 1,300+ stratagems loaded from `wwwroot/data/Stratagems.json`
