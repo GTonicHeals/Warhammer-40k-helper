@@ -16,9 +16,11 @@ public class MusterTests : SqliteTestBase, IDisposable
 {
     private readonly TestContext _ctx = new();
 
+    private readonly GatedDbContextFactory _gated;
+
     public MusterTests()
     {
-        var factory = CreateFactory();
+        var factory = _gated = new GatedDbContextFactory(CreateFactory());
         _ctx.Services.AddSingleton(factory);
         _ctx.Services.AddSingleton(sp => new CampaignManagerService(factory, NullLogger<CampaignManagerService>.Instance));
         _ctx.Services.AddSingleton(sp => new CrusadeManagerService(factory,
@@ -84,6 +86,63 @@ public class MusterTests : SqliteTestBase, IDisposable
 
         cut.Find("#begin-battle").HasAttribute("disabled").Should().BeTrue();
         cut.FindAll(".muster-no-character").Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Two_orders_of_the_same_player_block_begin()
+    {
+        await SeedAsync();
+        await Crusades.SaveCrusadeAsync(new OrderOfBattle { Id = "C", ArmyName = "Second", PlayerId = "p1",
+            Units = { new CrusadeUnitCard { Id = "c1", UnitName = "Strike", TotalPoints = 90 } } });
+        var cut = _ctx.RenderComponent<Muster>();
+        cut.WaitForElement("#order1");
+
+        await cut.Find("#order1").ChangeAsync(new ChangeEventArgs { Value = "A" });
+        await cut.Find("#order2").ChangeAsync(new ChangeEventArgs { Value = "C" });
+        await cut.Find("input[data-card='a1']").ChangeAsync(new ChangeEventArgs { Value = true });
+        await cut.Find("input[data-card='c1']").ChangeAsync(new ChangeEventArgs { Value = true });
+
+        cut.Find("#begin-battle").HasAttribute("disabled").Should().BeTrue();
+        cut.Markup.Should().Contain("different players");
+    }
+
+    [Fact]
+    public async Task Order_without_a_player_blocks_begin()
+    {
+        await SeedAsync();
+        await Crusades.SaveCrusadeAsync(new OrderOfBattle { Id = "L", ArmyName = "Legacy", PlayerId = "",
+            Units = { new CrusadeUnitCard { Id = "l1", UnitName = "Old", TotalPoints = 90 } } });
+        var cut = _ctx.RenderComponent<Muster>();
+        cut.WaitForElement("#order1");
+
+        await cut.Find("#order1").ChangeAsync(new ChangeEventArgs { Value = "A" });
+        await cut.Find("#order2").ChangeAsync(new ChangeEventArgs { Value = "L" });
+        await cut.Find("input[data-card='a1']").ChangeAsync(new ChangeEventArgs { Value = true });
+        await cut.Find("input[data-card='l1']").ChangeAsync(new ChangeEventArgs { Value = true });
+
+        cut.Find("#begin-battle").HasAttribute("disabled").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Double_click_on_begin_creates_one_battle()
+    {
+        await SeedAsync();
+        var cut = _ctx.RenderComponent<Muster>();
+        cut.WaitForElement("#order1");
+        await cut.Find("#order1").ChangeAsync(new ChangeEventArgs { Value = "A" });
+        await cut.Find("#order2").ChangeAsync(new ChangeEventArgs { Value = "B" });
+        await cut.Find("input[data-card='a1']").ChangeAsync(new ChangeEventArgs { Value = true });
+        await cut.Find("input[data-card='b1']").ChangeAsync(new ChangeEventArgs { Value = true });
+
+        var button = cut.Find("#begin-battle");
+        _gated.Close();
+        var first  = button.ClickAsync(new MouseEventArgs());
+        var second = button.ClickAsync(new MouseEventArgs());
+        _gated.Release();
+        await Task.WhenAll(first, second);
+
+        var campaign = await new CampaignManagerService(CreateFactory(), NullLogger<CampaignManagerService>.Instance).LoadCampaignAsync();
+        campaign.BattleHistory.Should().ContainSingle();
     }
 
     void IDisposable.Dispose()

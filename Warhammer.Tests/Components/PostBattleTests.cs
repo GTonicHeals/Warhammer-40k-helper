@@ -27,16 +27,19 @@ public class PostBattleTests : SqliteTestBase, IDisposable
     private readonly TestContext _ctx = new();
     private readonly TempWebRoot _web = new();
 
+    private readonly GatedDbContextFactory _gated;
+    private readonly ListLogger<PostBattleService> _postBattleLog = new();
+
     public PostBattleTests()
     {
         _web.WriteDataFile("crusade_traits.json", TraitsJson);
         var env = _web.BuildMockEnv().Object;
-        var factory = CreateFactory();
+        var factory = _gated = new GatedDbContextFactory(CreateFactory());
         _ctx.Services.AddSingleton(sp => new CampaignManagerService(factory, NullLogger<CampaignManagerService>.Instance));
         _ctx.Services.AddSingleton(sp => new CrusadeManagerService(factory,
             sp.GetRequiredService<CampaignManagerService>(), NullLogger<CrusadeManagerService>.Instance));
         _ctx.Services.AddSingleton(sp => new PostBattleService(sp.GetRequiredService<CampaignManagerService>(),
-            sp.GetRequiredService<CrusadeManagerService>(), NullLogger<PostBattleService>.Instance));
+            sp.GetRequiredService<CrusadeManagerService>(), _postBattleLog));
         _ctx.Services.AddSingleton(new CrusadeTraitsService(env, NullLogger<CrusadeTraitsService>.Instance));
         _ctx.Services.AddSingleton(new RosterLoadService(env, NullLogger<RosterLoadService>.Instance));
     }
@@ -132,6 +135,29 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         a.Units.Single(u => u.Id == "a1").BattleHonours.Select(h => h.Name).Should().BeEquivalentTo(new[] { "Old", "Hardened" });
         a.Units.Single(u => u.Id == "a2").BattleScars.Should().ContainSingle(s => s.Name == "Crippled");
         orders.Single(o => o.Id == "B").Units.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Double_click_on_complete_applies_the_sequence_once()
+    {
+        var id = await SeedAsync();
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+
+        await Change(cut, "input[name='winner'][value='p1']", "p1");
+        for (var step = 0; step < 5; step++) await Next(cut);
+
+        var button = cut.Find("#pb-complete");
+        _gated.Close();
+        var first  = button.ClickAsync(new MouseEventArgs());
+        var second = button.ClickAsync(new MouseEventArgs());
+        _gated.Release();
+        await Task.WhenAll(first, second);
+
+        _postBattleLog.Messages.Count(m => m.StartsWith("Completed Battle")).Should().Be(1);
+        cut.FindAll("#pb-error").Should().BeEmpty();
+        var campaign = await new CampaignManagerService(CreateFactory(), NullLogger<CampaignManagerService>.Instance).LoadCampaignAsync();
+        campaign.BattleHistory.Single(b => b.Id == id).Status.Should().Be(BattleStatus.Completed);
     }
 
     [Fact]

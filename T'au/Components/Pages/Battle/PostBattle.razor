@@ -187,8 +187,11 @@
         r.RemovedFromOrder = false;
     }
 
+    // _busy stays set after success: a second click would save this page's pre-completion
+    // copy of the campaign (Status = Mustered) and let the sequence run again.
     private async Task CompleteAsync()
     {
+        if (_busy) return;
         _busy = true;
         _error = null;
         try
@@ -200,9 +203,6 @@
         catch (Exception ex)
         {
             _error = ex.Message;
-        }
-        finally
-        {
             _busy = false;
         }
     }
