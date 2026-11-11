@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Warhammer.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialSqliteCreate : Migration
+    public partial class Baseline : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -106,26 +106,31 @@ namespace Warhammer.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "TerritoryNodes",
+                name: "Nodes",
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "TEXT", nullable: false),
                     CampaignId = table.Column<int>(type: "INTEGER", nullable: false),
                     Name = table.Column<string>(type: "TEXT", nullable: false),
                     Description = table.Column<string>(type: "TEXT", nullable: false),
-                    BuffEffect = table.Column<string>(type: "TEXT", nullable: false),
-                    ControllingPlayerId = table.Column<string>(type: "TEXT", nullable: true),
+                    IsPublic = table.Column<bool>(type: "INTEGER", nullable: false),
                     ConnectedNodeIds = table.Column<string>(type: "TEXT", nullable: false),
-                    SecretEventText = table.Column<string>(type: "TEXT", nullable: false),
-                    IsEventRevealed = table.Column<bool>(type: "INTEGER", nullable: false),
                     X = table.Column<double>(type: "REAL", nullable: false),
-                    Y = table.Column<double>(type: "REAL", nullable: false)
+                    Y = table.Column<double>(type: "REAL", nullable: false),
+                    NodeType = table.Column<string>(type: "TEXT", maxLength: 13, nullable: false),
+                    SecretEventText = table.Column<string>(type: "TEXT", nullable: true),
+                    IsEventRevealed = table.Column<bool>(type: "INTEGER", nullable: true),
+                    AttachedToNodeId = table.Column<string>(type: "TEXT", nullable: true),
+                    BuffEffect = table.Column<string>(type: "TEXT", nullable: true),
+                    ControllingPlayerId = table.Column<string>(type: "TEXT", nullable: true),
+                    VictoryPointValue = table.Column<int>(type: "INTEGER", nullable: true),
+                    TerrainType = table.Column<int>(type: "INTEGER", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_TerritoryNodes", x => x.Id);
+                    table.PrimaryKey("PK_Nodes", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_TerritoryNodes_Campaigns_CampaignId",
+                        name: "FK_Nodes_Campaigns_CampaignId",
                         column: x => x.CampaignId,
                         principalTable: "Campaigns",
                         principalColumn: "Id",
@@ -148,8 +153,8 @@ namespace Warhammer.Data.Migrations
                 column: "CampaignId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_TerritoryNodes_CampaignId",
-                table: "TerritoryNodes",
+                name: "IX_Nodes_CampaignId",
+                table: "Nodes",
                 column: "CampaignId");
         }
 
@@ -166,7 +171,7 @@ namespace Warhammer.Data.Migrations
                 name: "GmNotes");
 
             migrationBuilder.DropTable(
-                name: "TerritoryNodes");
+                name: "Nodes");
 
             migrationBuilder.DropTable(
                 name: "Campaigns");

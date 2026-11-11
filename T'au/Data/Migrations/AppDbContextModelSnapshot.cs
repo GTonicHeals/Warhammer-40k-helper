@@ -166,13 +166,9 @@ namespace Warhammer.Data.Migrations
                     b.ToTable("GmNotes");
                 });
 
-            modelBuilder.Entity("Warhammer.Models.Campaign.TerritoryNode", b =>
+            modelBuilder.Entity("Warhammer.Models.Campaign.Node", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BuffEffect")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("CampaignId")
@@ -182,22 +178,20 @@ namespace Warhammer.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ControllingPlayerId")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("IsEventRevealed")
+                    b.Property<bool>("IsPublic")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("SecretEventText")
+                    b.Property<string>("NodeType")
                         .IsRequired()
+                        .HasMaxLength(13)
                         .HasColumnType("TEXT");
 
                     b.Property<double>("X")
@@ -210,7 +204,48 @@ namespace Warhammer.Data.Migrations
 
                     b.HasIndex("CampaignId");
 
-                    b.ToTable("TerritoryNodes");
+                    b.ToTable("Nodes");
+
+                    b.HasDiscriminator<string>("NodeType").HasValue("Node");
+
+                    b.UseTphMappingStrategy();
+                });
+
+            modelBuilder.Entity("Warhammer.Models.Campaign.CampaignEvent", b =>
+                {
+                    b.HasBaseType("Warhammer.Models.Campaign.Node");
+
+                    b.Property<string>("AttachedToNodeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsEventRevealed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SecretEventText")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasDiscriminator().HasValue("CampaignEvent");
+                });
+
+            modelBuilder.Entity("Warhammer.Models.Campaign.Territory", b =>
+                {
+                    b.HasBaseType("Warhammer.Models.Campaign.Node");
+
+                    b.Property<string>("BuffEffect")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ControllingPlayerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TerrainType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("VictoryPointValue")
+                        .HasColumnType("INTEGER");
+
+                    b.HasDiscriminator().HasValue("Territory");
                 });
 
             modelBuilder.Entity("Warhammer.Models.Campaign.BattleRecord", b =>
@@ -246,7 +281,7 @@ namespace Warhammer.Data.Migrations
                     b.Navigation("Campaign");
                 });
 
-            modelBuilder.Entity("Warhammer.Models.Campaign.TerritoryNode", b =>
+            modelBuilder.Entity("Warhammer.Models.Campaign.Node", b =>
                 {
                     b.HasOne("Warhammer.Models.Campaign.Campaign", "Campaign")
                         .WithMany("MapNodes")

@@ -36,7 +36,7 @@ using (var scope = app.Services.CreateScope())
 {
     var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
     await using var ctx = await factory.CreateDbContextAsync();
-    await ctx.Database.EnsureCreatedAsync();
+    await DbBootstrap.MigrateAsync(ctx);
 
     var gmSeeder   = scope.ServiceProvider.GetRequiredService<GmNoteSeeder>();
     var nodeSeeder = scope.ServiceProvider.GetRequiredService<NodeSeeder>();
