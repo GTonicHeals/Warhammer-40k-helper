@@ -398,18 +398,39 @@ public class WoundCalculationServiceTests
         Assert.Equal("4+", result.FinalSaveRoll);
     }
 
-    [Fact]
-    public void Calculate_CoverCannotImproveSaveBeyondBaseSave()
-    {
-        // Arrange — AP-0 vs 4+ save: raw = 4; cover would give 3+, but base is 4+
-        var input = BaseInput(ap: 0, save: 4) with { HasCover = true };
+    [Fact] public void Calculate_Cover_Save4_Ap0_Ranged_Gives3Plus()
+    {   var r = WoundCalculationService.Calculate(BaseInput(ap: 0, save: 4) with { HasCover = true });
+        Assert.Equal("3+", r.FinalSaveRoll); }
 
-        // Act
-        var result = WoundCalculationService.Calculate(input);
+    [Fact] public void Calculate_Cover_Save3_Ap0_Ranged_Stays3Plus()
+    {   var r = WoundCalculationService.Calculate(BaseInput(ap: 0, save: 3) with { HasCover = true });
+        Assert.Equal("3+", r.FinalSaveRoll); }
 
-        // Assert — cover has no effect when armor is already at base value
-        Assert.Equal("4+", result.FinalSaveRoll);
-    }
+    [Fact] public void Calculate_Cover_Save2_ApMinus1_Gives2Plus()
+    {   var r = WoundCalculationService.Calculate(BaseInput(ap: -1, save: 2) with { HasCover = true });
+        Assert.Equal("2+", r.FinalSaveRoll); }
+
+    [Fact] public void Calculate_Cover_Save3_ApMinus1_Gives3Plus()
+    {   var r = WoundCalculationService.Calculate(BaseInput(ap: -1, save: 3) with { HasCover = true });
+        Assert.Equal("3+", r.FinalSaveRoll); }
+
+    [Fact] public void Calculate_Cover_MeleeWeapon_HasNoEffect()
+    {   var r = WoundCalculationService.Calculate(BaseInput(ap: 0, save: 4) with { HasCover = true, IsRanged = false });
+        Assert.Equal("4+", r.FinalSaveRoll); }
+
+    [Fact] public void Calculate_Cover_IgnoresCoverWeapon_HasNoEffect()
+    {   var r = WoundCalculationService.Calculate(BaseInput(ap: -1, save: 4) with { HasCover = true, IgnoresCover = true });
+        Assert.Equal("5+", r.FinalSaveRoll); }
+
+    [Fact] public void Calculate_Cover_ReduceApToZero_TriggersSave3Exception()
+    {   // AP -1 reduced to 0 by the defender modifier; Save 3+ then gets no cover bonus
+        var r = WoundCalculationService.Calculate(BaseInput(ap: -1, save: 3) with { HasCover = true, ReduceAp = true });
+        Assert.Equal("3+", r.FinalSaveRoll); }
+
+    [Fact] public void Calculate_Cover_DoesNotTouchInvulnerableSave()
+    {   // Sv 6+, AP -2 -> armour 8, cover -> 7 (N/A); invuln 5+ wins unchanged
+        var r = WoundCalculationService.Calculate(BaseInput(ap: -2, save: 6) with { HasCover = true, InvulnSave = 5 });
+        Assert.Equal("5+", r.FinalSaveRoll); }
 
     [Fact]
     public void Calculate_WithReduceApModifier_EffectiveApImprovedByOne()

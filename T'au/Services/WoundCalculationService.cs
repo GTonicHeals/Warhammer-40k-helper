@@ -13,7 +13,9 @@ public record WoundCalcInput(
     bool MinusOneWound,
     bool ReduceAp,
     bool HasCover,
-    int InvulnSave            // 0 = none, else 3/4/5/6
+    int InvulnSave,           // 0 = none, else 3/4/5/6
+    bool IsRanged = true,
+    bool IgnoresCover = false
 );
 
 public record WoundCalcResult(
@@ -77,8 +79,9 @@ public static class WoundCalculationService
         if (i.DefenderSave.HasValue && i.WeaponAp.HasValue)
         {
             int rawArmour      = i.DefenderSave.Value + Math.Abs(effectiveAp);
-            int adjustedArmour = rawArmour - (i.HasCover ? 1 : 0);
-            int armourSave     = Math.Max(adjustedArmour, i.DefenderSave.Value); // cover can't beat base save
+            bool coverApplies  = i.HasCover && i.IsRanged && !i.IgnoresCover
+                                 && !(i.DefenderSave.Value <= 3 && effectiveAp == 0);
+            int armourSave     = coverApplies ? rawArmour - 1 : rawArmour;
 
             int finalSaveNum = i.InvulnSave > 0
                 ? (armourSave <= 6 ? Math.Min(armourSave, i.InvulnSave) : i.InvulnSave)
