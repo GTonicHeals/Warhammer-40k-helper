@@ -1,0 +1,219 @@
+@page "/battle/muster"
+@rendermode InteractiveServer
+@using Warhammer.Models.Campaign
+@using Warhammer.Models.Crusade
+@using Warhammer.Services
+@inject CrusadeManagerService CrusadeMgr
+@inject CampaignManagerService CampaignSvc
+@inject NavigationManager Nav
+
+<PageTitle>Muster a Battle</PageTitle>
+
+<div class="container-fluid py-3">
+    <h3 class="text-warning mb-3"><i class="bi bi-flag me-2"></i>Muster a Battle</h3>
+
+    @if (!_loaded)
+    {
+        <p class="text-secondary">Loading Orders of Battle…</p>
+    }
+    else if (_orders.Count < 2)
+    {
+        <p class="text-secondary">A Battle needs two Orders of Battle. <a href="crusade">Create them in the Crusade Manager.</a></p>
+    }
+    else
+    {
+        <div class="row g-3 mb-3">
+            <div class="col-sm-4">
+                <label class="form-label small text-warning mb-0" for="points-limit">Points limit</label>
+                <select id="points-limit" class="form-select form-select-sm bg-dark text-white border-secondary"
+                        value="@_pointsLimit" @onchange="e => _pointsLimit = int.Parse((string)e.Value!)">
+                    @foreach (var p in PointsLimits)
+                    {
+                        <option value="@p">@p</option>
+                    }
+                </select>
+            </div>
+            <div class="col-sm-4">
+                <label class="form-label small text-warning mb-0" for="mission">Mission</label>
+                <select id="mission" class="form-select form-select-sm bg-dark text-white border-secondary" @bind="_mission">
+                    @foreach (var m in MissionCatalog.PrimaryMissions)
+                    {
+                        <option value="@m">@m</option>
+                    }
+                    <option value="@OtherMission">Other…</option>
+                </select>
+            </div>
+            @if (_mission == OtherMission)
+            {
+                <div class="col-sm-4">
+                    <label class="form-label small text-warning mb-0" for="mission-other">Mission name</label>
+                    <input id="mission-other" class="form-control form-control-sm bg-dark text-white border-secondary"
+                           @bind="_missionOther" @bind:event="oninput" />
+                </div>
+            }
+        </div>
+
+        <div class="row g-3">
+            @foreach (var side in new[] { 1, 2 })
+            {
+                var s = side;
+                var orderId = s == 1 ? _order1Id : _order2Id;
+                var order = Order(orderId);
+                var picked = s == 1 ? _picked1 : _picked2;
+                var points = PointsOf(order, picked);
+                <div class="col-md-6">
+                    <div class="card bg-dark border-secondary h-100">
+                        <div class="card-header border-secondary">
+                            <label class="form-label small text-warning mb-0" for="order@(s)">Side @s — Order of Battle</label>
+                            <select id="order@(s)" class="form-select form-select-sm bg-dark text-white border-secondary"
+                                    value="@(orderId ?? "")" @onchange="e => SelectOrder(s, (string?)e.Value)">
+                                <option value="">— choose —</option>
+                                @foreach (var o in _orders)
+                                {
+                                    <option value="@o.Id">@Label(o)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="card-body">
+                            @if (order is not null)
+                            {
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="small text-secondary">Crusade Army</span>
+                                    <span id="points@(s)" class="fw-bold @(points > _pointsLimit ? "text-danger" : "text-white")">@points / @_pointsLimit pts</span>
+                                </div>
+                                @foreach (var u in order.Units)
+                                {
+                                    var unit = u;
+                                    <label class="d-flex align-items-center gap-2 py-1 border-bottom border-secondary">
+                                        <input type="checkbox" class="form-check-input mt-0" data-card="@unit.Id"
+                                               checked="@picked.Contains(unit.Id)"
+                                               @onchange="e => Toggle(picked, unit.Id, (bool)e.Value!)" />
+                                        <span class="flex-grow-1 text-white">@unit.UnitName</span>
+                                        @if (unit.IsCharacter)
+                                        {
+                                            <span class="badge bg-secondary">CHARACTER</span>
+                                        }
+                                        <span class="small text-secondary">@unit.TotalPoints pts</span>
+                                    </label>
+                                }
+                                @if (points > _pointsLimit)
+                                {
+                                    <div class="small text-danger mt-2">Over the points limit by @(points - _pointsLimit).</div>
+                                }
+                                @if (!order.Units.Any(u => u.IsCharacter && picked.Contains(u.Id)))
+                                {
+                                    <div class="small text-warning mt-2 muster-no-character">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>No CHARACTER in this Crusade Army.
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (_order1Id is not null && _order1Id == _order2Id)
+        {
+            <div class="small text-danger mt-3">Pick a different Order of Battle for each side.</div>
+        }
+        @if (_error is not null)
+        {
+            <div class="small text-danger mt-3">@_error</div>
+        }
+
+        <div class="mt-3 d-flex justify-content-end">
+            <button id="begin-battle" class="btn btn-warning fw-bold" disabled="@(!CanBegin)" @onclick="BeginAsync">
+                <i class="bi bi-play-fill me-1"></i>Begin battle
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly int[] PointsLimits = [1000, 2000, 3000];
+    private const string OtherMission = "Other";
+
+    private bool _loaded;
+    private List<OrderOfBattle> _orders = new();
+    private string? _order1Id, _order2Id;
+    private int _pointsLimit = 2000;
+    private string _mission = MissionCatalog.PrimaryMissions[0];
+    private string _missionOther = "";
+    private readonly HashSet<string> _picked1 = new(), _picked2 = new();
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _orders = (await CrusadeMgr.LoadAllCrusadesAsync()).ToList();
+        _loaded = true;
+    }
+
+    private static string Label(OrderOfBattle o) =>
+        $"{(string.IsNullOrWhiteSpace(o.ArmyName) ? "Unnamed Crusade" : o.ArmyName)} ({o.PlayerId.ToUpperInvariant()})";
+
+    private static int PointsOf(OrderOfBattle? order, HashSet<string> picked) =>
+        order?.Units.Where(u => picked.Contains(u.Id)).Sum(u => u.TotalPoints) ?? 0;
+
+    private OrderOfBattle? Order(string? id) => id is null ? null : _orders.FirstOrDefault(o => o.Id == id);
+
+    private void SelectOrder(int side, string? id)
+    {
+        id = string.IsNullOrEmpty(id) ? null : id;
+        if (side == 1) { _order1Id = id; _picked1.Clear(); }
+        else           { _order2Id = id; _picked2.Clear(); }
+    }
+
+    private static void Toggle(HashSet<string> picked, string id, bool on)
+    {
+        if (on) picked.Add(id); else picked.Remove(id);
+    }
+
+    private string MissionName => _mission == OtherMission ? _missionOther.Trim() : _mission;
+
+    // Begin needs two different Orders, a non-empty Crusade Army per side within the limit, and a mission name.
+    private bool CanBegin =>
+        Order(_order1Id) is not null && Order(_order2Id) is not null && _order1Id != _order2Id
+        && _picked1.Count > 0 && _picked2.Count > 0
+        && PointsOf(Order(_order1Id), _picked1) <= _pointsLimit
+        && PointsOf(Order(_order2Id), _picked2) <= _pointsLimit
+        && MissionName.Length > 0;
+
+    private async Task BeginAsync()
+    {
+        if (!CanBegin) return;
+        var o1 = Order(_order1Id)!;
+        var o2 = Order(_order2Id)!;
+
+        var battle = new BattleRecord
+        {
+            Status         = BattleStatus.Mustered,
+            PointsLimit    = _pointsLimit,
+            MissionName    = MissionName,
+            Player1Id      = o1.PlayerId,
+            Player2Id      = o2.PlayerId,
+            Player1OrderId = o1.Id,
+            Player2OrderId = o2.Id,
+            UnitResults    = o1.Units.Where(u => _picked1.Contains(u.Id)).Select(u => ResultFor(u, o1.PlayerId))
+                             .Concat(o2.Units.Where(u => _picked2.Contains(u.Id)).Select(u => ResultFor(u, o2.PlayerId)))
+                             .ToList()
+        };
+
+        try
+        {
+            var campaign = await CampaignSvc.LoadCampaignAsync();
+            campaign.BattleHistory.Add(battle);
+            await CampaignSvc.SaveCampaignAsync(campaign);
+            Nav.NavigateTo($"battle/{battle.Id}/post");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not save the Battle: {ex.Message}";
+        }
+    }
+
+    private static BattleUnitResult ResultFor(CrusadeUnitCard u, string playerId) => new()
+    {
+        CardId = u.Id, PlayerId = playerId, UnitName = u.UnitName, Points = u.TotalPoints
+    };
+}
