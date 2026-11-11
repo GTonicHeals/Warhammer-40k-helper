@@ -39,11 +39,35 @@ namespace Warhammer.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Player1Id")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Player1OrderId")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Player1Vp")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Player2Id")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Player2OrderId")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Player2Vp")
                         .HasColumnType("INTEGER");
+
+                    b.Property<int>("PointsLimit")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UnitResults")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("WinnerPlayerId")
                         .IsRequired()

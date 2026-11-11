@@ -53,6 +53,9 @@ public class AppDbContext : DbContext
             e.Property(o => o.CustomTraits).HasJsonConversion();
         });
 
+        modelBuilder.Entity<BattleRecord>()
+            .Property(b => b.UnitResults).HasJsonConversion();
+
         modelBuilder.Entity<CrusadeUnitCard>(e =>
         {
             e.Property(u => u.BattleHonours).HasJsonConversion();

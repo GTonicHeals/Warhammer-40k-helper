@@ -58,5 +58,29 @@ public class DbBootstrapTests : IDisposable
         (await ctx.Database.GetAppliedMigrationsAsync()).Should().HaveCount(ctx.Database.GetMigrations().Count());
     }
 
+    [Fact]
+    public async Task Battle_logged_before_muster_is_backfilled_as_completed()
+    {
+        await using (var ctx = Ctx())
+        {
+            await ctx.GetService<IMigrator>().MigrateAsync(ctx.Database.GetMigrations().First());
+            await ctx.Database.ExecuteSqlRawAsync("DROP TABLE __EFMigrationsHistory");
+            await ctx.Database.ExecuteSqlRawAsync(
+                "INSERT INTO Campaigns (CampaignName, MapSeed, MapBiome, MapOctaves, MapLacunarity, MapPersistence, MapScale, MapOffsetX, MapOffsetY) " +
+                "VALUES ('Live', 1, 'agri', 4, 2, 0.5, 2, 0, 0)");
+            await ctx.Database.ExecuteSqlRawAsync(
+                "INSERT INTO BattleRecords (Id, CampaignId, DatePlayed, MissionName, WinnerPlayerId, Player1Vp, Player2Vp, Notes) " +
+                "VALUES ('b1', 1, '2026-01-01', 'Old', 'p1', 10, 5, '')");
+        }
+        await using (var ctx = Ctx())
+        {
+            await DbBootstrap.MigrateAsync(ctx);
+            var b = await ctx.BattleRecords.SingleAsync();
+            b.Status.Should().Be(Warhammer.Models.Campaign.BattleStatus.Completed);
+            b.UnitResults.Should().BeEmpty();
+            (b.Player1Id, b.Player2Id).Should().Be(("p1", "p2"));
+        }
+    }
+
     public void Dispose() => _conn.Dispose();
 }
