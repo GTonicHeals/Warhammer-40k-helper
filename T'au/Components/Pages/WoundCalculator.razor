@@ -493,6 +493,8 @@
                             }
                         </div>
                         <button class="wc-cover-btn @(_hasCover ? "wc-cover-on" : "")"
+                                disabled="@(!CoverCanApply)"
+                                title="@CoverButtonTitle"
                                 @onclick="ToggleCover">
                             <i class="bi @(_hasCover ? "bi-tree-fill" : "bi-tree") me-1"></i>
                             IN COVER @(_hasCover ? "(+1 Sv)" : "")
@@ -997,6 +999,7 @@
         SelectedWeaponMeta = $"{range}  D:{dmg}";
         CalcState.WeaponName = _selectedWeaponName;
         ApplyAttackerCrusadeMods();
+        if (!CoverCanApply) _hasCover = false;
         Recalculate();
     }
 
@@ -1311,7 +1314,9 @@
             MinusOneWound:   _defMinusOneWound,
             ReduceAp:        _defReduceAp,
             HasCover:        _hasCover,
-            InvulnSave:      _invulnSave
+            InvulnSave:      _invulnSave,
+            IsRanged:        SelectedWeaponIsRanged,
+            IgnoresCover:    SelectedWeaponIgnoresCover
         ));
 
         NetHitMod          = result.NetHitMod;
@@ -1321,6 +1326,15 @@
         EffectiveWoundRoll = result.EffectiveWoundRoll;
         FinalSaveRoll      = result.FinalSaveRoll;
     }
+
+    private bool SelectedWeaponIsRanged => SelectedWeapon?.TypeName == "Ranged Weapons";
+    private bool SelectedWeaponIgnoresCover =>
+        SelectedWeaponKeywords.Any(k => k.Raw.StartsWith("Ignores Cover", StringComparison.OrdinalIgnoreCase));
+    private bool CoverCanApply => SelectedWeapon == null || (SelectedWeaponIsRanged && !SelectedWeaponIgnoresCover);
+    private string CoverButtonTitle =>
+        SelectedWeapon != null && !SelectedWeaponIsRanged ? "No benefit of cover against melee"
+        : SelectedWeaponIgnoresCover ? "This weapon ignores cover"
+        : "";
 
     private void ToggleCover() { _hasCover = !_hasCover; Recalculate(); }
 
