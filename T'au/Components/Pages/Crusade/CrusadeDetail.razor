@@ -95,8 +95,11 @@
             }
         </div>
 
-        <div class="add-custom-trait-form mb-3">
-            <h6 class="text-warning mb-2"><i class="bi bi-stars"></i> Custom Relics &amp; Traits</h6>
+        <details class="add-custom-trait-form mb-3" open="@_crusade.CustomTraits.Any()">
+            <summary class="text-warning fw-semibold mb-2" style="cursor:pointer;">
+                <i class="bi bi-stars"></i> Custom Relics &amp; Traits
+                <span class="text-muted small">(@_crusade.CustomTraits.Count)</span>
+            </summary>
             <p class="small text-muted mb-2">
                 Add Crusade Relics or Battle Traits not in the static rules data. They appear in the honour dropdowns for every unit in this crusade.
             </p>
@@ -150,7 +153,7 @@
                     }
                 </div>
             }
-        </div>
+        </details>
 
         @if (!_crusade.Units.Any())
         {
@@ -374,22 +377,35 @@
                     <button type="button" class="btn-close btn-close-white" @onclick="CloseAddUnitModal"></button>
                 </div>
                 <div class="modal-body">
+                    <input class="form-control form-control-sm bg-dark text-white border-secondary mb-2"
+                           type="search" placeholder="Search units…" aria-label="Search units"
+                           @bind="_unitSearch" @bind:event="oninput" />
                     <div class="wc-unit-grid">
-                        @foreach (var u in _availableUnits)
+                        @foreach (var u in FilteredUnits)
                         {
                             var selected = string.Equals(u.Name, _selectedUnitKey, StringComparison.OrdinalIgnoreCase);
+                            var overBy = _crusade.SupplyUsed + u.Points - _crusade.SupplyLimit;
                             <div class="wc-tile @(selected ? "wc-tile-atk-on" : "")"
+                                 title="@(overBy > 0 ? $"Adding this unit puts the Order of Battle {overBy} pts over its Supply Limit" : null)"
                                  @onclick="() => PickUnit(u.Name)">
                                 <div class="wc-tile-top">
                                     <i class="bi bi-person-fill wc-tile-ico"></i>
                                     <span class="wc-tile-name">@u.Name</span>
                                 </div>
                                 <div class="wc-tile-foot">
-                                    <span style="font-size:0.7rem;color:#888;">@u.Points pts</span>
+                                    @if (overBy > 0)
+                                    {
+                                        <span class="me-auto" style="font-size:0.7rem;color:#ff6b6b;"><i class="bi bi-exclamation-triangle"></i> +@overBy over</span>
+                                    }
+                                    <span style="font-size:0.75rem;color:#aaa;">@u.Points pts</span>
                                 </div>
                             </div>
                         }
                     </div>
+                    @if (!FilteredUnits.Any())
+                    {
+                        <p class="text-muted small mb-0"><em>No units match “@_unitSearch”.</em></p>
+                    }
                 </div>
                 <div class="modal-footer border-secondary d-flex justify-content-between">
                     <label class="form-check-label">
@@ -554,7 +570,13 @@
     private bool _newUnitCharacter;
     private bool _showAddUnitModal = false;
     private void OpenAddUnitModal() => _showAddUnitModal = true;
-    private void CloseAddUnitModal() { _showAddUnitModal = false; _selectedUnitKey = ""; }
+    private void CloseAddUnitModal() { _showAddUnitModal = false; _selectedUnitKey = ""; _unitSearch = ""; }
+
+    private string _unitSearch = "";
+    private IEnumerable<AvailableUnit> FilteredUnits =>
+        string.IsNullOrWhiteSpace(_unitSearch)
+            ? _availableUnits
+            : _availableUnits.Where(u => u.Name.Contains(_unitSearch.Trim(), StringComparison.OrdinalIgnoreCase));
 
     // Per-unit dropdown state (transient — not persisted)
     private readonly Dictionary<string, string> _scarChoice = new();

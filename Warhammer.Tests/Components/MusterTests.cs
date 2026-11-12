@@ -75,6 +75,22 @@ public class MusterTests : SqliteTestBase, IDisposable
     }
 
     [Fact]
+    public async Task Picking_a_side_disables_that_players_orders_on_the_other_side()
+    {
+        await SeedAsync();
+        await Crusades.SaveCrusadeAsync(new OrderOfBattle { Id = "C", ArmyName = "Second", PlayerId = "p1" });
+        var cut = _ctx.RenderComponent<Muster>();
+        cut.WaitForElement("#order1");
+
+        await cut.Find("#order1").ChangeAsync(new ChangeEventArgs { Value = "A" });
+
+        cut.Find("#order2 option[value='A']").HasAttribute("disabled").Should().BeTrue();
+        cut.Find("#order2 option[value='C']").HasAttribute("disabled").Should().BeTrue();
+        cut.Find("#order2 option[value='B']").HasAttribute("disabled").Should().BeFalse();
+        cut.Find("#order1 option[value='C']").HasAttribute("disabled").Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Same_order_on_both_sides_blocks_begin_and_missing_character_warns()
     {
         await SeedAsync();

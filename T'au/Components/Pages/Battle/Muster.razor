@@ -68,9 +68,11 @@
                             <select id="order@(s)" class="form-select form-select-sm bg-dark text-white border-secondary"
                                     value="@(orderId ?? "")" @onchange="e => SelectOrder(s, (string?)e.Value)">
                                 <option value="">— choose —</option>
+                                @{ var otherPlayer = Order(s == 1 ? _order2Id : _order1Id)?.PlayerId; }
                                 @foreach (var o in _orders)
                                 {
-                                    <option value="@o.Id">@Label(o)</option>
+                                    var taken = !string.IsNullOrEmpty(otherPlayer) && o.PlayerId == otherPlayer;
+                                    <option value="@o.Id" disabled="@taken">@Label(o)@(taken ? $" — {otherPlayer!.ToUpperInvariant()} is on Side {3 - s}" : "")</option>
                                 }
                             </select>
                         </div>
