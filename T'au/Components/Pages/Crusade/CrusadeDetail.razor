@@ -597,10 +597,35 @@
     private void ShowTraitModal(AppliedTrait t) => _modalTrait = t;
     private void CloseTraitModal() => _modalTrait = null;
 
+    // Id of the crusade currently loaded. The router reuses this component when only {Id}
+    // changes (e.g. sidebar crusade → crusade), so a changed Id must trigger a fresh load.
+    private string? _loadedId;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender || _loaded) return;
+        await LoadAsync();
+    }
 
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedId is null || _loadedId == Id) return;
+
+        _loaded = false;
+        _crusade = null;
+        _availableUnits = new();
+        _selectionsByName = new(StringComparer.OrdinalIgnoreCase);
+        _upgradePanelOpen.Clear();
+        _scarChoice.Clear();
+        _modalTrait = null;
+        _newTraitCategory = _newTraitName = _newTraitEffect = "";
+        CloseAddUnitModal();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loadedId = Id;
         await Traits.EnsureLoadedAsync();
         await CrusadeMgr.LoadAllCrusadesAsync();
         _crusade = CrusadeMgr.GetCrusade(Id);
