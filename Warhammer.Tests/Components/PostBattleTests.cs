@@ -84,6 +84,30 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         cut.Find(selector).ChangeAsync(new ChangeEventArgs { Value = value });
 
     [Fact]
+    public async Task Out_of_action_explains_why_next_is_disabled_and_review_groups_by_side()
+    {
+        var id = await SeedAsync();
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+        cut.FindAll("#pb-next-hint").Should().BeEmpty();
+
+        await Next(cut);
+        await Change(cut, "input[data-destroyed='a2']", true);
+        await Next(cut);
+        await Next(cut);
+
+        cut.Find("#pb-next").HasAttribute("disabled").Should().BeTrue();
+        cut.Find("#pb-next-hint").TextContent.Should().Contain("Pass or Fail");
+
+        await Click(cut, "[data-ooa-pass='a2']");
+        cut.FindAll("#pb-next-hint").Should().BeEmpty();
+
+        await Next(cut);
+        await Next(cut);
+        cut.FindAll("tr.pb-review-side").Should().HaveCount(2);
+    }
+
+    [Fact]
     public async Task Winner_options_are_labelled_buttons_and_pick_the_winner()
     {
         var id = await SeedAsync();

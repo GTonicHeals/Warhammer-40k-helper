@@ -75,6 +75,28 @@ public class MusterTests : SqliteTestBase, IDisposable
     }
 
     [Fact]
+    public async Task Begin_hint_says_what_is_missing()
+    {
+        await SeedAsync();
+        var cut = _ctx.RenderComponent<Muster>();
+        cut.WaitForElement("#order1");
+
+        cut.Find("#begin-hint").TextContent.Should().Contain("Order of Battle for each side");
+
+        await cut.Find("#order1").ChangeAsync(new ChangeEventArgs { Value = "A" });
+        await cut.Find("#order2").ChangeAsync(new ChangeEventArgs { Value = "B" });
+        cut.Find("#begin-hint").TextContent.Should().Contain("at least one unit");
+
+        await cut.Find("input[data-card='a1']").ChangeAsync(new ChangeEventArgs { Value = true });
+        await cut.Find("input[data-card='b1']").ChangeAsync(new ChangeEventArgs { Value = true });
+        await cut.Find("#mission").ChangeAsync(new ChangeEventArgs { Value = "Other" });
+        cut.Find("#begin-hint").TextContent.Should().Contain("mission name");
+
+        await cut.Find("#mission-other").InputAsync(new ChangeEventArgs { Value = "Ambush" });
+        cut.FindAll("#begin-hint").Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Picking_a_side_disables_that_players_orders_on_the_other_side()
     {
         await SeedAsync();

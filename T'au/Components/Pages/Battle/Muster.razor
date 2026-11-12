@@ -128,7 +128,11 @@
             <div class="small text-danger mt-3">@_error</div>
         }
 
-        <div class="mt-3 d-flex justify-content-end">
+        <div class="mt-3 d-flex justify-content-end align-items-center gap-3">
+            @if (BeginHint is { } hint)
+            {
+                <span id="begin-hint" class="small text-secondary"><i class="bi bi-info-circle me-1"></i>@hint</span>
+            }
             <button id="begin-battle" class="btn btn-warning fw-bold" disabled="@(!CanBegin || _saving)" @onclick="BeginAsync">
                 <i class="bi bi-play-fill me-1"></i>Begin battle
             </button>
@@ -189,6 +193,21 @@
         && PointsOf(Order(_order1Id), _picked1) <= _pointsLimit
         && PointsOf(Order(_order2Id), _picked2) <= _pointsLimit
         && MissionName.Length > 0;
+
+    // Why Begin is disabled, for the cases not already shown as a red error above it.
+    private string? BeginHint
+    {
+        get
+        {
+            if (CanBegin) return null;
+            if (Order(_order1Id) is null || Order(_order2Id) is null) return "Choose an Order of Battle for each side.";
+            if (_order1Id == _order2Id || !PlayersDiffer) return null;
+            if (_picked1.Count == 0 || _picked2.Count == 0) return "Tick at least one unit on each side.";
+            if (PointsOf(Order(_order1Id), _picked1) > _pointsLimit || PointsOf(Order(_order2Id), _picked2) > _pointsLimit) return null;
+            if (MissionName.Length == 0) return "Enter a mission name.";
+            return null;
+        }
+    }
 
     private async Task BeginAsync()
     {
