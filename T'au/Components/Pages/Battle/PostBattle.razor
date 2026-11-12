@@ -212,16 +212,26 @@
     {
         var territories = _campaign!.MapNodes.OfType<Territory>().OrderBy(t => t.Name).ToList();
         <div class="mb-3">
-            <div class="form-label small text-warning mb-1">Winner</div>
-            @foreach (var (pid, label) in new[] { (_battle!.Player1Id, PlayerName(_battle.Player1Id)), (_battle.Player2Id, PlayerName(_battle.Player2Id)), ("", "Draw") })
-            {
-                var value = pid;
-                <label class="me-3">
-                    <input type="radio" class="form-check-input me-1" name="winner" value="@value"
+            <div class="form-label small text-warning mb-1" id="winner-legend">Winner</div>
+            <div class="btn-group w-100" role="radiogroup" aria-labelledby="winner-legend">
+                @foreach (var (pid, name, army, icon) in new[]
+                {
+                    (_battle!.Player1Id, PlayerName(_battle.Player1Id), Label(_o1!), "bi-trophy"),
+                    (_battle.Player2Id, PlayerName(_battle.Player2Id), Label(_o2!), "bi-trophy"),
+                    ("", "Draw", "No winner", "bi-dash-circle")
+                })
+                {
+                    var value = pid;
+                    var inputId = $"winner-{(value.Length == 0 ? "draw" : value)}";
+                    <input type="radio" class="btn-check" name="winner" id="@inputId" value="@value" autocomplete="off"
                            checked="@(_battle.WinnerPlayerId == value)"
-                           @onchange="_ => _battle.WinnerPlayerId = value" /> @label
-                </label>
-            }
+                           @onchange="_ => _battle.WinnerPlayerId = value" />
+                    <label class="btn btn-outline-warning pb-winner-opt py-2" for="@inputId">
+                        <i class="bi @icon me-1"></i><span class="fw-bold">@name</span>
+                        <span class="d-block small opacity-75">@army</span>
+                    </label>
+                }
+            </div>
         </div>
         <div class="row g-2 mb-3">
             <div class="col-6 col-md-3">

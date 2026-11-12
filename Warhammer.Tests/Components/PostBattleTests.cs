@@ -84,6 +84,27 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         cut.Find(selector).ChangeAsync(new ChangeEventArgs { Value = value });
 
     [Fact]
+    public async Task Winner_options_are_labelled_buttons_and_pick_the_winner()
+    {
+        var id = await SeedAsync();
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+
+        var labels = cut.FindAll("label.pb-winner-opt");
+        labels.Should().HaveCount(3);
+        foreach (var label in labels)
+        {
+            label.TextContent.Trim().Should().NotBeEmpty();
+            cut.Find($"#{label.GetAttribute("for")}").GetAttribute("type").Should().Be("radio");
+        }
+        cut.Find("label[for='winner-draw']").TextContent.Should().Contain("Draw");
+
+        await Change(cut, "#winner-p2", "p2");
+        cut.Find("#winner-p2").HasAttribute("checked").Should().BeTrue();
+        cut.Find("#winner-draw").HasAttribute("checked").Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Walking_the_flow_completes_the_battle()
     {
         var id = await SeedAsync();
