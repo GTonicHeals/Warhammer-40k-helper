@@ -30,7 +30,7 @@
             <input class="form-control form-control-lg crusade-title-input"
                    @bind="_crusade.ArmyName" @bind:after="SaveAsync"
                    placeholder="Unnamed Crusade" />
-            <a href="crusade" class="btn btn-outline-secondary ms-2"><i class="bi bi-arrow-left"></i> Back</a>
+            <a href="crusade" class="btn btn-outline-secondary ms-2 text-nowrap flex-shrink-0"><i class="bi bi-arrow-left"></i> Back</a>
         </div>     
 
         <div class="row g-3 mb-4">
@@ -46,9 +46,16 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label text-warning fw-bold">Supply Used</label>
-                <div class="form-control bg-dark border-secondary"
-                     style="color: @(_crusade.SupplyUsed > _crusade.SupplyLimit ? "#ff6b6b" : "#fff");">
-                    @_crusade.SupplyUsed / @_crusade.SupplyLimit
+                @{
+                    var over = _crusade.SupplyUsed > _crusade.SupplyLimit;
+                    var pct = _crusade.SupplyLimit > 0 ? Math.Min(100, _crusade.SupplyUsed * 100 / _crusade.SupplyLimit) : 0;
+                }
+                <div class="supply-stat" title="Points of all units in the Order of Battle">
+                    <span class="fw-bold" style="color: @(over ? "#ff6b6b" : "#fff");">@_crusade.SupplyUsed / @_crusade.SupplyLimit</span>
+                    <div class="progress mt-1" style="height: 6px; background: #2a2a2a;" role="progressbar"
+                         aria-label="Supply used" aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar @(over ? "bg-danger" : "bg-warning")" style="width: @(pct)%"></div>
+                    </div>
                 </div>
             </div>
             <div class="col-md-2">
@@ -161,7 +168,11 @@
                                     <i class="bi bi-person-badge me-2"></i>
                                     @(string.IsNullOrWhiteSpace(unit.UnitName) ? "Unnamed Unit" : unit.UnitName)
                                 </span>
-                                <span class="badge bg-warning text-dark">@RankLabel(unit.Rank)</span>
+                                @{ var nextXp = RankCalculator.NextRankXp(unit.Xp, unit.IsCharacter, unit.LegendaryVeteransUsed); }
+                                <span class="badge bg-warning text-dark crusade-rank-badge"
+                                      title="@(nextXp is { } n ? $"Next rank at {n} XP" : "No further rank available")">
+                                    @RankLabel(unit.Rank) · @(nextXp is { } nx ? $"{unit.Xp}/{nx} XP" : $"{unit.Xp} XP")
+                                </span>
                             </div>
                             <div class="crusade-card-body">
                                 <div class="row g-2">
@@ -197,7 +208,7 @@
                                                value="@unit.CrusadePoints" />
                                     </div>
                                     <div class="col-12 small text-secondary">
-                                        Battles @unit.BattlesPlayed · Survived @unit.BattlesSurvived · Destroyed @unit.UnitsDestroyed
+                                        Battles @unit.BattlesPlayed · Survived @unit.BattlesSurvived
                                         @if (unit.IsTitanic) { <span class="badge bg-secondary ms-1">TITANIC</span> }
                                         @if (!unit.XpEligible) { <span class="badge bg-secondary ms-1" title="EPIC HERO, FORTIFICATION and SWARM units never gain XP">No XP</span> }
                                     </div>

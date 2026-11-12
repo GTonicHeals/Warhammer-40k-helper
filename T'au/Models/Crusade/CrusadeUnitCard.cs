@@ -62,4 +62,14 @@ public static class RankCalculator
 
         return xp <= 50 ? CrusadeRank.Heroic : CrusadeRank.Legendary;
     }
+
+    // XP at which the unit reaches its next rank, or null when it can't promote further.
+    public static int? NextRankXp(int xp, bool isCharacter, bool legendaryVeteransUsed)
+    {
+        if (xp <= 5) return 6;
+        if (xp <= 15) return 16;
+        if (!isCharacter && !legendaryVeteransUsed) return null;
+        if (xp <= 30) return 31;
+        return xp <= 50 ? 51 : null;
+    }
 }

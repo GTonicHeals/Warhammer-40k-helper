@@ -60,7 +60,7 @@
 
 /* Side panel */
 .wr-side-col {
-    width: 300px; flex-shrink: 0;
+    width: 360px; flex-shrink: 0;
     border-left: 1px solid var(--amber);
     overflow-y: auto;
     background: #060810;
@@ -102,12 +102,14 @@
 /* Engagement log */
 .wr-table { width: 100%; border-collapse: collapse; font-family: 'Courier New', monospace; font-size: 0.72rem; }
 .wr-table thead th {
-    color: var(--amber); font-size: 0.62rem; letter-spacing: 1px; padding: 5px 12px;
+    color: var(--amber); font-size: 0.62rem; letter-spacing: 1px; padding: 5px 6px; white-space: nowrap;
     border-bottom: 1px solid #1a1a1a; background: #080a12; font-weight: normal;
 }
 .wr-table tbody tr { border-bottom: 1px solid #0d0d0d; }
 .wr-table tbody tr:hover { background: #0d0f1a; }
-.wr-table td { padding: 5px 12px; color: #bbb; }
+.wr-table td { padding: 5px 6px; color: #bbb; }
+.wr-table td.wr-nowrap { white-space: nowrap; }
+.wr-log-muster { white-space: nowrap; font-size: 0.7rem; }
 .wr-muted { color: #555; }
 
 /* Secret event callout */

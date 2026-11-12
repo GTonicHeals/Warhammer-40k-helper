@@ -73,4 +73,26 @@ public class CrusadeRankCalculatorTests
         RankCalculator.RankFor(60, isCharacter: false, legendaryVeteransUsed: true)
             .Should().Be(CrusadeRank.Legendary);
     }
+
+    [Theory]
+    [InlineData(0, false, false, 6)]
+    [InlineData(5, false, false, 6)]
+    [InlineData(6, false, false, 16)]
+    [InlineData(16, true, false, 31)]
+    [InlineData(31, true, false, 51)]
+    [InlineData(31, false, true, 51)]
+    public void NextRankXp_IsTheNextTierThreshold(int xp, bool isCharacter, bool legendaryVeteransUsed, int expected)
+    {
+        RankCalculator.NextRankXp(xp, isCharacter, legendaryVeteransUsed).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(16, false, false)] // non-CHARACTER caps at Battle-hardened
+    [InlineData(30, false, false)]
+    [InlineData(45, false, false)]
+    [InlineData(51, true, false)]  // Legendary is the top rank
+    public void NextRankXp_IsNullWhenNoFurtherRank(int xp, bool isCharacter, bool legendaryVeteransUsed)
+    {
+        RankCalculator.NextRankXp(xp, isCharacter, legendaryVeteransUsed).Should().BeNull();
+    }
 }
