@@ -191,6 +191,56 @@ public class CampaignManagerServiceTests : SqliteTestBase
     }
 
     [Fact]
+    public async Task DeleteBattleAsync_removes_only_that_battle()
+    {
+        var svc = CreateService();
+        var c = await svc.LoadCampaignAsync();
+        c.Players.First(p => p.Id == "p1").Wins = 2;
+        c.MapNodes.Add(new Territory { Id = "n1", Name = "Hab", ControllingPlayerId = "p1" });
+        c.BattleHistory.Add(new BattleRecord { Id = "b1", MissionName = "Keep",   Status = BattleStatus.Mustered });
+        c.BattleHistory.Add(new BattleRecord { Id = "b2", MissionName = "Delete", Status = BattleStatus.Completed,
+                                               WinnerPlayerId = "p1", CapturedTerritoryId = "n1" });
+        await svc.SaveCampaignAsync(c);
+
+        await svc.DeleteBattleAsync("b2");
+
+        svc.Campaign!.BattleHistory.Should().ContainSingle().Which.Id.Should().Be("b1",
+            "the cached campaign should drop the battle too");
+
+        var loaded = await CreateService().LoadCampaignAsync();
+        loaded.BattleHistory.Should().ContainSingle().Which.Id.Should().Be("b1");
+        loaded.Players.First(p => p.Id == "p1").Wins.Should().Be(2, "applied results are kept");
+        loaded.MapNodes.OfType<Territory>().Single().ControllingPlayerId.Should().Be("p1");
+    }
+
+    [Fact]
+    public async Task DeleteBattleAsync_ignores_unknown_id()
+    {
+        var svc = CreateService();
+        var c = await svc.LoadCampaignAsync();
+        c.BattleHistory.Add(new BattleRecord { Id = "b1" });
+        await svc.SaveCampaignAsync(c);
+
+        await svc.DeleteBattleAsync("nope");
+
+        (await CreateService().LoadCampaignAsync()).BattleHistory.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task DeleteBattleAsync_then_save_of_cached_campaign_does_not_resurrect_battle()
+    {
+        var svc = CreateService();
+        var c = await svc.LoadCampaignAsync();
+        c.BattleHistory.Add(new BattleRecord { Id = "b1" });
+        await svc.SaveCampaignAsync(c);
+
+        await svc.DeleteBattleAsync("b1");
+        await svc.SaveCampaignAsync(svc.Campaign!);
+
+        (await CreateService().LoadCampaignAsync()).BattleHistory.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task SaveCampaignAsync_when_id_not_found_treats_as_insert()
     {
         var orphan = new CampaignEntity { Id = 999, CampaignName = "Orphan" };

@@ -56,7 +56,8 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         await Crusades.SaveCrusadeAsync(new OrderOfBattle { Id = "A", ArmyName = "Sept", PlayerId = "p1",
             Units = { new CrusadeUnitCard { Id = "a1", UnitName = "A1", Xp = 14,
                           BattleHonours = { new AppliedTrait { Name = "Old", Type = CrusadeTraitTypes.BattleTrait } } },
-                      new CrusadeUnitCard { Id = "a2", UnitName = "A2", XpEligible = false } } });
+                      new CrusadeUnitCard { Id = "a2", UnitName = "A2", XpEligible = false },
+                      new CrusadeUnitCard { Id = "a3", UnitName = "A3" } } });
         await Crusades.SaveCrusadeAsync(new OrderOfBattle { Id = "B", ArmyName = "Chapter", PlayerId = "p2",
             Units = { new CrusadeUnitCard { Id = "b1", UnitName = "B1", BattleScars = { Scar("s1"), Scar("s2"), Scar("s3") } } } });
 
@@ -68,6 +69,7 @@ public class PostBattleTests : SqliteTestBase, IDisposable
             {
                 new BattleUnitResult { CardId = "a1", PlayerId = "p1", UnitName = "A1" },
                 new BattleUnitResult { CardId = "a2", PlayerId = "p1", UnitName = "A2" },
+                new BattleUnitResult { CardId = "a3", PlayerId = "p1", UnitName = "A3" },
                 new BattleUnitResult { CardId = "b1", PlayerId = "p2", UnitName = "B1" }
             }
         };
@@ -102,9 +104,11 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         await Click(cut, "[data-ooa-pass='a2']");
         cut.FindAll("#pb-next-hint").Should().BeEmpty();
 
+        // No unit gained a rank, so Rank-ups is skipped.
         await Next(cut);
-        await Next(cut);
-        cut.FindAll("tr.pb-review-side").Should().HaveCount(2);
+        cut.Find("#pb-step").GetAttribute("data-step").Should().Be("6");
+        cut.Find("[data-goto='5']").ClassList.Should().Contain("is-skipped");
+        cut.FindAll(".pb-review-side").Should().HaveCount(2);
     }
 
     [Fact]
@@ -154,7 +158,8 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         cut.Find("#pb-next").HasAttribute("disabled").Should().BeTrue();
         await Click(cut, "button[data-ooa-fail='a2']");
         await Click(cut, "button[data-penalty-scar='a2']");
-        await Change(cut, "select[data-scar='a2']", "Crippled");
+        cut.Find("button[data-scar='a2']").TextContent.Should().Contain("Slow.");
+        await Click(cut, "button[data-scar='a2'][data-scar-name='Crippled']");
         await Click(cut, "button[data-ooa-fail='b1']");
         cut.Markup.Should().Contain("struck from the Order of Battle");
         await Next(cut);
@@ -169,8 +174,9 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         // 6. Review
         await Click(cut, "#pb-complete");
 
-        cut.WaitForAssertion(() =>
-            _ctx.Services.GetRequiredService<NavigationManager>().Uri.Should().EndWith("/war-room"));
+        cut.WaitForAssertion(() => cut.Find("#pb-done").TextContent.Should().Contain("Battle recorded"));
+        cut.Find("#pb-done").TextContent.Should().Contain("Blooded → Battle-hardened");
+        cut.FindAll("#pb-complete").Should().BeEmpty();
         var campaign = await new CampaignManagerService(CreateFactory(), NullLogger<CampaignManagerService>.Instance).LoadCampaignAsync();
         campaign.BattleHistory.Single().Status.Should().Be(BattleStatus.Completed);
         var orders = await new CrusadeManagerService(CreateFactory(),
@@ -190,7 +196,8 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         cut.WaitForElement("#pb-next");
 
         await Change(cut, "input[name='winner'][value='p1']", "p1");
-        for (var step = 0; step < 5; step++) await Next(cut);
+        // Nothing destroyed and nobody promoted: Out of Action and Rank-ups are skipped.
+        for (var step = 0; step < 3; step++) await Next(cut);
 
         var button = cut.Find("#pb-complete");
         _gated.Close();
@@ -214,10 +221,99 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         await Next(cut); await Next(cut);
 
         await Change(cut, "input[data-mark='a1']", "a1");
-        await Change(cut, "input[data-mark='a2']", "a2");
+        await Change(cut, "input[data-mark='a3']", "a3");
 
         cut.Find("input[data-mark='a1']").HasAttribute("checked").Should().BeFalse();
-        cut.Find("input[data-mark='a2']").HasAttribute("checked").Should().BeTrue();
+        cut.Find("input[data-mark='a3']").HasAttribute("checked").Should().BeTrue();
+        cut.Find("input[data-mark='a2']").HasAttribute("disabled").Should().BeTrue("a unit that gains no XP cannot be marked");
+
+        // Tapping the marked unit again clears the mark.
+        await Change(cut, "input[data-mark='a3']", "a3");
+        cut.Find("input[data-mark='a3']").HasAttribute("checked").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Progress_is_saved_on_every_step_and_survives_a_reload()
+    {
+        var id = await SeedAsync();
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+
+        await Change(cut, "#vp1", "40");
+        await Next(cut);
+        await Change(cut, "input[data-destroyed='a3']", true);
+        await Next(cut);
+        cut.Find("#pb-saved").TextContent.Should().Contain("Progress saved");
+
+        var reloaded = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        reloaded.WaitForElement("#pb-next");
+        reloaded.Find("#vp1").GetAttribute("value").Should().Be("40");
+        await Next(reloaded);
+        reloaded.Find("input[data-destroyed='a3']").HasAttribute("checked").Should().BeTrue();
+
+        var campaign = await new CampaignManagerService(CreateFactory(), NullLogger<CampaignManagerService>.Instance).LoadCampaignAsync();
+        campaign.BattleHistory.Single().Status.Should().Be(BattleStatus.Mustered);
+    }
+
+    [Fact]
+    public async Task Victory_points_pick_the_winner_and_a_draw_captures_no_territory()
+    {
+        var id = await SeedAsync();
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+
+        cut.Find("#territory").HasAttribute("disabled").Should().BeTrue();
+        cut.Find("#pb-territory-draw").TextContent.Should().Contain("Draw");
+
+        await Change(cut, "#vp2", "55");
+        cut.Find("#winner-p2").HasAttribute("checked").Should().BeTrue();
+        cut.Find("#territory").HasAttribute("disabled").Should().BeFalse();
+        await Change(cut, "#territory", "t1");
+
+        // Overruling the score is allowed but flagged.
+        await Change(cut, "#winner-p1", "p1");
+        cut.Find("#pb-vp-mismatch").TextContent.Should().Contain("does not match");
+
+        // Back to a Draw: the territory is dropped when the step is left.
+        await Change(cut, "#winner-draw", "");
+        await Next(cut);
+        var campaign = await new CampaignManagerService(CreateFactory(), NullLogger<CampaignManagerService>.Instance).LoadCampaignAsync();
+        campaign.BattleHistory.Single().CapturedTerritoryId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Kill_buttons_update_the_tally_and_the_xp_preview()
+    {
+        var id = await SeedAsync();
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+        await Next(cut); await Next(cut);
+
+        cut.Find("[data-xp='a3']").TextContent.Should().Be("+1 XP");
+        cut.Find("[data-kill-minus='a3']").HasAttribute("disabled").Should().BeTrue();
+        for (var i = 0; i < 3; i++) await Click(cut, "[data-kill-plus='a3']");
+
+        cut.Find("input[data-tally='a3']").GetAttribute("value").Should().Be("3");
+        cut.Find("[data-xp='a3']").TextContent.Should().Be("+2 XP");
+
+        await Click(cut, "[data-kill-minus='a3']");
+        cut.Find("[data-xp='a3']").TextContent.Should().Be("+1 XP");
+    }
+
+    [Fact]
+    public async Task Step_list_jumps_back_to_an_earlier_step()
+    {
+        var id = await SeedAsync();
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+        cut.Find("[data-goto='3']").HasAttribute("disabled").Should().BeTrue();
+
+        await Next(cut); await Next(cut);
+        await Click(cut, "[data-goto='1']");
+        cut.Find("#pb-step").GetAttribute("data-step").Should().Be("1");
+
+        await Click(cut, "[data-goto='3']");
+        cut.Find("#pb-step").GetAttribute("data-step").Should().Be("3");
     }
 
     [Fact]

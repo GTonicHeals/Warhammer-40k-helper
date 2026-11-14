@@ -45,9 +45,13 @@
         </select>
     </div>
     <div class="col-2 d-grid">
-        <button class="btn btn-sm btn-outline-success hp-add" @onclick="AddAsync" disabled="@(!canAdd)">+</button>
+        <button class="btn btn-sm btn-outline-success hp-add" aria-label="Add Battle Honour" @onclick="AddAsync" disabled="@(!canAdd)">+</button>
     </div>
 </div>
+@if (!string.IsNullOrWhiteSpace(selected?.Effect))
+{
+    <div class="small text-secondary mt-1 hp-effect">@selected!.Effect</div>
+}
 @if (needsWeapon)
 {
     <div class="row g-1 mt-1">

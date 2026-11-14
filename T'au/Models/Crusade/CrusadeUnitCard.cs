@@ -72,4 +72,14 @@ public static class RankCalculator
         if (xp <= 30) return 31;
         return xp <= 50 ? 51 : null;
     }
+
+    public static string Label(CrusadeRank rank) => rank switch
+    {
+        CrusadeRank.BattleReady    => "Battle-ready",
+        CrusadeRank.Blooded        => "Blooded",
+        CrusadeRank.BattleHardened => "Battle-hardened",
+        CrusadeRank.Heroic         => "Heroic",
+        CrusadeRank.Legendary      => "Legendary",
+        _                          => rank.ToString()
+    };
 }

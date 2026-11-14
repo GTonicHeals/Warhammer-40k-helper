@@ -791,13 +791,5 @@
         await SaveAsync();
     }
 
-    private static string RankLabel(CrusadeRank rank) => rank switch
-    {
-        CrusadeRank.BattleReady => "Battle-ready",
-        CrusadeRank.Blooded => "Blooded",
-        CrusadeRank.BattleHardened => "Battle-hardened",
-        CrusadeRank.Heroic => "Heroic",
-        CrusadeRank.Legendary => "Legendary",
-        _ => rank.ToString()
-    };
+    private static string RankLabel(CrusadeRank rank) => RankCalculator.Label(rank);
 }

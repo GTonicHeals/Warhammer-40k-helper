@@ -112,6 +112,21 @@
 .wr-log-muster { white-space: nowrap; font-size: 0.7rem; }
 .wr-muted { color: #555; }
 
+.wr-del-btn {
+    background: none; border: none; padding: 0 2px; color: #555; font-size: 0.8rem; line-height: 1; cursor: pointer;
+}
+.wr-del-btn:hover, .wr-del-btn:focus-visible { color: var(--p2); }
+.wr-table tbody tr.wr-del-confirm, .wr-table tbody tr.wr-del-confirm:hover { background: rgba(255,85,85,0.07); }
+.wr-del-ask { color: var(--p2); letter-spacing: 1px; margin-right: 8px; }
+.wr-del-yes, .wr-del-no {
+    background: none; border: 1px solid #444; color: #bbb; font-family: inherit; font-size: 0.68rem;
+    letter-spacing: 1px; padding: 1px 8px; margin-right: 4px; cursor: pointer;
+}
+.wr-del-yes { border-color: var(--p2); color: var(--p2); }
+.wr-del-yes:hover { background: var(--p2); color: #060810; }
+.wr-del-no:hover { border-color: #888; color: #fff; }
+.wr-del-note { color: #888; font-size: 0.66rem; margin-top: 4px; }
+
 /* Secret event callout */
 .wr-secret-event {
     border: 1px solid var(--amber);

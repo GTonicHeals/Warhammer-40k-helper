@@ -234,14 +234,14 @@ else
                             {
                             <table class="wr-table">
                                 <thead>
-                                    <tr><th>DATE</th><th>MISSION</th><th>VICTOR</th><th>SCORE</th><th>STATUS</th></tr>
+                                    <tr><th>DATE</th><th>MISSION</th><th>VICTOR</th><th>SCORE</th><th>STATUS</th><th></th></tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var b in _campaign.BattleHistory.OrderByDescending(b => b.DatePlayed))
                                     {
                                         var wName  = _campaign.Players.FirstOrDefault(p => p.Id == b.WinnerPlayerId)?.Name ?? b.WinnerPlayerId;
                                         var wClass = b.WinnerPlayerId == "p1" ? "wr-text-p1" : b.WinnerPlayerId == "p2" ? "wr-text-p2" : "";
-                                        <tr>
+                                        <tr class="wr-battle-row" @key="b.Id">
                                             <td class="wr-muted wr-nowrap">@b.DatePlayed.ToString("MM-dd")</td>
                                             <td>@b.MissionName</td>
                                             <td class="@wClass fw-bold">@wName.ToUpperInvariant()</td>
@@ -256,7 +256,30 @@ else
                                                     <span class="wr-muted">DONE</span>
                                                 }
                                             </td>
+                                            <td class="wr-nowrap">
+                                                <button type="button" id="@($"wr-del-{b.Id}")" class="wr-del-btn"
+                                                        title="Delete this entry" aria-label="Delete this entry"
+                                                        @onclick="() => _confirmDeleteId = b.Id">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </td>
                                         </tr>
+                                        @if (_confirmDeleteId == b.Id)
+                                        {
+                                            <tr class="wr-del-confirm" @key="@($"{b.Id}-confirm")">
+                                                <td colspan="6">
+                                                    <span class="wr-del-ask">DELETE THIS ENTRY?</span>
+                                                    <button type="button" id="@($"wr-del-yes-{b.Id}")" class="wr-del-yes"
+                                                            @onclick="() => DeleteBattleAsync(b.Id)">YES</button>
+                                                    <button type="button" id="@($"wr-del-no-{b.Id}")" class="wr-del-no"
+                                                            @onclick="() => _confirmDeleteId = null">NO</button>
+                                                    @if (b.Status == BattleStatus.Completed)
+                                                    {
+                                                        <div class="wr-del-note">XP, honours, RP, win/loss and territory from this battle are kept.</div>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
                                     }
                                 </tbody>
                             </table>
@@ -274,6 +297,7 @@ else
     private bool _loaded;
     private Node?   _selectedNode;
     private GmNote? _selectedMapNote;
+    private string? _confirmDeleteId;
 
     private CampaignPlayer? _p1;
     private CampaignPlayer? _p2;
@@ -308,6 +332,14 @@ else
         _p2Terr    = _terrByPid.GetValueOrDefault("p2");
         _neuTerr   = territories.Count - _terrByPid.Values.Sum();
         _totalTerr = territories.Count;
+    }
+
+    private async Task DeleteBattleAsync(string battleId)
+    {
+        _confirmDeleteId = null;
+        await CampaignSvc.DeleteBattleAsync(battleId);
+        // Drop it from this page's copy too, or a later save from here would re-insert it.
+        _campaign?.BattleHistory.RemoveAll(b => b.Id == battleId);
     }
 
     private async Task HandleNodeSelected(string nodeId)

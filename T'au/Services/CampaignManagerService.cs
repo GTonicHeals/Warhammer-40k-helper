@@ -88,6 +88,19 @@ public class CampaignManagerService(
         Campaign = campaign;
     }
 
+    // Removes one Battle from the log. Deletes the row directly rather than saving the whole
+    // graph, so a caller holding a stale Campaign can't overwrite unrelated changes. Results a
+    // Completed Battle already applied (XP, honours, RP, win/loss, territory) are left as-is.
+    public async Task DeleteBattleAsync(string battleId)
+    {
+        await using var ctx = await dbFactory.CreateDbContextAsync();
+
+        var deleted = await ctx.BattleRecords.Where(b => b.Id == battleId).ExecuteDeleteAsync();
+        Campaign?.BattleHistory.RemoveAll(b => b.Id == battleId);
+
+        if (deleted > 0) logger.LogInformation("Deleted Battle {Id}", battleId);
+    }
+
     // Diffs the tracked collection against the incoming one by primary key:
     //   - present in DB, absent from incoming  -> Remove (DELETE)
     //   - present in both                      -> SetValues (UPDATE)

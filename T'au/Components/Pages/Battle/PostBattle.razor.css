@@ -1,0 +1,151 @@
+/* Post-battle Sequence: sized for a phone or tablet passed around the table. */
+
+.pb-page { max-width: 1100px; }
+
+.pb-btn { min-height: 2.75rem; padding-inline: 1.1rem; display: inline-flex; align-items: center; justify-content: center; }
+
+.pb-step-title { font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: .15rem; }
+
+/* ── Step list ─────────────────────────────────────────────── */
+.pb-steps { display: flex; gap: .35rem; overflow-x: auto; padding-bottom: .25rem; }
+.pb-stepbtn {
+    display: flex; align-items: center; gap: .4rem; white-space: nowrap;
+    min-height: 2.5rem; padding: .25rem .7rem .25rem .3rem;
+    border: 1px solid #495057; border-radius: 2rem; background: transparent; color: #adb5bd; font-size: .875rem;
+}
+.pb-stepbtn:disabled { opacity: 1; cursor: default; }
+.pb-stepbtn:not(:disabled):hover { border-color: #ffc107; color: #fff; }
+.pb-stepnum {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.75rem; height: 1.75rem; border-radius: 50%; background: #343a40; color: #dee2e6; font-weight: 700;
+}
+.pb-stepbtn.is-done { color: #fff; }
+.pb-stepbtn.is-done .pb-stepnum { background: #198754; color: #fff; }
+.pb-stepbtn.is-current { border-color: #ffc107; color: #ffc107; font-weight: 700; }
+.pb-stepbtn.is-current .pb-stepnum { background: #ffc107; color: #212529; }
+.pb-stepbtn.is-skipped { color: #6c757d; border-style: dashed; }
+.pb-steps { scrollbar-width: none; }
+.pb-steps::-webkit-scrollbar { display: none; }
+@media (max-width: 575.98px) {
+    .pb-steps { gap: .25rem; }
+    .pb-stepbtn { padding-left: .2rem; }
+    .pb-stepbtn:not(.is-current) { padding-right: .2rem; }
+    .pb-stepbtn:not(.is-current) .pb-steplabel { display: none; }
+    .pb-winner-opt i { display: block; margin: 0; }
+    .pb-choice-row { grid-template-columns: 1fr; }
+}
+
+/* ── Bottom bar ────────────────────────────────────────────── */
+.pb-nav {
+    position: sticky; bottom: 0; z-index: 5;
+    display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem;
+    margin-top: 1rem; padding: .6rem 0;
+    background: #121212; border-top: 1px solid #343a40;
+}
+.pb-nav-note { flex: 1; text-align: right; }
+.pb-nav > .btn:last-child { margin-left: auto; }
+@media (max-width: 575.98px) {
+    .pb-nav-note { order: -1; flex-basis: 100%; text-align: left; }
+}
+
+/* ── Result ────────────────────────────────────────────────── */
+.pb-score { display: flex; align-items: flex-end; gap: .75rem; }
+.pb-score-side { flex: 1; min-width: 0; }
+.pb-score-name { display: block; color: #ffc107; font-weight: 700; }
+.pb-score-input { font-size: 1.75rem; font-weight: 700; text-align: center; height: 3.5rem; margin-top: .25rem; }
+.pb-score-vs { color: #6c757d; font-weight: 700; padding-bottom: 1rem; }
+.pb-winner-opt { min-width: 0; }
+
+/* ── Side heading shared by Casualties and Tallies ─────────── */
+.pb-side-head {
+    display: flex; justify-content: space-between; align-items: baseline; gap: .5rem;
+    padding-bottom: .35rem; margin-bottom: .5rem; border-bottom: 1px solid #495057;
+}
+
+/* ── Casualty tiles ────────────────────────────────────────── */
+.pb-tile {
+    display: flex; align-items: center; gap: .75rem;
+    min-height: 3rem; padding: .5rem .75rem; margin-bottom: .4rem;
+    border: 1px solid #495057; border-radius: .5rem; cursor: pointer; user-select: none;
+}
+.pb-tile:hover { border-color: #adb5bd; }
+.pb-tile-check { width: 1.35rem; height: 1.35rem; flex: none; }
+.pb-tile-name { flex: 1; color: #fff; }
+.pb-tile-state { font-size: .8rem; color: #6c757d; white-space: nowrap; }
+.pb-tile.is-destroyed { border-color: #dc3545; background: rgba(220, 53, 69, .12); }
+.pb-tile.is-destroyed .pb-tile-name { text-decoration: line-through; text-decoration-color: rgba(220, 53, 69, .8); }
+.pb-tile.is-destroyed .pb-tile-state { color: #ea868f; }
+
+/* ── Unit blocks (Tallies, Out of Action, Rank-ups) ────────── */
+.pb-unit { padding: .65rem .75rem; margin-bottom: .5rem; border: 1px solid #495057; border-radius: .5rem; }
+.pb-unit.is-complete { border-color: rgba(25, 135, 84, .7); }
+.pb-unit-head { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.pb-unit-name { flex: 1; min-width: 9rem; }
+.pb-unit-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .5rem; }
+
+.pb-xp {
+    padding: .15rem .55rem; border-radius: 1rem; white-space: nowrap;
+    background: rgba(255, 193, 7, .15); color: #ffc107; font-weight: 700; font-size: .85rem;
+}
+.pb-xp.is-none { background: #343a40; color: #adb5bd; font-weight: 400; }
+.pb-rankup-badge {
+    padding: .15rem .55rem; border-radius: 1rem; white-space: nowrap;
+    background: #198754; color: #fff; font-weight: 700; font-size: .8rem;
+}
+
+.pb-stepper { display: flex; align-items: center; }
+.pb-stepper .btn { width: 2.75rem; height: 2.75rem; padding: 0; color: #dee2e6; border-color: #6c757d; }
+.pb-stepper .btn:disabled { color: #6c757d; border-color: #495057; }
+.pb-stepper input { width: 3.5rem; height: 2.75rem; margin: 0 .25rem; text-align: center; font-weight: 700; }
+.pb-stepper input::-webkit-outer-spin-button,
+.pb-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.pb-stepper input { -moz-appearance: textfield; appearance: textfield; }
+
+.pb-mark { min-height: 2.75rem; display: inline-flex; align-items: center; }
+.btn-check:disabled + .pb-mark { border-color: #495057; color: #6c757d; }
+
+.pb-passfail .btn { min-height: 2.75rem; min-width: 5.5rem; font-weight: 700; }
+
+/* ── Tappable choices with their effect spelled out ────────── */
+.pb-choice-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.pb-choice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .5rem; }
+.pb-choice {
+    display: flex; flex-direction: column; justify-content: flex-start; width: 100%; text-align: left;
+    padding: .55rem .7rem; min-height: 3rem;
+    border: 1px solid #495057; border-radius: .5rem; background: transparent; color: #dee2e6;
+}
+.pb-choice:not(:disabled):hover { border-color: #ffc107; }
+.pb-choice:disabled { opacity: .5; }
+.pb-choice.is-picked { border-color: #ffc107; background: rgba(255, 193, 7, .14); }
+.pb-choice-name { display: block; font-weight: 700; color: #fff; }
+.pb-choice.is-picked .pb-choice-name { color: #ffc107; }
+.pb-choice-effect { display: block; font-size: .8rem; color: #adb5bd; }
+
+/* ── Rank-ups ──────────────────────────────────────────────── */
+.pb-rank-line { display: flex; flex-wrap: wrap; align-items: center; margin-top: .5rem; }
+.pb-rank-new { color: #75d9a3; font-weight: 700; }
+.pb-xpbar { height: .4rem; margin: .4rem 0 .6rem; border-radius: 1rem; background: #343a40; overflow: hidden; }
+.pb-xpbar > div { height: 100%; border-radius: 1rem; background: linear-gradient(90deg, #198754, #75d9a3); transition: width .4s ease; }
+.pb-honour {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem;
+    padding: .45rem .6rem; margin-bottom: .4rem; border-radius: .5rem; background: rgba(255, 193, 7, .08);
+}
+.pb-picker ::deep .form-select-sm { min-height: 2.75rem; font-size: .95rem; }
+.pb-picker ::deep .hp-add { min-height: 2.75rem; font-size: 1.1rem; font-weight: 700; }
+
+/* ── Review and the recorded summary ───────────────────────── */
+.pb-review-side { height: 100%; padding: .75rem; border: 1px solid #495057; border-radius: .5rem; }
+.pb-review-head { display: flex; justify-content: space-between; gap: .5rem; margin-bottom: .5rem; }
+.pb-review-unit { padding: .45rem 0; border-top: 1px solid #343a40; }
+.pb-result { padding: .2rem .65rem; border-radius: 1rem; font-weight: 700; font-size: .85rem; }
+.pb-result-victory { background: #ffc107; color: #212529; }
+.pb-result-defeat { background: #495057; color: #dee2e6; }
+.pb-result-draw { background: #343a40; color: #dee2e6; }
+
+.pb-done-banner {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 1rem 1.25rem; margin: .75rem 0 1rem; border: 1px solid #ffc107; border-radius: .5rem;
+    background: rgba(255, 193, 7, .1); color: #dee2e6;
+}
+.pb-done-banner > i { font-size: 2.25rem; color: #ffc107; }
+.pb-done-title { font-size: 1.35rem; font-weight: 700; color: #ffc107; }

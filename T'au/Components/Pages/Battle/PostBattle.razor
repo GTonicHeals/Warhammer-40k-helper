@@ -10,11 +10,10 @@
 @inject CrusadeTraitsService Traits
 @inject RosterLoadService RosterLoader
 @inject PostBattleService PostBattleSvc
-@inject NavigationManager Nav
 
 <PageTitle>Post-battle Sequence</PageTitle>
 
-<div class="container-fluid py-3">
+<div class="container-fluid py-3 pb-page">
     <h3 class="text-warning mb-1"><i class="bi bi-clipboard-check me-2"></i>Post-battle Sequence</h3>
 
     @if (!_loaded)
@@ -25,16 +24,49 @@
     {
         <p class="text-secondary">@_message <a href="war-room">Back to the War Room.</a></p>
     }
+    else if (_done is not null)
+    {
+        <div id="pb-done" class="pb-done">
+            <div class="pb-done-banner">
+                <i class="bi bi-trophy-fill"></i>
+                <div>
+                    <div class="pb-done-title">Battle recorded</div>
+                    <div class="small">@_battle!.MissionName · @Headline(_done)</div>
+                </div>
+            </div>
+            @SummaryCards(_done)
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                <a class="btn btn-warning fw-bold pb-btn" href="war-room"><i class="bi bi-map me-1"></i>Back to the War Room</a>
+                @foreach (var side in _done)
+                {
+                    <a class="btn btn-outline-warning pb-btn" href="@($"crusade/{side.OrderId}")"><i class="bi bi-shield me-1"></i>Open @side.Army</a>
+                }
+            </div>
+        </div>
+    }
     else
     {
         <div class="small text-secondary mb-3">
             @_battle!.MissionName · @Label(_o1!) vs @Label(_o2!) · @_battle.PointsLimit pts
         </div>
 
-        <ol class="d-flex flex-wrap gap-3 list-unstyled small mb-3">
+        <ol class="pb-steps list-unstyled mb-3">
             @for (var i = 1; i <= StepTitles.Length; i++)
             {
-                <li class="@(i == _step ? "text-warning fw-bold" : i < _step ? "text-white" : "text-secondary")">@i. @StepTitles[i - 1]</li>
+                var n = i;
+                var skipped = n <= _maxStep && !StepNeeded(n);
+                var state = n == _step ? "is-current" : skipped ? "is-skipped" : n <= _maxStep ? "is-done" : "";
+                <li>
+                    <button type="button" class="pb-stepbtn @state" data-goto="@n" disabled="@(!CanGoTo(n))"
+                            aria-current="@(n == _step ? "step" : null)" @onclick="() => GoToAsync(n)">
+                        <span class="pb-stepnum">
+                            @if (n < _step && !skipped) { <i class="bi bi-check-lg"></i> }
+                            else if (skipped) { <i class="bi bi-dash"></i> }
+                            else { @n }
+                        </span>
+                        <span class="pb-steplabel">@StepTitles[n - 1]</span>
+                    </button>
+                </li>
             }
         </ol>
 
@@ -54,24 +86,32 @@
 
         @if (_error is not null)
         {
-            <div class="small text-danger mt-3" id="pb-error">@_error</div>
+            <div class="alert alert-danger py-2 mt-3 mb-0" id="pb-error"><i class="bi bi-exclamation-triangle me-1"></i>@_error</div>
         }
 
-        <div class="mt-3 d-flex justify-content-between">
-            <button id="pb-back" class="btn btn-outline-secondary" disabled="@(_step == 1 || _busy)" @onclick="() => _step--">Back</button>
+        <div class="pb-nav">
+            <button id="pb-back" class="btn btn-outline-secondary pb-btn" disabled="@(_step == 1 || _busy)" @onclick="BackAsync">
+                <i class="bi bi-chevron-left"></i> Back
+            </button>
+            <div class="pb-nav-note small text-secondary">
+                @if (!StepValid)
+                {
+                    <span id="pb-next-hint"><i class="bi bi-info-circle me-1"></i>@NextHint</span>
+                }
+                else if (_saved)
+                {
+                    <span id="pb-saved"><i class="bi bi-cloud-check me-1"></i>Progress saved</span>
+                }
+            </div>
             @if (_step < StepTitles.Length)
             {
-                <div class="d-flex align-items-center gap-3">
-                    @if (!StepValid)
-                    {
-                        <span id="pb-next-hint" class="small text-secondary"><i class="bi bi-info-circle me-1"></i>@NextHint</span>
-                    }
-                    <button id="pb-next" class="btn btn-warning fw-bold" disabled="@(!StepValid)" @onclick="Next">Next</button>
-                </div>
+                <button id="pb-next" class="btn btn-warning fw-bold pb-btn" disabled="@(!StepValid)" @onclick="NextAsync">
+                    Next <i class="bi bi-chevron-right"></i>
+                </button>
             }
             else
             {
-                <button id="pb-complete" class="btn btn-success fw-bold" disabled="@_busy" @onclick="CompleteAsync">
+                <button id="pb-complete" class="btn btn-success fw-bold pb-btn" disabled="@_busy" @onclick="CompleteAsync">
                     <i class="bi bi-check2-circle me-1"></i>Complete battle
                 </button>
             }
@@ -84,12 +124,19 @@
 
     private static readonly string[] StepTitles = ["Result", "Casualties", "Tallies", "Out of Action", "Rank-ups", "Review"];
 
-    private bool _loaded, _busy;
+    private sealed record UnitSummary(string Name, bool Eligible, int Xp, int XpAfter, CrusadeRank RankBefore, CrusadeRank RankAfter,
+        string Fate, string FateClass, int Kills, bool Marked, List<string> Honours);
+    private sealed record SideSummary(string PlayerId, string OrderId, string Player, string Army, string Result, int Vp,
+        int RpBefore, int RpAfter, List<UnitSummary> Units);
+
+    private bool _loaded, _busy, _saved;
     private string? _message, _error;
-    private int _step = 1;
+    private int _step = 1, _maxStep = 1;
     private Campaign? _campaign;
     private BattleRecord? _battle;
     private OrderOfBattle? _o1, _o2;
+    // Set once the Battle is completed: the summary as it stood just before the cards were updated.
+    private List<SideSummary>? _done;
     // playerId → datasheet name → roster Selection (for per-weapon honours)
     private readonly Dictionary<string, Dictionary<string, Selection>> _rosters = new();
 
@@ -128,15 +175,25 @@
 
     private OrderOfBattle OrderOf(BattleUnitResult r) => _o1!.Units.Any(u => u.Id == r.CardId) ? _o1 : _o2!;
 
-    private IEnumerable<(string PlayerId, string Title, List<BattleUnitResult> Results)> Sides() =>
-        new[] { (_battle!.Player1Id, $"{PlayerName(_battle.Player1Id)} — {Label(_o1!)}"),
-                (_battle.Player2Id, $"{PlayerName(_battle.Player2Id)} — {Label(_o2!)}") }
-            .Select(s => (s.Item1, s.Item2, _battle.UnitResults.Where(r => r.PlayerId == s.Item1 && CardOf(r) is not null).ToList()));
+    private IEnumerable<(string PlayerId, OrderOfBattle Order, string Player, string Army, List<BattleUnitResult> Results)> Sides() =>
+        new[] { (_battle!.Player1Id, _o1!), (_battle.Player2Id, _o2!) }
+            .Select(s => (s.Item1, s.Item2, PlayerName(s.Item1), Label(s.Item2),
+                          _battle.UnitResults.Where(r => r.PlayerId == s.Item1 && CardOf(r) is not null).ToList()));
+
+    private List<BattleUnitResult> DestroyedUnits() => _battle!.UnitResults.Where(r => r.Destroyed && CardOf(r) is not null).ToList();
+
+    private List<BattleUnitResult> PromotedUnits() => _battle!.UnitResults.Where(r => OwedHonours(r) > 0).ToList();
 
     private int XpOf(BattleUnitResult r) => CardOf(r) is { } c ? XpRules.XpFor(r, c) : 0;
 
     private int OwedHonours(BattleUnitResult r) =>
         CardOf(r) is { } c ? XpRules.RanksGained(c.Xp, c.Xp + XpRules.XpFor(r, c), c.IsCharacter, c.LegendaryVeteransUsed) : 0;
+
+    private static CrusadeRank RankAt(CrusadeUnitCard c, int xp) => RankCalculator.RankFor(xp, c.IsCharacter, c.LegendaryVeteransUsed);
+
+    // The Disgraced Battle Scar bars a unit from the Marked for Greatness bonus.
+    private static bool CanBeMarked(CrusadeUnitCard c) =>
+        c.XpEligible && !c.BattleScars.Any(s => string.Equals(s.Name, "Disgraced", StringComparison.OrdinalIgnoreCase));
 
     private Selection? RosterUnitOf(BattleUnitResult r) =>
         CardOf(r) is { } c && _rosters.TryGetValue(OrderOf(r).PlayerId, out var units)
@@ -150,12 +207,24 @@
         _ => ""
     };
 
-    private bool StepValid => _step switch
+    private bool StepValid => StepIsValid(_step);
+
+    private bool StepIsValid(int step) => step switch
     {
-        4 => _battle!.UnitResults.Where(r => r.Destroyed && CardOf(r) is not null).All(OutOfActionComplete),
+        4 => DestroyedUnits().All(OutOfActionComplete),
         5 => _battle!.UnitResults.Where(r => CardOf(r) is not null).All(r => r.HonoursGained.Count == OwedHonours(r)),
         _ => true
     };
+
+    // Steps with nothing to enter are skipped: no destroyed unit, or no unit promoted.
+    private bool StepNeeded(int step) => step switch
+    {
+        4 => DestroyedUnits().Count > 0,
+        5 => PromotedUnits().Count > 0,
+        _ => true
+    };
+
+    private bool CanGoTo(int step) => !_busy && step != _step && step <= _maxStep && StepNeeded(step);
 
     private bool OutOfActionComplete(BattleUnitResult r)
     {
@@ -170,25 +239,70 @@
         };
     }
 
-    private void Next()
+    // Earlier answers can be changed at any time; keep the later ones consistent with them.
+    private void Normalize()
     {
-        if (!StepValid) return;
+        // Survivors take no Out of Action test.
+        foreach (var r in _battle!.UnitResults.Where(r => !r.Destroyed)) ResetOutOfAction(r);
+        // Tallies may have changed since honours were picked; drop any surplus.
+        foreach (var r in _battle.UnitResults)
+        {
+            var owed = OwedHonours(r);
+            if (r.HonoursGained.Count > owed) r.HonoursGained.RemoveRange(owed, r.HonoursGained.Count - owed);
+        }
+        // Nobody captures a territory on a Draw.
+        if (string.IsNullOrEmpty(_battle.WinnerPlayerId)) _battle.CapturedTerritoryId = null;
+    }
+
+    private async Task NextAsync()
+    {
+        if (_busy || !StepValid) return;
+        Normalize();
+        var target = _step + 1;
+        while (target < StepTitles.Length && !StepNeeded(target)) target++;
+        await MoveToAsync(target);
+    }
+
+    private async Task BackAsync()
+    {
+        if (_busy || _step == 1) return;
+        Normalize();
+        var target = _step - 1;
+        while (target > 1 && !StepNeeded(target)) target--;
+        await MoveToAsync(target);
+    }
+
+    private async Task GoToAsync(int target)
+    {
+        if (!CanGoTo(target)) return;
+        Normalize();
+        // Jumping ahead is only allowed over steps that are still complete.
+        for (var s = _step; s < target; s++)
+            if (!StepIsValid(s)) return;
+        await MoveToAsync(target);
+    }
+
+    private async Task MoveToAsync(int target)
+    {
         _error = null;
-        if (_step == 2)
+        _step = target;
+        _maxStep = Math.Max(_maxStep, target);
+        await SaveDraftAsync();
+    }
+
+    // The Battle stays Mustered, so a reload or a dropped connection resumes with everything entered so far.
+    private async Task SaveDraftAsync()
+    {
+        try
         {
-            // Survivors take no Out of Action test.
-            foreach (var r in _battle!.UnitResults.Where(r => !r.Destroyed)) ResetOutOfAction(r);
+            await CampaignSvc.SaveCampaignAsync(_campaign!);
+            _saved = true;
         }
-        if (_step == 4)
+        catch (Exception ex)
         {
-            // Tallies may have changed since honours were picked; drop any surplus.
-            foreach (var r in _battle!.UnitResults)
-            {
-                var owed = OwedHonours(r);
-                if (r.HonoursGained.Count > owed) r.HonoursGained.RemoveRange(owed, r.HonoursGained.Count - owed);
-            }
+            _saved = false;
+            _error = $"Progress could not be saved: {ex.Message}";
         }
-        _step++;
     }
 
     private static void ResetOutOfAction(BattleUnitResult r)
@@ -209,9 +323,11 @@
         _error = null;
         try
         {
+            Normalize();
+            var summary = BuildSummary();
             await CampaignSvc.SaveCampaignAsync(_campaign!);
             await PostBattleSvc.CompleteAsync(_battle!.Id);
-            Nav.NavigateTo("war-room");
+            _done = summary;
         }
         catch (Exception ex)
         {
@@ -221,15 +337,45 @@
     }
 
     // ── Step 1: Result ─────────────────────────────────────────────────
+    private string VpWinner => _battle!.Player1Vp > _battle.Player2Vp ? _battle.Player1Id
+                             : _battle.Player2Vp > _battle.Player1Vp ? _battle.Player2Id : "";
+
+    // The higher score wins; the winner buttons stay available to overrule it (a concession, say).
+    private void SetVp(bool first, object? value)
+    {
+        var vp = int.TryParse(value?.ToString(), out var n) && n >= 0 ? n : 0;
+        if (first) _battle!.Player1Vp = vp; else _battle!.Player2Vp = vp;
+        _battle.WinnerPlayerId = VpWinner;
+    }
+
     private RenderFragment StepResult => __builder =>
     {
         var territories = _campaign!.MapNodes.OfType<Territory>().OrderBy(t => t.Name).ToList();
+        var draw = string.IsNullOrEmpty(_battle!.WinnerPlayerId);
+        var scored = _battle.Player1Vp > 0 || _battle.Player2Vp > 0;
+        <div class="pb-step-title">Who won?</div>
+        <p class="small text-secondary">Enter each side's Victory Points; the winner follows the score.</p>
+        <div class="pb-score mb-3">
+            <div class="pb-score-side">
+                <label class="pb-score-name" for="vp1">@PlayerName(_battle.Player1Id)</label>
+                <div class="small text-secondary text-truncate">@Label(_o1!)</div>
+                <input id="vp1" type="number" min="0" inputmode="numeric" class="form-control bg-dark text-white border-secondary pb-score-input"
+                       value="@_battle.Player1Vp" @onchange="e => SetVp(true, e.Value)" />
+            </div>
+            <div class="pb-score-vs">VP</div>
+            <div class="pb-score-side">
+                <label class="pb-score-name" for="vp2">@PlayerName(_battle.Player2Id)</label>
+                <div class="small text-secondary text-truncate">@Label(_o2!)</div>
+                <input id="vp2" type="number" min="0" inputmode="numeric" class="form-control bg-dark text-white border-secondary pb-score-input"
+                       value="@_battle.Player2Vp" @onchange="e => SetVp(false, e.Value)" />
+            </div>
+        </div>
         <div class="mb-3">
             <div class="form-label small text-warning mb-1" id="winner-legend">Winner</div>
             <div class="btn-group w-100" role="radiogroup" aria-labelledby="winner-legend">
                 @foreach (var (pid, name, army, icon) in new[]
                 {
-                    (_battle!.Player1Id, PlayerName(_battle.Player1Id), Label(_o1!), "bi-trophy"),
+                    (_battle.Player1Id, PlayerName(_battle.Player1Id), Label(_o1!), "bi-trophy"),
                     (_battle.Player2Id, PlayerName(_battle.Player2Id), Label(_o2!), "bi-trophy"),
                     ("", "Draw", "No winner", "bi-dash-circle")
                 })
@@ -241,53 +387,64 @@
                            @onchange="_ => _battle.WinnerPlayerId = value" />
                     <label class="btn btn-outline-warning pb-winner-opt py-2" for="@inputId">
                         <i class="bi @icon me-1"></i><span class="fw-bold">@name</span>
-                        <span class="d-block small opacity-75">@army</span>
+                        <span class="d-block small opacity-75 text-truncate">@army</span>
                     </label>
                 }
             </div>
+            @if (scored && _battle.WinnerPlayerId != VpWinner)
+            {
+                <div id="pb-vp-mismatch" class="small text-warning mt-1">
+                    <i class="bi bi-exclamation-circle me-1"></i>The winner does not match the Victory Points. Keep it if that is intended.
+                </div>
+            }
         </div>
-        <div class="row g-2 mb-3">
-            <div class="col-6 col-md-3">
-                <label class="form-label small text-warning mb-0" for="vp1">@PlayerName(_battle.Player1Id) VP</label>
-                <input id="vp1" type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary" @bind="_battle.Player1Vp" />
-            </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small text-warning mb-0" for="vp2">@PlayerName(_battle.Player2Id) VP</label>
-                <input id="vp2" type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary" @bind="_battle.Player2Vp" />
-            </div>
-            <div class="col-12 col-md-6">
-                <label class="form-label small text-warning mb-0" for="territory">Captured territory</label>
-                <select id="territory" class="form-select form-select-sm bg-dark text-white border-secondary"
-                        value="@(_battle.CapturedTerritoryId ?? "")"
-                        @onchange="e => _battle.CapturedTerritoryId = string.IsNullOrEmpty((string?)e.Value) ? null : (string)e.Value!">
-                    <option value="">None</option>
-                    @foreach (var t in territories)
-                    {
-                        <option value="@t.Id">@t.Name</option>
-                    }
-                </select>
-            </div>
+        <div class="mb-3">
+            <label class="form-label small text-warning mb-1" for="territory">
+                @(draw ? "Captured territory" : $"Territory captured by {PlayerName(_battle.WinnerPlayerId)}")
+            </label>
+            <select id="territory" class="form-select bg-dark text-white border-secondary" disabled="@draw"
+                    value="@(draw ? "" : _battle.CapturedTerritoryId ?? "")"
+                    @onchange="e => _battle.CapturedTerritoryId = string.IsNullOrEmpty((string?)e.Value) ? null : (string)e.Value!">
+                <option value="">None</option>
+                @foreach (var t in territories)
+                {
+                    <option value="@t.Id">@t.Name</option>
+                }
+            </select>
+            @if (draw)
+            {
+                <div id="pb-territory-draw" class="small text-secondary mt-1">A Draw captures no territory.</div>
+            }
         </div>
-        <label class="form-label small text-warning mb-0" for="notes">Notes</label>
-        <textarea id="notes" rows="2" class="form-control form-control-sm bg-dark text-white border-secondary" @bind="_battle.Notes"></textarea>
+        <label class="form-label small text-warning mb-1" for="notes">Notes</label>
+        <textarea id="notes" rows="2" class="form-control bg-dark text-white border-secondary" @bind="_battle.Notes"></textarea>
     };
 
     // ── Step 2: Casualties ─────────────────────────────────────────────
     private RenderFragment StepCasualties => __builder =>
     {
-        <p class="small text-secondary">Tick every unit that was destroyed during the Battle.</p>
+        <div class="pb-step-title">Who was destroyed?</div>
+        <p class="small text-secondary">Tap every unit that was destroyed during the Battle. Each one takes an Out of Action test later.</p>
         <div class="row g-3">
             @foreach (var side in Sides())
             {
+                var lost = side.Results.Count(r => r.Destroyed);
                 <div class="col-md-6">
-                    <div class="fw-bold text-white mb-1">@side.Title</div>
+                    <div class="pb-side-head">
+                        <span><span class="fw-bold text-white">@side.Player</span> <span class="small text-secondary">@side.Army</span></span>
+                        <span class="small @(lost > 0 ? "text-danger" : "text-secondary")">@lost of @side.Results.Count destroyed</span>
+                    </div>
                     @foreach (var r in side.Results)
                     {
                         var res = r;
-                        <label class="d-flex align-items-center gap-2 py-1 border-bottom border-secondary">
-                            <input type="checkbox" class="form-check-input mt-0" data-destroyed="@res.CardId"
+                        <label class="pb-tile @(res.Destroyed ? "is-destroyed" : "")">
+                            <input type="checkbox" class="form-check-input mt-0 pb-tile-check" data-destroyed="@res.CardId"
                                    checked="@res.Destroyed" @onchange="e => res.Destroyed = (bool)e.Value!" />
-                            <span class="text-white">@res.UnitName</span>
+                            <span class="pb-tile-name">@res.UnitName</span>
+                            <span class="pb-tile-state">
+                                @if (res.Destroyed) { <span><i class="bi bi-x-octagon-fill me-1"></i>Destroyed</span> }
+                                else { <span>Survived</span> }
+                            </span>
                         </label>
                     }
                 </div>
@@ -298,77 +455,111 @@
     // ── Step 3: Tallies and Marked for Greatness ───────────────────────
     private RenderFragment StepTallies => __builder =>
     {
-        <p class="small text-secondary">Enemy units each unit destroyed this Battle, and one unit per side Marked for Greatness (+3 XP).</p>
+        <div class="pb-step-title">Kills and glory</div>
+        <p class="small text-secondary">
+            Count the enemy units each unit destroyed, and mark one unit per side for Greatness (+@XpRules.MarkedForGreatness XP).
+            Every unit gains +@XpRules.BattleExperience XP for fighting, and +1 XP for every @XpRules.DealersOfDeathStep enemy units on its career tally.
+        </p>
         <div class="row g-3">
             @foreach (var side in Sides())
             {
                 var results = side.Results;
                 <div class="col-md-6">
-                    <div class="fw-bold text-white mb-1">@side.Title</div>
-                    <div class="d-flex gap-2 small text-warning border-bottom border-secondary pb-1">
-                        <span class="flex-grow-1">Unit</span>
-                        <span style="width:4.5rem" class="text-center" title="Enemy units this unit destroyed">Kills</span>
-                        <span class="text-nowrap" style="min-width:9.5rem" title="+3 XP; one unit per side">Marked for Greatness</span>
+                    <div class="pb-side-head">
+                        <span><span class="fw-bold text-white">@side.Player</span> <span class="small text-secondary">@side.Army</span></span>
+                        <span class="small text-secondary">@(results.Any(r => r.MarkedForGreatness) ? "1 unit marked" : "No unit marked")</span>
                     </div>
                     @foreach (var r in results)
                     {
                         var res = r;
                         var card = CardOf(res)!;
-                        <div class="d-flex align-items-center gap-2 py-1 border-bottom border-secondary">
-                            <span class="flex-grow-1 text-white">
-                                @res.UnitName
+                        var markId = $"mark-{res.CardId}";
+                        <div class="pb-unit">
+                            <div class="pb-unit-head">
+                                <div class="pb-unit-name">
+                                    <div class="text-white">@res.UnitName</div>
+                                    <div class="small text-secondary">
+                                        @RankCalculator.Label(card.Rank) · @card.Xp XP · @card.UnitsDestroyed career kills
+                                    </div>
+                                </div>
                                 @if (!card.XpEligible)
                                 {
-                                    <span class="badge bg-secondary ms-1">No XP</span>
+                                    <span class="badge bg-secondary">No XP</span>
                                 }
-                            </span>
-                            <input type="number" min="0" style="width:4.5rem" class="form-control form-control-sm bg-dark text-white border-secondary"
-                                   data-tally="@res.CardId" value="@res.EnemyUnitsDestroyed"
-                                   aria-label="@($"Enemy units destroyed by {res.UnitName}")"
-                                   @onchange="e => res.EnemyUnitsDestroyed = int.TryParse((string?)e.Value, out var n) && n >= 0 ? n : 0" />
-                            <label class="small text-warning text-nowrap" style="min-width:9.5rem">
-                                <input type="radio" class="form-check-input me-1" name="mark-@side.PlayerId" data-mark="@res.CardId" value="@res.CardId"
-                                       aria-label="@($"Mark {res.UnitName} for Greatness")"
-                                       checked="@res.MarkedForGreatness" @onchange="_ => Mark(results, res)" /> Marked
-                            </label>
+                                else
+                                {
+                                    <span class="pb-xp" data-xp="@res.CardId">+@XpOf(res) XP</span>
+                                    @if (OwedHonours(res) > 0)
+                                    {
+                                        <span class="pb-rankup-badge"><i class="bi bi-chevron-double-up me-1"></i>Rank up</span>
+                                    }
+                                }
+                            </div>
+                            <div class="pb-unit-controls">
+                                <div class="pb-stepper" role="group" aria-label="@($"Enemy units destroyed by {res.UnitName}")">
+                                    <button type="button" class="btn btn-outline-secondary" data-kill-minus="@res.CardId" aria-label="One fewer"
+                                            disabled="@(res.EnemyUnitsDestroyed == 0)" @onclick="() => res.EnemyUnitsDestroyed--"><i class="bi bi-dash-lg"></i></button>
+                                    <input type="number" min="0" inputmode="numeric" class="form-control bg-dark text-white border-secondary"
+                                           data-tally="@res.CardId" value="@res.EnemyUnitsDestroyed"
+                                           aria-label="@($"Enemy units destroyed by {res.UnitName}")"
+                                           @onchange="e => res.EnemyUnitsDestroyed = int.TryParse((string?)e.Value, out var n) && n >= 0 ? n : 0" />
+                                    <button type="button" class="btn btn-outline-secondary" data-kill-plus="@res.CardId" aria-label="One more"
+                                            @onclick="() => res.EnemyUnitsDestroyed++"><i class="bi bi-plus-lg"></i></button>
+                                    <span class="small text-secondary ms-2">kills</span>
+                                </div>
+                                <input type="checkbox" class="btn-check" id="@markId" data-mark="@res.CardId" autocomplete="off"
+                                       aria-label="@($"Mark {res.UnitName} for Greatness")" disabled="@(!CanBeMarked(card))"
+                                       checked="@res.MarkedForGreatness" @onchange="_ => ToggleMark(results, res)" />
+                                <label class="btn btn-outline-warning pb-mark" for="@markId"
+                                       title="@(CanBeMarked(card) ? null : card.XpEligible ? "Disgraced: cannot be Marked for Greatness" : "This unit never gains XP")">
+                                    <i class="bi @(res.MarkedForGreatness ? "bi-star-fill" : "bi-star") me-1"></i>Marked
+                                </label>
+                            </div>
                         </div>
                     }
-                    <label class="small text-secondary mt-1">
-                        <input type="radio" class="form-check-input me-1" name="mark-@side.PlayerId" value=""
-                               checked="@(!results.Any(r => r.MarkedForGreatness))" @onchange="_ => Mark(results, null)" /> No unit marked
-                    </label>
                 </div>
             }
         </div>
     };
 
-    private static void Mark(List<BattleUnitResult> side, BattleUnitResult? marked)
+    // One unit per side; tapping the marked unit again clears the mark.
+    private static void ToggleMark(List<BattleUnitResult> side, BattleUnitResult tapped)
     {
-        foreach (var r in side) r.MarkedForGreatness = ReferenceEquals(r, marked);
+        var mark = !tapped.MarkedForGreatness;
+        foreach (var r in side) r.MarkedForGreatness = mark && ReferenceEquals(r, tapped);
     }
 
     // ── Step 4: Out of Action tests ────────────────────────────────────
     private RenderFragment StepOutOfAction => __builder =>
     {
-        var destroyed = _battle!.UnitResults.Where(r => r.Destroyed && CardOf(r) is not null).ToList();
+        var destroyed = DestroyedUnits();
         var scars = Traits.ByType(CrusadeTraitTypes.BattleScar).OrderBy(t => t.Name).ToList();
+        <div class="pb-step-title">Out of Action tests</div>
         if (destroyed.Count == 0)
         {
             <p class="text-secondary">No unit was destroyed; no Out of Action tests.</p>
         }
         else
         {
-            <p class="small text-secondary">Roll each destroyed unit's Out of Action test at the table and enter the result.</p>
+            <p class="small text-secondary">
+                Roll one D6 for each destroyed unit. On a 2+ it passes and returns unharmed; on a 1 it fails and takes a Battle Scar or a Devastating Blow.
+                <span class="text-white">@destroyed.Count(OutOfActionComplete) of @destroyed.Count done.</span>
+            </p>
         }
         @foreach (var r in destroyed)
         {
             var res = r;
             var card = CardOf(res)!;
             var options = OutOfActionRules.OptionsFor(card);
-            <div class="py-2 border-bottom border-secondary">
-                <div class="d-flex flex-wrap align-items-center gap-3">
-                    <span class="text-white" style="min-width:14rem">@res.UnitName <span class="small text-secondary">(@card.BattleScars.Count scars, @card.BattleHonours.Count honours)</span></span>
-                    <div class="btn-group" role="group" aria-label="@($"Out of Action test for {res.UnitName}")">
+            <div class="pb-unit @(OutOfActionComplete(res) ? "is-complete" : "")" data-ooa="@res.CardId">
+                <div class="pb-unit-head">
+                    <div class="pb-unit-name">
+                        <div class="text-white">@res.UnitName</div>
+                        <div class="small text-secondary">
+                            @PlayerName(res.PlayerId) · @card.BattleScars.Count of @OutOfActionRules.MaxScars Battle Scars · @card.BattleHonours.Count Battle Honours
+                        </div>
+                    </div>
+                    <div class="btn-group pb-passfail" role="group" aria-label="@($"Out of Action test for {res.UnitName}")">
                         <button class="btn @(res.OutOfActionPassed == true ? "btn-success" : "btn-outline-success")" data-ooa-pass="@res.CardId"
                                 aria-pressed="@(res.OutOfActionPassed == true)"
                                 @onclick="() => { ResetOutOfAction(res); res.OutOfActionPassed = true; }"><i class="bi bi-check-lg me-1"></i>Pass</button>
@@ -381,50 +572,64 @@
                 {
                     if (options.WillBeRemoved)
                     {
-                        <div class="small text-danger mt-1">Three Battle Scars and no Battle Honour to lose: this unit will be struck from the Order of Battle.</div>
+                        <div class="small text-danger mt-2">
+                            <i class="bi bi-exclamation-triangle me-1"></i>Three Battle Scars and no Battle Honour to lose: this unit will be struck from the Order of Battle.
+                        </div>
                     }
                     else
                     {
-                        <div class="d-flex flex-wrap gap-2 mt-2 align-items-center">
-                            <button class="btn btn-sm @(res.Penalty == OutOfActionPenalty.BattleScar ? "btn-warning" : options.CanTakeScar ? "btn-outline-warning" : "btn-outline-secondary")"
+                        <div class="pb-choice-row mt-2">
+                            <button class="pb-choice @(res.Penalty == OutOfActionPenalty.BattleScar ? "is-picked" : "")"
                                     data-penalty-scar="@res.CardId" disabled="@(!options.CanTakeScar)"
-                                    title="@(options.CanTakeScar ? null : "Already has three Battle Scars")"
-                                    @onclick="() => { res.Penalty = OutOfActionPenalty.BattleScar; res.HonourLost = null; }">Battle Scar</button>
-                            <button class="btn btn-sm @(res.Penalty == OutOfActionPenalty.DevastatingBlow ? "btn-warning" : options.CanTakeDevastatingBlow ? "btn-outline-warning" : "btn-outline-secondary")"
+                                    @onclick="() => { res.Penalty = OutOfActionPenalty.BattleScar; res.HonourLost = null; }">
+                                <span class="pb-choice-name">Battle Scar</span>
+                                <span class="pb-choice-effect">@(options.CanTakeScar ? "Gain one permanent penalty." : "Already has three Battle Scars.")</span>
+                            </button>
+                            <button class="pb-choice @(res.Penalty == OutOfActionPenalty.DevastatingBlow ? "is-picked" : "")"
                                     data-penalty-blow="@res.CardId" disabled="@(!options.CanTakeDevastatingBlow)"
-                                    title="@(options.CanTakeDevastatingBlow ? null : "No Battle Honour to lose")"
-                                    @onclick="() => { res.Penalty = OutOfActionPenalty.DevastatingBlow; res.ScarTaken = null; }">Devastating Blow</button>
-                            @if (options.MustTakeDevastatingBlow)
-                            {
-                                <span class="small text-secondary">Three Battle Scars: a Devastating Blow is mandatory.</span>
-                            }
-                            @if (res.Penalty == OutOfActionPenalty.BattleScar)
-                            {
-                                <select class="form-select form-select-sm bg-dark text-white border-secondary w-auto" data-scar="@res.CardId"
-                                        aria-label="@($"Battle Scar for {res.UnitName}")"
-                                        value="@(res.ScarTaken?.Name ?? "")"
-                                        @onchange="e => res.ScarTaken = scars.FirstOrDefault(t => t.Name == (string?)e.Value) is { } t ? AppliedTrait.FromTrait(t) : null">
-                                    <option value="">— Battle Scar —</option>
-                                    @foreach (var t in scars)
-                                    {
-                                        <option value="@t.Name" title="@t.Effect">@t.Name</option>
-                                    }
-                                </select>
-                            }
-                            else if (res.Penalty == OutOfActionPenalty.DevastatingBlow)
-                            {
-                                <select class="form-select form-select-sm bg-dark text-white border-secondary w-auto" data-honour-lost="@res.CardId"
-                                        aria-label="@($"Battle Honour {res.UnitName} loses")"
-                                        value="@(res.HonourLost ?? "")"
-                                        @onchange="e => res.HonourLost = string.IsNullOrEmpty((string?)e.Value) ? null : (string)e.Value!">
-                                    <option value="">— Battle Honour lost —</option>
-                                    @foreach (var h in card.BattleHonours)
-                                    {
-                                        <option value="@h.Name">@h.Name</option>
-                                    }
-                                </select>
-                            }
+                                    @onclick="() => { res.Penalty = OutOfActionPenalty.DevastatingBlow; res.ScarTaken = null; }">
+                                <span class="pb-choice-name">Devastating Blow</span>
+                                <span class="pb-choice-effect">@(options.CanTakeDevastatingBlow ? "Lose one Battle Honour." : "No Battle Honour to lose.")</span>
+                            </button>
                         </div>
+                        @if (options.MustTakeDevastatingBlow)
+                        {
+                            <div class="small text-secondary mt-1">Three Battle Scars: a Devastating Blow is mandatory.</div>
+                        }
+                        @if (res.Penalty == OutOfActionPenalty.BattleScar)
+                        {
+                            <div class="small text-warning mt-2 mb-1">Which Battle Scar?</div>
+                            <div class="pb-choice-grid">
+                                @foreach (var t in scars)
+                                {
+                                    var scar = t;
+                                    <button class="pb-choice @(res.ScarTaken?.Name == scar.Name ? "is-picked" : "")"
+                                            data-scar="@res.CardId" data-scar-name="@scar.Name"
+                                            aria-pressed="@(res.ScarTaken?.Name == scar.Name)"
+                                            @onclick="() => res.ScarTaken = AppliedTrait.FromTrait(scar)">
+                                        <span class="pb-choice-name">@scar.Name</span>
+                                        <span class="pb-choice-effect">@scar.Effect</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                        else if (res.Penalty == OutOfActionPenalty.DevastatingBlow)
+                        {
+                            <div class="small text-warning mt-2 mb-1">Which Battle Honour is lost?</div>
+                            <div class="pb-choice-grid">
+                                @foreach (var h in card.BattleHonours)
+                                {
+                                    var honour = h;
+                                    <button class="pb-choice @(res.HonourLost == honour.Name ? "is-picked" : "")"
+                                            data-honour-lost="@res.CardId" data-honour-name="@honour.Name"
+                                            aria-pressed="@(res.HonourLost == honour.Name)"
+                                            @onclick="() => res.HonourLost = honour.Name">
+                                        <span class="pb-choice-name">@honour.Name@(honour.WeaponName is { } w ? $" ({w})" : "")</span>
+                                        <span class="pb-choice-effect">@honour.Effect</span>
+                                    </button>
+                                }
+                            </div>
+                        }
                     }
                 }
             </div>
@@ -440,36 +645,74 @@
     }
 
     // ── Step 5: Rank-ups ───────────────────────────────────────────────
+    private static int RankFloor(CrusadeRank rank) => rank switch
+    {
+        CrusadeRank.BattleReady    => 0,
+        CrusadeRank.Blooded        => 6,
+        CrusadeRank.BattleHardened => 16,
+        CrusadeRank.Heroic         => 31,
+        _                          => 51
+    };
+
+    // How far through its new rank the unit stands, as a percentage.
+    private static int RankProgress(CrusadeUnitCard c, int xp)
+    {
+        if (RankCalculator.NextRankXp(xp, c.IsCharacter, c.LegendaryVeteransUsed) is not { } next) return 100;
+        var floor = RankFloor(RankAt(c, xp));
+        return Math.Clamp((xp - floor) * 100 / Math.Max(1, next - floor), 0, 100);
+    }
+
     private RenderFragment StepRankUps => __builder =>
     {
-        var promoted = _battle!.UnitResults.Where(r => OwedHonours(r) > 0).ToList();
+        var promoted = PromotedUnits();
+        <div class="pb-step-title">Promotions</div>
         if (promoted.Count == 0)
         {
             <p class="text-secondary">No unit gained a rank this Battle.</p>
+        }
+        else
+        {
+            <p class="small text-secondary">Each rank gained earns one Battle Honour. Choose them now.</p>
         }
         @foreach (var r in promoted)
         {
             var res = r;
             var card = CardOf(res)!;
             var owed = OwedHonours(res);
-            <div class="py-2 border-bottom border-secondary" data-rankup="@res.CardId">
-                <div class="text-white">
-                    @res.UnitName: @card.Xp → @(card.Xp + XpOf(res)) XP
-                    <span class="small text-warning ms-1">@res.HonoursGained.Count / @owed Battle Honour(s)</span>
+            var xpAfter = card.Xp + XpOf(res);
+            <div class="pb-unit pb-promo @(res.HonoursGained.Count == owed ? "is-complete" : "")" data-rankup="@res.CardId">
+                <div class="pb-unit-head">
+                    <div class="pb-unit-name">
+                        <div class="text-white">@res.UnitName</div>
+                        <div class="small text-secondary">@PlayerName(res.PlayerId)</div>
+                    </div>
+                    <span class="small @(res.HonoursGained.Count == owed ? "text-success" : "text-warning")">
+                        @res.HonoursGained.Count of @owed Battle Honour@(owed == 1 ? "" : "s") chosen
+                    </span>
                 </div>
+                <div class="pb-rank-line">
+                    <span class="text-secondary">@RankCalculator.Label(card.Rank)</span>
+                    <i class="bi bi-arrow-right mx-2 text-secondary"></i>
+                    <span class="pb-rank-new"><i class="bi bi-chevron-double-up me-1"></i>@RankCalculator.Label(RankAt(card, xpAfter))</span>
+                    <span class="small text-secondary ms-auto">@card.Xp → @xpAfter XP</span>
+                </div>
+                <div class="pb-xpbar" role="presentation"><div style="width:@(RankProgress(card, xpAfter))%"></div></div>
                 @for (var i = 0; i < res.HonoursGained.Count; i++)
                 {
                     var index = i;
                     var h = res.HonoursGained[index];
-                    <span class="badge bg-secondary me-1">
-                        @h.Name@(h.WeaponName is { } w ? $" ({w})" : "")
-                        <button type="button" class="btn-close btn-close-white ms-1" style="font-size:.5rem" aria-label="Remove"
-                                @onclick="() => res.HonoursGained.RemoveAt(index)"></button>
-                    </span>
+                    <div class="pb-honour">
+                        <div>
+                            <div class="text-white"><i class="bi bi-award me-1 text-warning"></i>@h.Name@(h.WeaponName is { } w ? $" ({w})" : "")</div>
+                            <div class="small text-secondary">@h.Effect</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" aria-label="@($"Remove {h.Name}")"
+                                @onclick="() => res.HonoursGained.RemoveAt(index)"><i class="bi bi-x-lg"></i></button>
+                    </div>
                 }
                 @if (res.HonoursGained.Count < owed)
                 {
-                    <div class="mt-1">
+                    <div class="pb-picker mt-2">
                         <HonourPicker @key="@($"{res.CardId}-{res.HonoursGained.Count}")" Order="OrderOf(res)" Card="card"
                                       RosterUnit="RosterUnitOf(res)" Picked="t => res.HonoursGained.Add(t)" />
                     </div>
@@ -478,51 +721,108 @@
         }
     };
 
-    // ── Step 6: Review ─────────────────────────────────────────────────
+    // ── Step 6: Review, and the summary shown once the Battle is recorded ──
+    private List<SideSummary> BuildSummary() => Sides().Select(side =>
+    {
+        var result = string.IsNullOrEmpty(_battle!.WinnerPlayerId) ? "Draw"
+                   : _battle.WinnerPlayerId == side.PlayerId ? "Victory" : "Defeat";
+        var units = side.Results.Select(r =>
+        {
+            var card = CardOf(r)!;
+            var xp = XpOf(r);
+            var (fate, fateClass) =
+                  !r.Destroyed                                    ? ("Survived", "")
+                : r.OutOfActionPassed == true                     ? ("Destroyed, passed Out of Action", "")
+                : r.RemovedFromOrder                              ? ("Struck from the Order of Battle", "text-danger")
+                : r.Penalty == OutOfActionPenalty.BattleScar      ? ($"Battle Scar: {r.ScarTaken?.Name}", "text-danger")
+                : r.Penalty == OutOfActionPenalty.DevastatingBlow ? ($"Devastating Blow: loses {r.HonourLost}", "text-danger")
+                :                                                   ("Destroyed", "");
+            return new UnitSummary(r.UnitName, card.XpEligible, xp, card.Xp + xp, card.Rank, RankAt(card, card.Xp + xp),
+                fate, fateClass, r.EnemyUnitsDestroyed, r.MarkedForGreatness,
+                r.HonoursGained.Select(h => h.WeaponName is { } w ? $"{h.Name} ({w})" : h.Name).ToList());
+        }).ToList();
+        return new SideSummary(side.PlayerId, side.Order.Id, side.Player, side.Army, result,
+            side.PlayerId == _battle.Player1Id ? _battle.Player1Vp : _battle.Player2Vp,
+            side.Order.RequisitionPoints, Math.Min(OrderOfBattle.RequisitionPointsMax, side.Order.RequisitionPoints + 1), units);
+    }).ToList();
+
+    private string Headline(List<SideSummary> sides)
+    {
+        var score = string.Join("–", sides.Select(s => s.Vp));
+        var territory = _campaign!.MapNodes.OfType<Territory>().FirstOrDefault(t => t.Id == _battle!.CapturedTerritoryId)?.Name;
+        var winner = sides.FirstOrDefault(s => s.Result == "Victory");
+        return winner is null ? $"Draw, {score} VP"
+             : $"{winner.Player} wins {score} VP" + (territory is null ? "" : $" and captures {territory}");
+    }
+
     private RenderFragment StepReview => __builder =>
     {
-        var winner = string.IsNullOrEmpty(_battle!.WinnerPlayerId) ? "Draw" : PlayerName(_battle.WinnerPlayerId);
-        var territory = _campaign!.MapNodes.OfType<Territory>().FirstOrDefault(t => t.Id == _battle.CapturedTerritoryId)?.Name;
-        <div class="small text-white mb-2">
-            Winner: <strong>@winner</strong> · @_battle.Player1Vp–@_battle.Player2Vp VP
-            @if (territory is not null)
-            {
-                <span> · captures <strong>@territory</strong></span>
-            }
-            · +1 Requisition Point each side (max @OrderOfBattle.RequisitionPointsMax)
-        </div>
-        <table class="table table-dark table-sm small mb-0">
-            <thead><tr><th>Unit</th><th>XP</th><th>Outcome</th></tr></thead>
-            <tbody>
-                @foreach (var side in Sides())
-                {
-                    <tr class="pb-review-side">
-                        <th colspan="3" class="text-warning pt-3">@side.Title</th>
-                    </tr>
-                    @foreach (var r in side.Results)
-                    {
-                        <tr>
-                            <td>@r.UnitName</td>
-                            <td>+@XpOf(r)</td>
-                            <td>@Outcome(r)</td>
-                        </tr>
-                    }
-                }
-            </tbody>
-        </table>
+        var summary = BuildSummary();
+        <div class="pb-step-title">Review</div>
+        <p class="small text-secondary">
+            <span class="text-white" id="pb-headline">@Headline(summary).</span>
+            Check both sides, then complete the Battle to update every Crusade Card. This cannot be undone.
+        </p>
+        @SummaryCards(summary)
     };
 
-    private string Outcome(BattleUnitResult r)
+    private RenderFragment SummaryCards(List<SideSummary> sides) => __builder =>
     {
-        var parts = new List<string>();
-        if (!r.Destroyed) parts.Add("Survived");
-        else if (r.OutOfActionPassed == true) parts.Add("Destroyed, passed Out of Action");
-        else if (r.RemovedFromOrder) parts.Add("Struck from the Order of Battle");
-        else if (r.Penalty == OutOfActionPenalty.BattleScar) parts.Add($"Battle Scar: {r.ScarTaken?.Name}");
-        else if (r.Penalty == OutOfActionPenalty.DevastatingBlow) parts.Add($"Devastating Blow: loses {r.HonourLost}");
-        if (r.EnemyUnitsDestroyed > 0) parts.Add($"{r.EnemyUnitsDestroyed} destroyed");
-        if (r.MarkedForGreatness) parts.Add("Marked for Greatness");
-        if (r.HonoursGained.Count > 0) parts.Add("Honours: " + string.Join(", ", r.HonoursGained.Select(h => h.Name)));
-        return string.Join(" · ", parts);
-    }
+        <div class="row g-3">
+            @foreach (var side in sides)
+            {
+                <div class="col-lg-6">
+                    <div class="pb-review-side" data-side="@side.PlayerId">
+                        <div class="pb-review-head">
+                            <div>
+                                <div class="fw-bold text-white">@side.Player</div>
+                                <div class="small text-secondary">@side.Army</div>
+                            </div>
+                            <div class="text-end">
+                                <span class="pb-result pb-result-@side.Result.ToLowerInvariant()">@side.Result</span>
+                                <div class="small text-secondary mt-1">@side.Vp VP</div>
+                            </div>
+                        </div>
+                        <div class="small text-secondary mb-2">
+                            <i class="bi bi-box-seam me-1"></i>Requisition Points @side.RpBefore → <span class="text-white">@side.RpAfter</span>
+                            @if (side.RpAfter == side.RpBefore)
+                            {
+                                <span> (already at the maximum of @OrderOfBattle.RequisitionPointsMax)</span>
+                            }
+                        </div>
+                        @foreach (var u in side.Units)
+                        {
+                            <div class="pb-review-unit">
+                                <div class="d-flex justify-content-between gap-2">
+                                    <span class="text-white">@u.Name</span>
+                                    <span class="pb-xp @(u.Eligible ? "" : "is-none")">@(u.Eligible ? $"+{u.Xp} XP" : "No XP")</span>
+                                </div>
+                                <div class="small">
+                                    <span class="@(u.FateClass.Length > 0 ? u.FateClass : "text-secondary")">@u.Fate</span>
+                                    @if (u.Kills > 0)
+                                    {
+                                        <span class="text-secondary"> · @u.Kills destroyed</span>
+                                    }
+                                    @if (u.Marked)
+                                    {
+                                        <span class="text-warning"> · <i class="bi bi-star-fill"></i> Marked for Greatness</span>
+                                    }
+                                </div>
+                                @if (u.RankAfter != u.RankBefore)
+                                {
+                                    <div class="small pb-rank-new">
+                                        <i class="bi bi-chevron-double-up me-1"></i>@RankCalculator.Label(u.RankBefore) → @RankCalculator.Label(u.RankAfter)
+                                        @if (u.Honours.Count > 0)
+                                        {
+                                            <span> · @string.Join(", ", u.Honours)</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    };
 }
