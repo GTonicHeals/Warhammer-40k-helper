@@ -96,6 +96,41 @@ public class PostBattleServiceTests : SqliteTestBase
         ((Territory)campaign.MapNodes.Single()).ControllingPlayerId.Should().Be("p1");
     }
 
+    // Links t1 to a hidden t2 and adds an unlinked hidden t3; t1 itself is hidden too.
+    private async Task AddHiddenNeighboursAsync()
+    {
+        var campaign = await Campaigns().LoadCampaignAsync();
+        campaign.MapNodes.OfType<Territory>().Single(t => t.Id == "t1").ConnectedNodeIds.Add("t2");
+        campaign.MapNodes.Add(new Territory { Id = "t2", Name = "Ridge", ConnectedNodeIds = { "t1" } });
+        campaign.MapNodes.Add(new Territory { Id = "t3", Name = "Far" });
+        await Campaigns().SaveCampaignAsync(campaign);
+    }
+
+    private async Task<Dictionary<string, bool>> RevealedAsync() =>
+        (await Campaigns().LoadCampaignAsync()).MapNodes.OfType<Territory>().ToDictionary(t => t.Id, t => t.IsPublic);
+
+    [Fact]
+    public async Task Complete_reveals_the_captured_territory_and_its_hidden_neighbours()
+    {
+        var battleId = await SeedAsync();
+        await AddHiddenNeighboursAsync();
+
+        await Svc().CompleteAsync(battleId);
+
+        (await RevealedAsync()).Should().BeEquivalentTo(new Dictionary<string, bool> { ["t1"] = true, ["t2"] = true, ["t3"] = false });
+    }
+
+    [Fact]
+    public async Task A_draw_reveals_nothing()
+    {
+        var battleId = await SeedAsync((battle, _) => battle.WinnerPlayerId = "");
+        await AddHiddenNeighboursAsync();
+
+        await Svc().CompleteAsync(battleId);
+
+        (await RevealedAsync()).Values.Should().AllBeEquivalentTo(false);
+    }
+
     [Fact]
     public async Task Complete_twice_throws()
     {

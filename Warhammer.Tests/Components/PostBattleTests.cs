@@ -194,6 +194,73 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         orders.Single(o => o.Id == "B").Units.Should().BeEmpty();
     }
 
+    // Same answers as Walking_the_flow_completes_the_battle, stopping at the Review step.
+    private async Task<IRenderedComponent<PostBattle>> WalkToReviewAsync(string id, string? territory)
+    {
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+        await Change(cut, "input[name='winner'][value='p1']", "p1");
+        if (territory is not null) await Change(cut, "#territory", territory);
+        await Next(cut);
+        await Change(cut, "input[data-destroyed='a2']", true);
+        await Change(cut, "input[data-destroyed='b1']", true);
+        await Next(cut);
+        await Next(cut);
+        await Change(cut, "input[data-tally='a1']", "3");
+        await Next(cut);
+        await Click(cut, "button[data-ooa-fail='a2']");
+        await Click(cut, "button[data-penalty-scar='a2']");
+        await Click(cut, "button[data-scar='a2'][data-scar-name='Crippled']");
+        await Click(cut, "button[data-ooa-fail='b1']");
+        await Next(cut);
+        await Change(cut, "[data-rankup='a1'] .hp-type", CrusadeTraitTypes.BattleTrait);
+        await Change(cut, "[data-rankup='a1'] .hp-trait", "Hardened");
+        await Click(cut, "[data-rankup='a1'] .hp-add");
+        await Next(cut);
+        cut.Find("#pb-step").GetAttribute("data-step").Should().Be("7");
+        return cut;
+    }
+
+    private async Task AddHiddenNeighbourAsync()
+    {
+        var campaign = await Campaigns.LoadCampaignAsync();
+        campaign.MapNodes.OfType<Territory>().Single(t => t.Id == "t1").ConnectedNodeIds.Add("t2");
+        campaign.MapNodes.Add(new Territory { Id = "t2", Name = "Ridge", ConnectedNodeIds = { "t1" } });
+        await Campaigns.SaveCampaignAsync(campaign);
+    }
+
+    [Fact]
+    public async Task Review_lists_the_territories_the_capture_reveals()
+    {
+        var id = await SeedAsync();
+        await AddHiddenNeighbourAsync();
+
+        var cut = await WalkToReviewAsync(id, "t1");
+
+        cut.Find("#pb-reveals").TextContent.Should().Contain("Hab").And.Contain("Ridge");
+    }
+
+    [Fact]
+    public async Task Review_without_a_capture_reveals_nothing()
+    {
+        var id = await SeedAsync();
+        await AddHiddenNeighbourAsync();
+
+        var cut = await WalkToReviewAsync(id, null);
+
+        cut.FindAll("#pb-reveals").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Hidden_territories_are_marked_in_the_capture_list()
+    {
+        var id = await SeedAsync();
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+
+        cut.Find("#territory option[value='t1']").TextContent.Should().Be("Hab (hidden)");
+    }
+
     [Fact]
     public async Task Double_click_on_complete_applies_the_sequence_once()
     {

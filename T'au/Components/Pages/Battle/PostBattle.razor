@@ -437,7 +437,7 @@
                 <option value="">None</option>
                 @foreach (var t in territories)
                 {
-                    <option value="@t.Id">@t.Name</option>
+                    <option value="@t.Id">@(t.IsPublic ? t.Name : $"{t.Name} (hidden)")</option>
                 }
             </select>
             @if (draw)
@@ -885,6 +885,15 @@
             <span class="text-white" id="pb-headline">@Headline(summary).</span>
             Check both sides, then complete the Battle to update every Crusade Card. This cannot be undone.
         </p>
+        var reveals = string.IsNullOrEmpty(_battle!.WinnerPlayerId)
+            ? []
+            : TerritoryReveal.RevealedByCapture(_campaign!.MapNodes, _battle.CapturedTerritoryId);
+        @if (reveals.Count > 0)
+        {
+            <p id="pb-reveals" class="small text-info">
+                <i class="bi bi-eye me-1"></i>Reveals: @string.Join(", ", reveals.Select(t => t.Name))
+            </p>
+        }
         @SummaryCards(summary)
     };
 

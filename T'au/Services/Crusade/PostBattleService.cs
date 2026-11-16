@@ -1,3 +1,4 @@
+using Warhammer.Helpers;
 using Warhammer.Models.Campaign;
 using Warhammer.Models.Crusade;
 
@@ -50,6 +51,9 @@ public class PostBattleService(
             if (battle.CapturedTerritoryId is not null &&
                 campaign.MapNodes.OfType<Territory>().FirstOrDefault(t => t.Id == battle.CapturedTerritoryId) is { } territory)
                 territory.ControllingPlayerId = battle.WinnerPlayerId;
+
+            foreach (var revealed in TerritoryReveal.RevealedByCapture(campaign.MapNodes, battle.CapturedTerritoryId))
+                revealed.IsPublic = true;
         }
 
         battle.Status = BattleStatus.Completed;
