@@ -8,6 +8,7 @@
 @inject RosterLoadService RosterLoader
 @inject CrusadeManagerService Crusades
 @inject CrusadeLocalStorageImporter CrusadeImporter
+@inject CampaignManagerService CampaignSvc
 @implements IDisposable
 
 <style>
@@ -42,6 +43,18 @@
         <!-- Campaign -->
         <div class="nav-item px-3 mt-3 mb-1">
             <span class="text-uppercase fw-bold text-white-50 small ps-3">Campaign</span>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="campaigns" id="nav-campaigns">
+                <span class="bi bi-collection text-warning" aria-hidden="true"></span>
+                <span class="d-flex flex-column lh-sm">
+                    <span>Campaigns</span>
+                    @if (_currentCampaignName is not null)
+                    {
+                        <span class="small text-white-50">@_currentCampaignName</span>
+                    }
+                </span>
+            </NavLink>
         </div>
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="crusade" Match="NavLinkMatch.All">
@@ -210,6 +223,7 @@
 
     private List<PlayerMenuData> Players = new();
     private List<OrderOfBattle> _crusades = new();
+    private string? _currentCampaignName;
     private Action _onFactionChange = default!;
     private Action _onCrusadesChanged = default!;
     private bool _disposed;
@@ -278,7 +292,8 @@
         await CrusadeImporter.ImportAsync();
         await Crusades.LoadAllCrusadesAsync();
         RefreshCrusades();
-        if (_crusades.Count > 0) StateHasChanged();
+        _currentCampaignName = (await CampaignSvc.ListCampaignsAsync()).FirstOrDefault(c => c.IsCurrent)?.Name;
+        StateHasChanged();
     }
 
     private void RefreshCrusades()

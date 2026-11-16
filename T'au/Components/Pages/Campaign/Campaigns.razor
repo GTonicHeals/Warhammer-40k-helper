@@ -1,0 +1,193 @@
+@page "/campaigns"
+@rendermode InteractiveServer
+@using Warhammer.Models.Campaign
+@using Warhammer.Services
+
+@inject CampaignManagerService CampaignSvc
+@inject NavigationManager Nav
+
+<PageTitle>Campaigns</PageTitle>
+
+<div class="rules-container">
+    <div class="header-section text-center mb-4">
+        <h1 class="page-title text-warning">
+            <i class="bi bi-collection me-2"></i>Campaigns
+        </h1>
+        <p class="text-muted">Every campaign keeps its own map, players, battles and Crusade armies. Open one to work on it.</p>
+    </div>
+
+    @if (_campaigns is null)
+    {
+        <p class="text-center text-muted"><em>Loading campaigns…</em></p>
+    }
+    else
+    {
+        @if (_error is not null)
+        {
+            <div class="alert alert-danger">@_error</div>
+        }
+
+        <div class="d-flex gap-2 mb-4">
+            <input class="form-control" id="new-campaign-name" placeholder="New campaign name"
+                   @bind="_newName" @bind:event="oninput" />
+            <button class="btn btn-warning flex-shrink-0" id="new-campaign" @onclick="CreateAsync" disabled="@_busy">
+                <i class="bi bi-plus-lg me-1"></i> New campaign
+            </button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th class="text-center">Players</th>
+                        <th class="text-center">Battles</th>
+                        <th>Last opened</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in _campaigns)
+                    {
+                        <tr @key="c.Id">
+                            <td>
+                                @if (_renamingId == c.Id)
+                                {
+                                    <div class="d-flex gap-2">
+                                        <input class="form-control form-control-sm" @bind="_renameText" @bind:event="oninput" />
+                                        <button class="btn btn-sm btn-warning" @onclick="() => RenameAsync(c.Id)" disabled="@_busy">Save</button>
+                                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => _renamingId = null">Cancel</button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="fw-bold">@c.Name</span>
+                                    @if (c.IsCurrent)
+                                    {
+                                        <span class="badge bg-warning text-dark ms-2">Current</span>
+                                    }
+                                }
+                            </td>
+                            <td class="text-center">@c.PlayerCount</td>
+                            <td class="text-center">@c.BattleCount</td>
+                            <td class="text-muted small">@(c.LastOpenedUtc?.ToLocalTime().ToString("g") ?? "—")</td>
+                            <td class="text-end text-nowrap">
+                                @if (!c.IsCurrent)
+                                {
+                                    <button class="btn btn-sm btn-warning" @onclick="() => OpenAsync(c.Id)" disabled="@_busy">
+                                        <i class="bi bi-box-arrow-in-right me-1"></i> Open
+                                    </button>
+                                }
+                                <button class="btn btn-sm btn-outline-secondary" title="Rename"
+                                        @onclick="() => StartRename(c)" disabled="@_busy">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                @if (!c.IsCurrent)
+                                {
+                                    <button class="btn btn-sm btn-outline-danger" title="Delete"
+                                            @onclick="() => StartDelete(c)" disabled="@_busy">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                        @if (_deletingId == c.Id)
+                        {
+                            <tr>
+                                <td colspan="5">
+                                    <div class="alert alert-danger mb-0">
+                                        <p class="mb-2">
+                                            This permanently deletes <strong>@c.Name</strong>: its map, players, battles,
+                                            GM notes and Crusade armies. Type the campaign name to confirm.
+                                        </p>
+                                        <div class="d-flex gap-2">
+                                            <input class="form-control form-control-sm" @bind="_deleteText" @bind:event="oninput"
+                                                   placeholder="@c.Name" />
+                                            <button class="btn btn-sm btn-danger flex-shrink-0" @onclick="() => DeleteAsync(c.Id)"
+                                                    disabled="@(_busy || _deleteText != c.Name)">
+                                                Delete forever
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-secondary flex-shrink-0" @onclick="() => _deletingId = null">
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<CampaignSummary>? _campaigns;
+    private string  _newName = "";
+    private int?    _renamingId;
+    private string  _renameText = "";
+    private int?    _deletingId;
+    private string  _deleteText = "";
+    private bool    _busy;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+
+    private async Task RefreshAsync() => _campaigns = await CampaignSvc.ListCampaignsAsync();
+
+    // A full reload so every page's cached campaign and the sidebar's Crusade list start fresh.
+    private async Task OpenAsync(int id)
+    {
+        _busy = true;
+        await CampaignSvc.SwitchToAsync(id);
+        Nav.NavigateTo("war-room", forceLoad: true);
+    }
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        await CampaignSvc.CreateCampaignAsync(_newName);   // blank keeps the default name
+        Nav.NavigateTo("campaign-editor", forceLoad: true);
+    }
+
+    private void StartRename(CampaignSummary c)
+    {
+        _deletingId = null;
+        _renamingId = c.Id;
+        _renameText = c.Name;
+    }
+
+    private async Task RenameAsync(int id)
+    {
+        _busy = true;
+        await CampaignSvc.RenameCampaignAsync(id, _renameText);
+        _renamingId = null;
+        await RefreshAsync();
+        _busy = false;
+    }
+
+    private void StartDelete(CampaignSummary c)
+    {
+        _renamingId = null;
+        _deletingId = c.Id;
+        _deleteText = "";
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await CampaignSvc.DeleteCampaignAsync(id);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _error = ex.Message;
+        }
+        _deletingId = null;
+        await RefreshAsync();
+        _busy = false;
+    }
+}
