@@ -60,4 +60,16 @@ public class TerritoryRevealTests
 
         TerritoryReveal.VisibleOnWarRoom(nodes).Select(n => n.Id).Should().Equal("t1", "e2");
     }
+
+    [Fact]
+    public void Revealed_events_without_a_territory_still_show()
+    {
+        var nodes = new List<Node>
+        {
+            new CampaignEvent { Id = "e1", IsEventRevealed = true, AttachedToNodeId = null },
+            new CampaignEvent { Id = "e2", IsEventRevealed = true, AttachedToNodeId = "deleted" }
+        };
+
+        TerritoryReveal.VisibleOnWarRoom(nodes).Select(n => n.Id).Should().Equal("e1", "e2");
+    }
 }

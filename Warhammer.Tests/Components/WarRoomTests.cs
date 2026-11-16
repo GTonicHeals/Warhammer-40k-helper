@@ -99,6 +99,22 @@ public class WarRoomTests : SqliteTestBase, IDisposable
         cut.Find(".wr-strip-p1").GetAttribute("style").Should().Contain("width:100%");
     }
 
+    [Fact]
+    public async Task With_every_territory_hidden_the_map_still_shows_public_notes()
+    {
+        _ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        var campaign = await Campaigns.LoadCampaignAsync();
+        campaign.MapNodes.Add(new Territory { Id = "t1", Name = "Secret Vault", X = 0.6, Y = 0.6 });
+        campaign.GmNotebook.Add(new GmNote { Id = "n1", Title = "Landing Zone", IsPublic = true, X = 0.3, Y = 0.3 });
+        await Campaigns.SaveCampaignAsync(campaign);
+
+        var cut = _ctx.RenderComponent<WarRoom>();
+        cut.WaitForElement(".map-note-pin[data-node-id='n1']");
+
+        cut.FindAll(".wr-no-nodes").Should().BeEmpty();
+        cut.Markup.Should().NotContain("Secret Vault");
+    }
+
     public new void Dispose()
     {
         _ctx.Dispose();

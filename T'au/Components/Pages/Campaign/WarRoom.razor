@@ -64,7 +64,8 @@ else
             <div class="wr-map-col">
                 <div class="wr-map-shell">
                     <div class="wr-scanlines"></div>
-                    @if (_campaign.MapNodes.OfType<Territory>().Any(t => t.IsPublic))
+                    @* Any Territory at all, revealed or not: the terrain and public notes show before the first reveal. *@
+                    @if (_campaign.MapNodes.OfType<Territory>().Any())
                     {
                         <CampaignMap Nodes="TerritoryReveal.VisibleOnWarRoom(_campaign.MapNodes)"
                                      MapNotes="_campaign.GmNotebook.Where(n => n.X >= 0 && n.IsPublic).ToList()"

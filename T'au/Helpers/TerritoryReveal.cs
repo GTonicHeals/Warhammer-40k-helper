@@ -26,8 +26,9 @@ public static class TerritoryReveal
     public static bool IsVisible(Node node, IEnumerable<Node> nodes) => node switch
     {
         Territory t      => t.IsPublic,
+        // Only a hidden Territory hides its Events; unattached ones follow IsEventRevealed alone.
         CampaignEvent ev => ev.IsEventRevealed &&
-                            nodes.OfType<Territory>().Any(t => t.Id == ev.AttachedToNodeId && t.IsPublic),
+                            !nodes.OfType<Territory>().Any(t => t.Id == ev.AttachedToNodeId && !t.IsPublic),
         _                => false
     };
 
