@@ -55,6 +55,18 @@ public class CampaignManagerService(
             if (seeded == 1) logger.LogInformation("Seeded the default Requisition list for campaign {Id}", campaign.Id);
         }
 
+        // Defaults seeded before entries carried a DefaultKey get theirs once, so Restore defaults
+        // recognises them after a rename. Only the Requisitions column is written.
+        if (RequisitionDefaults.AssignMissingKeys(campaign.Requisitions))
+        {
+            await using var keyCtx = await dbFactory.CreateDbContextAsync();
+            var id = campaign.Id;
+            var keyed = campaign.Requisitions;
+            await keyCtx.Campaigns.Where(c => c.Id == id)
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.Requisitions, keyed));
+            logger.LogInformation("Gave default keys to the Requisition list of campaign {Id}", campaign.Id);
+        }
+
         Campaign = campaign;
         return campaign;
     }

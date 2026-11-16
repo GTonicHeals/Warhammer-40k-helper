@@ -410,6 +410,36 @@ public class CampaignManagerServiceTests : SqliteTestBase
     }
 
     [Fact]
+    public async Task Defaults_seeded_before_keys_existed_get_their_keys_on_load()
+    {
+        var unkeyed = RequisitionDefaults.Create();
+        foreach (var r in unkeyed) r.DefaultKey = null;
+        unkeyed.Single(r => r.Name == "Repair").Name = "REPAIR";           // case does not matter
+        unkeyed.Single(r => r.Name == "Reinforce").Name = "Field Reinforcements"; // renamed: no match
+        unkeyed.Add(new Requisition { Name = "House rule" });
+        await using (var ctx = CreateContext())
+        {
+            ctx.Campaigns.Add(new CampaignEntity { CampaignName = "Old", Requisitions = unkeyed, RequisitionsSeeded = true });
+            await ctx.SaveChangesAsync();
+        }
+
+        await CreateService().LoadCampaignAsync();
+
+        var stored = (await CreateService().LoadCampaignAsync()).Requisitions;
+        stored.Single(r => r.Name == "REPAIR").DefaultKey.Should().Be("repair");
+        stored.Single(r => r.Name == "Increase Supply Limit").DefaultKey.Should().Be("increase-supply-limit");
+        stored.Single(r => r.Name == "Field Reinforcements").DefaultKey.Should().BeNull();
+        stored.Single(r => r.Name == "House rule").DefaultKey.Should().BeNull();
+        stored.Count(r => r.DefaultKey is not null).Should().Be(6);
+    }
+
+    [Fact]
+    public void Every_default_has_a_distinct_key() =>
+        RequisitionDefaults.Create().Select(r => r.DefaultKey).Should().Equal(
+            "increase-supply-limit", "repair", "reinforce", "renowned-heroes",
+            "legendary-veterans", "rearm-and-resupply", "repair-and-recuperate");
+
+    [Fact]
     public async Task Requisition_edits_persist()
     {
         var campaign = await CreateService().LoadCampaignAsync();

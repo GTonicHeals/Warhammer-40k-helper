@@ -160,5 +160,29 @@ public class RequisitionEditorTests : IDisposable
         Named("Repair").Cost.Should().Be(4);
     }
 
+    [Fact]
+    public async Task Restore_defaults_does_not_duplicate_a_renamed_default()
+    {
+        var cut = Render();
+        var repair = Named("Repair");
+
+        await Change(cut, $"[data-req-name='{repair.Id}']", "Field Repairs");
+        await Click(cut, "#req-restore");
+
+        _campaign.Requisitions.Should().HaveCount(7);
+        _campaign.Requisitions.Should().ContainSingle(r => r.DefaultKey == "repair").Which.Name.Should().Be("Field Repairs");
+    }
+
+    [Fact]
+    public async Task Restore_defaults_brings_back_a_deleted_default()
+    {
+        var cut = Render();
+        await Click(cut, $"[data-req-delete='{Named("Reinforce").Id}']");
+
+        await Click(cut, "#req-restore");
+
+        _campaign.Requisitions.Should().ContainSingle(r => r.DefaultKey == "reinforce");
+    }
+
     public void Dispose() => _ctx.Dispose();
 }

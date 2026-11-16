@@ -100,10 +100,7 @@
     private Task AddAsync() =>
         EditAsync(() => Campaign.Requisitions.Add(new Requisition { Name = "New Requisition", Cost = 1, Timing = "At any time" }));
 
-    // Adds the defaults that are missing by name; entries already there keep the Game Master's edits.
+    // Adds the defaults that are missing; entries already there keep the Game Master's edits, renames included.
     private Task RestoreDefaultsAsync() => EditAsync(() =>
-    {
-        var have = Campaign.Requisitions.Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        Campaign.Requisitions.AddRange(RequisitionDefaults.Create().Where(d => !have.Contains(d.Name)));
-    });
+        Campaign.Requisitions.AddRange(RequisitionDefaults.Missing(Campaign.Requisitions).ToList()));
 }
