@@ -128,7 +128,7 @@
     private sealed record UnitSummary(string CardId, string? Damage, string Name, bool Eligible, int Xp, int XpAfter, CrusadeRank RankBefore, CrusadeRank RankAfter,
         string Fate, string FateClass, int Kills, bool Marked, List<string> Honours);
     private sealed record SideSummary(string PlayerId, string OrderId, string Player, string Army, string Result, int Vp,
-        int RpBefore, int RpAfter, List<UnitSummary> Units);
+        int RpBefore, int RpAfter, int RpAwarded, List<UnitSummary> Units);
 
     private bool _loaded, _busy, _saved;
     private string? _message, _error;
@@ -349,6 +349,15 @@
         _battle.WinnerPlayerId = VpWinner;
     }
 
+    // The Game Master decides what each side earned; anything typed is kept between 0 and the maximum.
+    private void SetAward(bool first, object? value)
+    {
+        var award = int.TryParse(value?.ToString(), out var n) ? Math.Clamp(n, 0, OrderOfBattle.RequisitionPointsMax) : 0;
+        if (first) _battle!.Player1RpAwarded = award; else _battle!.Player2RpAwarded = award;
+    }
+
+    private int AwardOf(string playerId) => playerId == _battle!.Player1Id ? _battle.Player1RpAwarded : _battle.Player2RpAwarded;
+
     private RenderFragment StepResult => __builder =>
     {
         var territories = _campaign!.MapNodes.OfType<Territory>().OrderBy(t => t.Name).ToList();
@@ -370,6 +379,24 @@
                 <input id="vp2" type="number" min="0" inputmode="numeric" class="form-control bg-dark text-white border-secondary pb-score-input"
                        value="@_battle.Player2Vp" @onchange="e => SetVp(false, e.Value)" />
             </div>
+        </div>
+        <div class="mb-3">
+            <div class="form-label small text-warning mb-1">Requisition Points awarded</div>
+            <div class="row g-2">
+                <div class="col-6">
+                    <label class="small text-secondary" for="rp1">@PlayerName(_battle.Player1Id)</label>
+                    <input id="rp1" type="number" min="0" max="@OrderOfBattle.RequisitionPointsMax" inputmode="numeric"
+                           class="form-control bg-dark text-white border-secondary"
+                           value="@_battle.Player1RpAwarded" @onchange="e => SetAward(true, e.Value)" />
+                </div>
+                <div class="col-6">
+                    <label class="small text-secondary" for="rp2">@PlayerName(_battle.Player2Id)</label>
+                    <input id="rp2" type="number" min="0" max="@OrderOfBattle.RequisitionPointsMax" inputmode="numeric"
+                           class="form-control bg-dark text-white border-secondary"
+                           value="@_battle.Player2RpAwarded" @onchange="e => SetAward(false, e.Value)" />
+                </div>
+            </div>
+            <div class="small text-secondary mt-1">Your call, based on how each side fought. An Order of Battle holds at most @OrderOfBattle.RequisitionPointsMax.</div>
         </div>
         <div class="mb-3">
             <div class="form-label small text-warning mb-1" id="winner-legend">Winner</div>
@@ -825,7 +852,8 @@
         }).ToList();
         return new SideSummary(side.PlayerId, side.Order.Id, side.Player, side.Army, result,
             side.PlayerId == _battle.Player1Id ? _battle.Player1Vp : _battle.Player2Vp,
-            side.Order.RequisitionPoints, Math.Min(OrderOfBattle.RequisitionPointsMax, side.Order.RequisitionPoints + 1), units);
+            side.Order.RequisitionPoints,
+            Math.Min(OrderOfBattle.RequisitionPointsMax, side.Order.RequisitionPoints + AwardOf(side.PlayerId)), AwardOf(side.PlayerId), units);
     }).ToList();
 
     private string Headline(List<SideSummary> sides)
@@ -867,7 +895,7 @@
                         </div>
                         <div class="small text-secondary mb-2">
                             <i class="bi bi-box-seam me-1"></i>Requisition Points @side.RpBefore → <span class="text-white">@side.RpAfter</span>
-                            @if (side.RpAfter == side.RpBefore)
+                            @if (side.RpAwarded > 0 && side.RpAfter == side.RpBefore)
                             {
                                 <span> (already at the maximum of @OrderOfBattle.RequisitionPointsMax)</span>
                             }

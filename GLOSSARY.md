@@ -37,7 +37,7 @@ The pre-battle step where each player picks their Crusade Army from their Order 
 _Avoid_: deployment, list building
 
 **Post-battle Sequence**:
-The steps run once after a Battle: record the result, award experience, test destroyed units, apply scars, rank up, gain a Requisition Point.
+The steps run once after a Battle: record the result, record damage, award experience, test destroyed units, apply scars, rank up, and award Requisition Points as the Game Master decides.
 _Avoid_: aftermath, debrief, wrap-up
 
 **Out of Action Test**:

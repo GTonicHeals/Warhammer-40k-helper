@@ -238,4 +238,49 @@ public class PostBattleServiceTests : SqliteTestBase
 
         (await Crusades().LoadAllCrusadesAsync()).Single(o => o.PlayerId == "p2").Units.Should().BeEmpty();
     }
+
+    private async Task<int> PointsAsync(string playerId) =>
+        (await Crusades().LoadAllCrusadesAsync()).Single(o => o.PlayerId == playerId).RequisitionPoints;
+
+    [Fact]
+    public async Task Complete_awards_the_requisition_points_entered()
+    {
+        var battleId = await SeedAsync((battle, _) => { battle.Player1RpAwarded = 3; battle.Player2RpAwarded = 0; });
+
+        await Svc().CompleteAsync(battleId);
+
+        (await PointsAsync("p1")).Should().Be(8);
+        (await PointsAsync("p2")).Should().Be(5);
+    }
+
+    [Fact]
+    public async Task Complete_caps_the_award_at_ten()
+    {
+        var battleId = await SeedAsync((battle, a) => { a.RequisitionPoints = 9; battle.Player1RpAwarded = 3; });
+
+        await Svc().CompleteAsync(battleId);
+
+        (await PointsAsync("p1")).Should().Be(10);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(11)]
+    public async Task Complete_rejects_an_award_outside_zero_to_ten(int award)
+    {
+        var battleId = await SeedAsync((battle, _) => battle.Player2RpAwarded = award);
+
+        await Svc().Invoking(s => s.CompleteAsync(battleId)).Should().ThrowAsync<InvalidOperationException>().WithMessage("*Requisition Points*");
+
+        (await PointsAsync("p1")).Should().Be(5);
+        (await PointsAsync("p2")).Should().Be(5);
+        (await Campaigns().LoadCampaignAsync()).BattleHistory.Single().Status.Should().Be(BattleStatus.Mustered);
+    }
+
+    [Fact]
+    public void A_new_battle_awards_one_requisition_point_per_side_by_default()
+    {
+        var battle = new BattleRecord();
+        (battle.Player1RpAwarded, battle.Player2RpAwarded).Should().Be((1, 1));
+    }
 }

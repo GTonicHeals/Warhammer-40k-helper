@@ -33,9 +33,9 @@ public class PostBattleService(
 
         foreach (var s in steps) Apply(s);
 
-        foreach (var order in new[] { order1, order2 })
+        foreach (var (order, award) in new[] { (order1, battle.Player1RpAwarded), (order2, battle.Player2RpAwarded) })
         {
-            order.RequisitionPoints = Math.Min(OrderOfBattle.RequisitionPointsMax, order.RequisitionPoints + 1);
+            order.RequisitionPoints = Math.Min(OrderOfBattle.RequisitionPointsMax, order.RequisitionPoints + award);
             await crusades.SaveCrusadeAsync(order);
         }
 
@@ -59,6 +59,10 @@ public class PostBattleService(
 
     private List<Step> Validate(BattleRecord battle, OrderOfBattle order1, OrderOfBattle order2)
     {
+        foreach (var award in new[] { battle.Player1RpAwarded, battle.Player2RpAwarded })
+            if (award < 0 || award > OrderOfBattle.RequisitionPointsMax)
+                throw new InvalidOperationException($"Requisition Points awarded must be between 0 and {OrderOfBattle.RequisitionPointsMax}.");
+
         foreach (var side in battle.UnitResults.GroupBy(r => r.PlayerId))
             if (side.Count(r => r.MarkedForGreatness) > 1)
                 throw new InvalidOperationException("Only one unit per side can be Marked for Greatness.");

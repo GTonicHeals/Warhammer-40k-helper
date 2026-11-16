@@ -490,6 +490,63 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         cut.Find("#pb-step").TextContent.Should().Contain("takes no penalty").And.NotContain("unharmed");
     }
 
+    // ── Requisition Points awarded by the Game Master ──────────────────
+    private async Task<int> PointsAsync(string orderId) =>
+        (await new CrusadeManagerService(CreateFactory(),
+            new CampaignManagerService(CreateFactory(), NullLogger<CampaignManagerService>.Instance),
+            NullLogger<CrusadeManagerService>.Instance).LoadAllCrusadesAsync()).Single(o => o.Id == orderId).RequisitionPoints;
+
+    [Fact]
+    public async Task Result_step_takes_the_requisition_award()
+    {
+        var id = await SeedAsync();
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+        cut.Find("#rp1").GetAttribute("value").Should().Be("1");
+        cut.Find("#rp2").GetAttribute("value").Should().Be("1");
+
+        await Change(cut, "#rp1", "3");
+        await Change(cut, "#rp2", "0");
+        for (var step = 0; step < 4; step++) await Next(cut);
+
+        cut.Find("[data-side='p1']").TextContent.Should().Contain("5 → 8");
+        cut.Find("[data-side='p2']").TextContent.Should().Contain("5 → 5");
+        cut.Find("[data-side='p2']").TextContent.Should().NotContain("already at the maximum");
+
+        await Click(cut, "#pb-complete");
+        cut.WaitForElement("#pb-done");
+        (await PointsAsync("A")).Should().Be(8);
+        (await PointsAsync("B")).Should().Be(5);
+    }
+
+    [Theory]
+    [InlineData("", "0")]
+    [InlineData("abc", "0")]
+    [InlineData("-4", "0")]
+    [InlineData("25", "10")]
+    public async Task Requisition_award_is_kept_between_zero_and_ten(string typed, string shown)
+    {
+        var id = await SeedAsync();
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+
+        await Change(cut, "#rp1", typed);
+
+        cut.Find("#rp1").GetAttribute("value").Should().Be(shown);
+    }
+
+    [Fact]
+    public async Task Award_past_the_maximum_shows_the_capped_figure()
+    {
+        var id = await SeedAsync(a => a.RequisitionPoints = 9);
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+        await Change(cut, "#rp1", "3");
+        for (var step = 0; step < 4; step++) await Next(cut);
+
+        cut.Find("[data-side='p1']").TextContent.Should().Contain("9 → 10");
+    }
+
     void IDisposable.Dispose()
     {
         _ctx.Dispose();

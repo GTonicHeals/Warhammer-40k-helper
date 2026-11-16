@@ -46,6 +46,9 @@ namespace Warhammer.Data.Migrations
                     b.Property<string>("Player1OrderId")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("Player1RpAwarded")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Player1Vp")
                         .HasColumnType("INTEGER");
 
@@ -55,6 +58,9 @@ namespace Warhammer.Data.Migrations
 
                     b.Property<string>("Player2OrderId")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("Player2RpAwarded")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("Player2Vp")
                         .HasColumnType("INTEGER");

@@ -24,6 +24,10 @@ public class BattleRecord
     public string?  CapturedTerritoryId { get; set; }
     public string   Notes               { get; set; } = "";
 
+    // Requisition Points the Game Master awards each side for this Battle (0 to 10).
+    public int      Player1RpAwarded    { get; set; } = 1;
+    public int      Player2RpAwarded    { get; set; } = 1;
+
     public BattleStatus Status          { get; set; }
     public int      PointsLimit         { get; set; }
     public string   Player1Id           { get; set; } = "p1";
