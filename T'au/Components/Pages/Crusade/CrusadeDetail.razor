@@ -730,6 +730,7 @@
         _crusade = null;
         _availableUnits = new();
         _selectionsByName = new(StringComparer.OrdinalIgnoreCase);
+        _ambiguousSizes.Clear();
         _upgradePanelOpen.Clear();
         _scarChoice.Clear();
         _showRequisitions = false;
@@ -752,7 +753,13 @@
             var roster = await RosterLoader.LoadRosterAsync(_crusade.PlayerId);
             if (roster != null)
             {
-                var sels = RosterLoadService.GetPlayableUnits(roster)
+                var all = RosterLoadService.GetPlayableUnits(roster).ToList();
+                // Same datasheet taken twice at different sizes: the roster cannot say which card is which.
+                _ambiguousSizes = all.GroupBy(u => u.Name, StringComparer.OrdinalIgnoreCase)
+                    .Where(g => g.Select(UnitStrength.FromRoster).Distinct().Count() > 1)
+                    .Select(g => g.Key)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var sels = all
                     .DistinctBy(u => u.Name)
                     .ToList();
                 _selectionsByName = sels.ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
@@ -779,8 +786,11 @@
     }
 
     // Sets the unit size and wounds from the matching roster datasheet. False when the roster cannot tell.
+    private HashSet<string> _ambiguousSizes = new(StringComparer.OrdinalIgnoreCase);
+
     private bool FillStrengthFromRoster(CrusadeUnitCard card)
     {
+        if (_ambiguousSizes.Contains(card.DatasheetName ?? "")) return false;
         if (!_selectionsByName.TryGetValue(card.DatasheetName ?? "", out var sel)) return false;
         var (count, wounds) = UnitStrength.FromRoster(sel);
         if (count == 0) return false;

@@ -482,8 +482,22 @@
 
     // ── Step 3: Damage (attrition) ─────────────────────────────────────
     // What the unit has lost as entered so far; until a stepper is touched it is the card's own condition.
-    private int ModelsLostOf(BattleUnitResult r) => r.ModelsLostAfter ?? CardOf(r)?.ModelsLost ?? 0;
-    private int WoundsLostOf(BattleUnitResult r) => r.WoundsLostAfter ?? CardOf(r)?.WoundsLost ?? 0;
+    private int ModelsLostOf(BattleUnitResult r) => CardOf(r) is { } c ? PostBattleService.ModelsLostTarget(r, c) : 0;
+    private int WoundsLostOf(BattleUnitResult r) => CardOf(r) is { } c ? PostBattleService.WoundsLostTarget(r, c) : 0;
+
+    // An entry is kept with the value the card showed, so it is applied as a change. Stepping back to
+    // the card's own value is no entry at all.
+    private void SetModelsLost(BattleUnitResult r, int value)
+    {
+        var current = CardOf(r)!.ModelsLost;
+        (r.ModelsLostBefore, r.ModelsLostAfter) = value == current ? ((int?)null, (int?)null) : (current, value);
+    }
+
+    private void SetWoundsLost(BattleUnitResult r, int value)
+    {
+        var current = CardOf(r)!.WoundsLost;
+        (r.WoundsLostBefore, r.WoundsLostAfter) = value == current ? ((int?)null, (int?)null) : (current, value);
+    }
 
     // The line shown in the review when this Battle changed the unit's condition; null when it did not.
     private string? DamageChange(BattleUnitResult r)
@@ -539,18 +553,18 @@
                             <div class="pb-unit-controls">
                                 <div class="pb-stepper" role="group" aria-label="@($"Models lost by {res.UnitName}")">
                                     <button type="button" class="btn btn-outline-secondary" data-models-minus="@res.CardId" aria-label="One fewer model lost"
-                                            disabled="@(models <= 0)" @onclick="() => res.ModelsLostAfter = models - 1"><i class="bi bi-dash-lg"></i></button>
+                                            disabled="@(models <= 0)" @onclick="() => SetModelsLost(res, models - 1)"><i class="bi bi-dash-lg"></i></button>
                                     <span class="pb-damage-val" data-models-lost="@res.CardId">@models</span>
                                     <button type="button" class="btn btn-outline-secondary" data-models-plus="@res.CardId" aria-label="One more model lost"
-                                            disabled="@(maxModels is { } mm && models >= mm)" @onclick="() => res.ModelsLostAfter = models + 1"><i class="bi bi-plus-lg"></i></button>
+                                            disabled="@(maxModels is { } mm && models >= mm)" @onclick="() => SetModelsLost(res, models + 1)"><i class="bi bi-plus-lg"></i></button>
                                     <span class="small text-secondary ms-2">models lost</span>
                                 </div>
                                 <div class="pb-stepper" role="group" aria-label="@($"Wounds lost by {res.UnitName}")">
                                     <button type="button" class="btn btn-outline-secondary" data-wounds-minus="@res.CardId" aria-label="One fewer wound lost"
-                                            disabled="@(wounds <= 0)" @onclick="() => res.WoundsLostAfter = wounds - 1"><i class="bi bi-dash-lg"></i></button>
+                                            disabled="@(wounds <= 0)" @onclick="() => SetWoundsLost(res, wounds - 1)"><i class="bi bi-dash-lg"></i></button>
                                     <span class="pb-damage-val" data-wounds-lost="@res.CardId">@wounds</span>
                                     <button type="button" class="btn btn-outline-secondary" data-wounds-plus="@res.CardId" aria-label="One more wound lost"
-                                            disabled="@(maxWounds is { } mw && wounds >= mw)" @onclick="() => res.WoundsLostAfter = wounds + 1"><i class="bi bi-plus-lg"></i></button>
+                                            disabled="@(maxWounds is { } mw && wounds >= mw)" @onclick="() => SetWoundsLost(res, wounds + 1)"><i class="bi bi-plus-lg"></i></button>
                                     <span class="small text-secondary ms-2">wounds lost</span>
                                 </div>
                             </div>

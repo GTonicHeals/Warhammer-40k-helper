@@ -283,4 +283,34 @@ public class PostBattleServiceTests : SqliteTestBase
         var battle = new BattleRecord();
         (battle.Player1RpAwarded, battle.Player2RpAwarded).Should().Be((1, 1));
     }
+
+    [Fact]
+    public async Task Damage_entered_before_a_reinforce_is_applied_as_a_change_not_an_absolute()
+    {
+        // Drafted when the card had lost 3: one more model lost this Battle. The card was then reinforced to 0.
+        var battleId = await SeedAsync((battle, a) =>
+        {
+            a.Units[0].ModelCount = 10; a.Units[0].ModelsLost = 0;
+            battle.UnitResults[0].ModelsLostBefore = 3; battle.UnitResults[0].ModelsLostAfter = 4;
+        });
+
+        await Svc().CompleteAsync(battleId);
+
+        (await A1Async()).ModelsLost.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task A_change_never_takes_damage_below_zero()
+    {
+        // Drafted as "one wound healed" from 2; the card was then repaired to 0.
+        var battleId = await SeedAsync((battle, a) =>
+        {
+            a.Units[0].WoundsPerModel = 3; a.Units[0].WoundsLost = 0;
+            battle.UnitResults[0].WoundsLostBefore = 2; battle.UnitResults[0].WoundsLostAfter = 1;
+        });
+
+        await Svc().CompleteAsync(battleId);
+
+        (await A1Async()).WoundsLost.Should().Be(0);
+    }
 }

@@ -547,6 +547,26 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         cut.Find("[data-side='p1']").TextContent.Should().Contain("9 → 10");
     }
 
+    [Fact]
+    public async Task Stepping_back_to_the_cards_own_value_is_not_an_entry()
+    {
+        var id = await SeedAsync(a => { Squad(a); a.Units[0].ModelsLost = 3; });
+        var cut = await AtDamageStepAsync(id);
+
+        await Click(cut, "[data-models-plus='a1']");
+        await Next(cut);
+        var saved = (await new CampaignManagerService(CreateFactory(), NullLogger<CampaignManagerService>.Instance).LoadCampaignAsync())
+            .BattleHistory.Single().UnitResults.Single(r => r.CardId == "a1");
+        (saved.ModelsLostBefore, saved.ModelsLostAfter).Should().Be((3, 4));
+
+        await Click(cut, "[data-goto='3']");
+        await Click(cut, "[data-models-minus='a1']");
+        await Next(cut);
+        saved = (await new CampaignManagerService(CreateFactory(), NullLogger<CampaignManagerService>.Instance).LoadCampaignAsync())
+            .BattleHistory.Single().UnitResults.Single(r => r.CardId == "a1");
+        (saved.ModelsLostBefore, saved.ModelsLostAfter).Should().Be(((int?)null, (int?)null));
+    }
+
     void IDisposable.Dispose()
     {
         _ctx.Dispose();

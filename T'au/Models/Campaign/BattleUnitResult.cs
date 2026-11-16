@@ -30,4 +30,10 @@ public class BattleUnitResult
     // Attrition: the unit's condition at the end of this Battle. null = not entered, card unchanged.
     public int? ModelsLostAfter { get; set; }
     public int? WoundsLostAfter { get; set; }
+
+    // What the card showed when the value above was entered. With it, the entry is applied as a
+    // change (After - Before), so a Repair or Reinforce bought before the Battle is completed is
+    // not undone. null (Battles drafted before this existed) = After is applied as it stands.
+    public int? ModelsLostBefore { get; set; }
+    public int? WoundsLostBefore { get; set; }
 }

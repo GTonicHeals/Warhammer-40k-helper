@@ -39,7 +39,7 @@ public class CampaignManagerService(
         {
             campaign.Requisitions = RequisitionDefaults.Create();
             campaign.RequisitionsSeeded = true;
-            await SaveCampaignAsync(campaign);
+            await SaveCampaignAsync(campaign, saveRequisitions: true);
             logger.LogInformation("Seeded the default Requisition list for campaign {Id}", campaign.Id);
         }
 
@@ -47,7 +47,10 @@ public class CampaignManagerService(
         return campaign;
     }
 
-    public async Task SaveCampaignAsync(Campaign campaign)
+    // saveRequisitions: only the Campaign Editor owns the Requisition list. Every other page holds a
+    // copy of the campaign that may be older than the editor's last save, so by default the stored
+    // list is kept and the caller's copy of it is ignored.
+    public async Task SaveCampaignAsync(Campaign campaign, bool saveRequisitions = false)
     {
         await using var ctx = await dbFactory.CreateDbContextAsync();
 
@@ -86,7 +89,14 @@ public class CampaignManagerService(
         // Copy scalar values (CampaignName, MapSeed, MapBiome, MapScale, ...) from the
         // incoming detached entity onto the tracked one. Navigation collections are
         // handled below — SetValues only touches mapped scalars and primitive collections.
+        var storedRequisitions = existing.Requisitions;
+        var storedSeeded       = existing.RequisitionsSeeded;
         ctx.Entry(existing).CurrentValues.SetValues(campaign);
+        if (!saveRequisitions)
+        {
+            existing.Requisitions       = storedRequisitions;
+            existing.RequisitionsSeeded = storedSeeded;
+        }
 
         Reconcile(ctx, existing.Players,       campaign.Players,       p => p.Id);
         Reconcile(ctx, existing.MapNodes,      campaign.MapNodes,      n => n.Id);

@@ -481,7 +481,7 @@
             anyPlaced = true;
         }
         if (anyPlaced)
-            await CampaignSvc.SaveCampaignAsync(_campaign);
+            await CampaignSvc.SaveCampaignAsync(_campaign, saveRequisitions: true);
 
         StateHasChanged();
     }
@@ -626,7 +626,7 @@
         if (_campaign is null) return;
         _saving = true;
         StateHasChanged();
-        await CampaignSvc.SaveCampaignAsync(_campaign);
+        await CampaignSvc.SaveCampaignAsync(_campaign, saveRequisitions: true);
         _saving = false;
         _hasUnsavedChanges = false;
 
@@ -644,7 +644,7 @@
     private async Task HandleGmNotesChanged()
     {
         if (_campaign is null) return;
-        await CampaignSvc.SaveCampaignAsync(_campaign);
+        await CampaignSvc.SaveCampaignAsync(_campaign, saveRequisitions: true);
         _hasUnsavedChanges = false;
     }
 }

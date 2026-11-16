@@ -327,7 +327,7 @@ public class CampaignManagerServiceTests : SqliteTestBase
         (await CreateService().LoadCampaignAsync()).Requisitions.Should().HaveCount(7);
 
         campaign.Requisitions.Clear();
-        await CreateService().SaveCampaignAsync(campaign);
+        await CreateService().SaveCampaignAsync(campaign, saveRequisitions: true);
 
         (await CreateService().LoadCampaignAsync()).Requisitions.Should().BeEmpty("an emptied list is the Game Master's choice");
     }
@@ -353,9 +353,30 @@ public class CampaignManagerServiceTests : SqliteTestBase
         var campaign = await CreateService().LoadCampaignAsync();
         campaign.Requisitions[0].Cost = 4;
         campaign.Requisitions[0].Amount = 75;
-        await CreateService().SaveCampaignAsync(campaign);
+        await CreateService().SaveCampaignAsync(campaign, saveRequisitions: true);
 
         var reloaded = (await CreateService().LoadCampaignAsync()).Requisitions[0];
         (reloaded.Cost, reloaded.Amount, reloaded.Kind).Should().Be((4, 75, RequisitionKind.IncreaseSupplyLimit));
+    }
+
+    [Fact]
+    public async Task A_stale_campaign_copy_does_not_overwrite_the_requisition_list()
+    {
+        // Another page (Post-battle, War Room) holds the campaign as it was...
+        var stale = await CreateService().LoadCampaignAsync();
+
+        // ...while the Campaign Editor changes the list and saves it.
+        var editor = await CreateService().LoadCampaignAsync();
+        editor.Requisitions[0].Cost = 4;
+        editor.Requisitions.RemoveAt(1);
+        await CreateService().SaveCampaignAsync(editor, saveRequisitions: true);
+
+        stale.CampaignName = "Renamed elsewhere";
+        await CreateService().SaveCampaignAsync(stale);
+
+        var reloaded = await CreateService().LoadCampaignAsync();
+        reloaded.CampaignName.Should().Be("Renamed elsewhere");
+        reloaded.Requisitions.Should().HaveCount(6);
+        reloaded.Requisitions[0].Cost.Should().Be(4);
     }
 }

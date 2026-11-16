@@ -86,7 +86,7 @@ public class PostBattleService(
                 throw new InvalidOperationException($"{name} owes {ranks} Battle Honour(s) but {r.HonoursGained.Count} were picked.");
 
             if ((r.ModelsLostAfter is not null || r.WoundsLostAfter is not null) &&
-                !UnitStrength.InRange(card, r.ModelsLostAfter ?? card.ModelsLost, r.WoundsLostAfter ?? card.WoundsLost))
+                !UnitStrength.InRange(card, ModelsLostTarget(r, card), WoundsLostTarget(r, card)))
                 throw new InvalidOperationException($"{name}: the damage entered is more than the unit can take.");
 
             var remove = false;
@@ -121,6 +121,19 @@ public class PostBattleService(
         return steps;
     }
 
+    // Where the card's damage ends up. An entry made against a known starting value is applied as a
+    // change, so a Repair or Reinforce bought between the draft and completion is not undone.
+    public static int ModelsLostTarget(BattleUnitResult r, CrusadeUnitCard card) =>
+        Target(card.ModelsLost, r.ModelsLostBefore, r.ModelsLostAfter);
+
+    public static int WoundsLostTarget(BattleUnitResult r, CrusadeUnitCard card) =>
+        Target(card.WoundsLost, r.WoundsLostBefore, r.WoundsLostAfter);
+
+    private static int Target(int current, int? before, int? after) =>
+          after is not { } a  ? current
+        : before is { } b     ? Math.Max(0, current + (a - b))
+        :                       a;
+
     private static void Apply(Step s)
     {
         var (r, order, card) = (s.Result, s.Order, s.Card);
@@ -145,8 +158,7 @@ public class PostBattleService(
         card.BattleHonours.AddRange(r.HonoursGained);
 
         // Attrition carries into the next Battle; a value that was never entered leaves the card as it was.
-        if (r.ModelsLostAfter is { } modelsLost) card.ModelsLost = modelsLost;
-        if (r.WoundsLostAfter is { } woundsLost) card.WoundsLost = woundsLost;
+        (card.ModelsLost, card.WoundsLost) = (ModelsLostTarget(r, card), WoundsLostTarget(r, card));
 
         r.RemovedFromOrder = s.Remove;
         if (s.Remove) order.Units.Remove(card);

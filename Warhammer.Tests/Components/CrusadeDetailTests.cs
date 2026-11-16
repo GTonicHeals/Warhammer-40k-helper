@@ -266,6 +266,36 @@ public class CrusadeDetailTests : SqliteTestBase, IDisposable
             second => second.Should().Contain("Old one"));
     }
 
+    private const string TwoSquadsJson = """
+        { "roster": { "forces": [ { "selections": [
+          { "name": "Breacher Team", "type": "unit", "number": 1, "costs": [ { "name": "pts", "value": 50 } ],
+            "selections": [ { "name": "Fire Warriors", "type": "model", "number": 5,
+                "profiles": [ { "typeName": "Unit", "name": "Fire Warriors", "characteristics": [ { "name": "W", "$text": "1" } ] } ] } ] },
+          { "name": "Breacher Team", "type": "unit", "number": 1, "costs": [ { "name": "pts", "value": 90 } ],
+            "selections": [ { "name": "Fire Warriors", "type": "model", "number": 10,
+                "profiles": [ { "typeName": "Unit", "name": "Fire Warriors", "characteristics": [ { "name": "W", "$text": "1" } ] } ] } ] },
+          { "name": "Riptide Battlesuit", "type": "model", "number": 1, "costs": [ { "name": "pts", "value": 190 } ],
+            "profiles": [ { "typeName": "Unit", "name": "Riptide", "characteristics": [ { "name": "W", "$text": "14" } ] } ] },
+          { "name": "Riptide Battlesuit", "type": "model", "number": 1, "costs": [ { "name": "pts", "value": 190 } ],
+            "profiles": [ { "typeName": "Unit", "name": "Riptide", "characteristics": [ { "name": "W", "$text": "14" } ] } ] }
+        ] } ] } }
+        """;
+
+    [Fact]
+    public async Task Unit_size_is_left_unknown_when_same_named_roster_units_differ()
+    {
+        _webRoot.WriteRosterFile("p1", TwoSquadsJson);
+        await Crusades.SaveCrusadeAsync(new OrderOfBattle { Id = "A", ArmyName = "Sept", PlayerId = "p1",
+            Units = { new CrusadeUnitCard { Id = "a1", UnitName = "First squad", DatasheetName = "Breacher Team" },
+                      new CrusadeUnitCard { Id = "a2", UnitName = "Big one", DatasheetName = "Riptide Battlesuit" } } });
+
+        Render("A");
+
+        (await CardAsync("a1")).ModelCount.Should().Be(0, "a wrong size would stop the Damage step short of the truth");
+        var a2 = await CardAsync("a2");
+        (a2.ModelCount, a2.WoundsPerModel).Should().Be((1, 14), "duplicates that agree are not ambiguous");
+    }
+
     void IDisposable.Dispose()
     {
         _ctx.Dispose();
