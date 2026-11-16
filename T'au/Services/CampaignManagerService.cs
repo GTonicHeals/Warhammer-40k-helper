@@ -12,8 +12,100 @@ public class CampaignManagerService(
     // Not a source of truth — callers should use the return value of LoadCampaignAsync.
     public Campaign? Campaign { get; private set; }
 
+    // The current campaign: the one opened most recently, else (a database from before switching
+    // existed) the oldest. Seeds a default campaign when there are none.
+    public async Task<int> GetCurrentCampaignIdAsync()
+    {
+        await using var ctx = await dbFactory.CreateDbContextAsync();
+        var id = await CurrentIdQuery(ctx).FirstOrDefaultAsync();
+        if (id != 0) return id;
+
+        var campaign = CreateDefault();
+        ctx.Campaigns.Add(campaign);
+        await ctx.SaveChangesAsync();
+        logger.LogInformation("Seeded default campaign with Id={Id}", campaign.Id);
+        return campaign.Id;
+    }
+
+    private static IQueryable<int> CurrentIdQuery(AppDbContext ctx) =>
+        ctx.Campaigns
+            .OrderByDescending(c => c.LastOpenedUtc.HasValue)
+            .ThenByDescending(c => c.LastOpenedUtc)
+            .ThenBy(c => c.Id)
+            .Select(c => c.Id);
+
+    public async Task<IReadOnlyList<CampaignSummary>> ListCampaignsAsync()
+    {
+        var currentId = await GetCurrentCampaignIdAsync();
+        await using var ctx = await dbFactory.CreateDbContextAsync();
+        var rows = await ctx.Campaigns
+            .Select(c => new CampaignSummary(c.Id, c.CampaignName, c.Players.Count, c.BattleHistory.Count,
+                                             c.LastOpenedUtc, c.Id == currentId))
+            .ToListAsync();
+
+        return rows
+            .OrderByDescending(r => r.IsCurrent)
+            .ThenByDescending(r => r.LastOpenedUtc ?? DateTime.MinValue)
+            .ThenBy(r => r.Id)
+            .ToList();
+    }
+
+    public async Task SwitchToAsync(int campaignId)
+    {
+        await using var ctx = await dbFactory.CreateDbContextAsync();
+        var now = DateTime.UtcNow;
+        var updated = await ctx.Campaigns.Where(c => c.Id == campaignId)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.LastOpenedUtc, now));
+        if (updated == 0) throw new InvalidOperationException($"Campaign {campaignId} does not exist.");
+
+        Campaign = null;
+        logger.LogInformation("Switched to campaign {Id}", campaignId);
+    }
+
+    public async Task<Campaign> CreateCampaignAsync(string name)
+    {
+        var campaign = CreateDefault();
+        if (!string.IsNullOrWhiteSpace(name)) campaign.CampaignName = name.Trim();
+
+        await using (var ctx = await dbFactory.CreateDbContextAsync())
+        {
+            ctx.Campaigns.Add(campaign);
+            await ctx.SaveChangesAsync();
+        }
+        logger.LogInformation("Created campaign {Id} ({Name})", campaign.Id, campaign.CampaignName);
+
+        await SwitchToAsync(campaign.Id);
+        return await LoadCampaignAsync();
+    }
+
+    public async Task RenameCampaignAsync(int campaignId, string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        var trimmed = name.Trim();
+        await using var ctx = await dbFactory.CreateDbContextAsync();
+        await ctx.Campaigns.Where(c => c.Id == campaignId)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.CampaignName, trimmed));
+        if (Campaign?.Id == campaignId) Campaign.CampaignName = trimmed;
+    }
+
+    // The current campaign can't be deleted, so the game being played is never lost by accident.
+    // Its children (players, map, battles, notes, Orders of Battle) go with it via cascade FKs.
+    public async Task DeleteCampaignAsync(int campaignId)
+    {
+        if (campaignId == await GetCurrentCampaignIdAsync())
+            throw new InvalidOperationException("The current campaign can't be deleted. Switch to another one first.");
+
+        await using var ctx = await dbFactory.CreateDbContextAsync();
+        var existing = await ctx.Campaigns.FindAsync(campaignId);
+        if (existing is null) return;
+        ctx.Campaigns.Remove(existing);
+        await ctx.SaveChangesAsync();
+        logger.LogInformation("Deleted campaign {Id}", campaignId);
+    }
+
     public async Task<Campaign> LoadCampaignAsync()
     {
+        var currentId = await GetCurrentCampaignIdAsync();
         await using var ctx = await dbFactory.CreateDbContextAsync();
 
         var campaign = await ctx.Campaigns
@@ -23,16 +115,7 @@ public class CampaignManagerService(
             .Include(c => c.GmNotebook)        // GmNotebook covers both notebook entries and map pins
             .AsSplitQuery()                    // avoid Cartesian explosion across 4 collections
             .AsNoTracking()                    // return a detached graph; SaveCampaignAsync re-attaches
-            .OrderBy(c => c.Id)
-            .FirstOrDefaultAsync();
-
-        if (campaign is null)
-        {
-            campaign = CreateDefault();
-            ctx.Campaigns.Add(campaign);
-            await ctx.SaveChangesAsync();
-            logger.LogInformation("Seeded default campaign with Id={Id}", campaign.Id);
-        }
+            .SingleAsync(c => c.Id == currentId);
 
         // A campaign gets the default Requisition list exactly once; after that the list is the Game Master's.
         // The write only lands while the row is still unseeded, so when two first loads race (two tabs,
@@ -115,7 +198,9 @@ public class CampaignManagerService(
         // handled below — SetValues only touches mapped scalars and primitive collections.
         var storedRequisitions = existing.Requisitions;
         var storedSeeded       = existing.RequisitionsSeeded;
+        var storedLastOpened   = existing.LastOpenedUtc;
         ctx.Entry(existing).CurrentValues.SetValues(campaign);
+        existing.LastOpenedUtc = storedLastOpened;   // only SwitchToAsync moves the current campaign
         if (!saveRequisitions)
         {
             existing.Requisitions       = storedRequisitions;

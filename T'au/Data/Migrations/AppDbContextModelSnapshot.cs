@@ -96,6 +96,9 @@ namespace Warhammer.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("LastOpenedUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("MapBiome")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -135,11 +138,11 @@ namespace Warhammer.Data.Migrations
 
             modelBuilder.Entity("Warhammer.Models.Campaign.CampaignPlayer", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("CampaignId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("CampaignPoints")
                         .HasColumnType("INTEGER");
@@ -157,9 +160,7 @@ namespace Warhammer.Data.Migrations
                     b.Property<int>("Wins")
                         .HasColumnType("INTEGER");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("CampaignId");
+                    b.HasKey("CampaignId", "Id");
 
                     b.ToTable("CampaignPlayers");
                 });

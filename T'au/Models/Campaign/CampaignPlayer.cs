@@ -5,7 +5,8 @@ namespace Warhammer.Models.Campaign;
 
 public class CampaignPlayer
 {
-    [Key]
+    // The seat ("p1", "p2") — unique within a campaign, not across campaigns. The key is
+    // (CampaignId, Id); see AppDbContext.
     public string Id { get; set; } = Guid.NewGuid().ToString();
 
     public int CampaignId { get; set; }

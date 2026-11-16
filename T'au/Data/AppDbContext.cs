@@ -60,6 +60,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Campaign>()
             .Property(c => c.Requisitions).HasJsonConversion();
 
+        // Every campaign has its own "p1"/"p2" seats, so a player is keyed within its campaign.
+        modelBuilder.Entity<CampaignPlayer>()
+            .HasKey(p => new { p.CampaignId, p.Id });
+
         modelBuilder.Entity<CrusadeUnitCard>(e =>
         {
             e.Property(u => u.BattleHonours).HasJsonConversion();

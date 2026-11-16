@@ -78,6 +78,35 @@ public class DbBootstrapTests : IDisposable
     }
 
     [Fact]
+    public async Task Players_survive_the_move_to_per_campaign_keys()
+    {
+        await using (var ctx = Ctx())
+        {
+            await ctx.GetService<IMigrator>().MigrateAsync("20261116230917_RevealExistingTerritories");
+            await ctx.Database.ExecuteSqlRawAsync(
+                "INSERT INTO Campaigns (CampaignName, MapSeed, MapBiome, MapOctaves, MapLacunarity, MapPersistence, MapScale, MapOffsetX, MapOffsetY, Requisitions, RequisitionsSeeded) " +
+                "VALUES ('Live', 1, 'agri', 4, 2.0, 0.5, 2.0, 0.0, 0.0, '[]', 1)");
+            await ctx.Database.ExecuteSqlRawAsync(
+                "INSERT INTO CampaignPlayers (Id, CampaignId, Name, VictoryPoints, CampaignPoints, Wins, Losses) VALUES " +
+                "('p1', 1, 'Nico', 10, 2, 3, 1), ('p2', 1, 'Rival', 5, 1, 1, 3)");
+        }
+        await using (var ctx = Ctx())
+        {
+            await DbBootstrap.MigrateAsync(ctx);
+            var players = await ctx.CampaignPlayers.OrderBy(p => p.Id).ToListAsync();
+            players.Select(p => (p.Id, p.CampaignId, p.Name, p.Wins)).Should().Equal(("p1", 1, "Nico", 3), ("p2", 1, "Rival", 1));
+
+            // A second campaign can now hold its own p1/p2.
+            ctx.Campaigns.Add(new Warhammer.Models.Campaign.Campaign
+            {
+                Players = { new() { Id = "p1" }, new() { Id = "p2" } }
+            });
+            await ctx.SaveChangesAsync();
+            (await ctx.CampaignPlayers.CountAsync()).Should().Be(4);
+        }
+    }
+
+    [Fact]
     public async Task Bootstrap_is_idempotent()
     {
         await using var ctx = Ctx();

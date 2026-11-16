@@ -26,4 +26,7 @@ public class Campaign
     public List<Requisition>    Requisitions  { get; set; } = new();
     // The default list is given once. Without this flag a list the Game Master emptied would refill.
     public bool                 RequisitionsSeeded { get; set; }
+
+    // The current campaign is the one opened most recently; null on campaigns never switched to.
+    public DateTime?            LastOpenedUtc { get; set; }
 }
