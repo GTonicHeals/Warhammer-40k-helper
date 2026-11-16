@@ -56,6 +56,28 @@ public class DbBootstrapTests : IDisposable
     }
 
     [Fact]
+    public async Task Territories_that_existed_before_hiding_stay_revealed()
+    {
+        await using (var ctx = Ctx())
+        {
+            await ctx.GetService<IMigrator>().MigrateAsync("20261116035356_AddBattleRequisitionAwards");
+            await ctx.Database.ExecuteSqlRawAsync(
+                "INSERT INTO Campaigns (CampaignName, MapSeed, MapBiome, MapOctaves, MapLacunarity, MapPersistence, MapScale, MapOffsetX, MapOffsetY) " +
+                "VALUES ('Live', 1, 'agri', 4, 2.0, 0.5, 2.0, 0.0, 0.0)");
+            await ctx.Database.ExecuteSqlRawAsync(
+                "INSERT INTO Nodes (Id, CampaignId, Name, Description, IsPublic, ConnectedNodeIds, X, Y, NodeType, IsEventRevealed) VALUES " +
+                "('t1', 1, 'Hab', '', 0, '[]', 0.5, 0.5, 'Territory', NULL), " +
+                "('e1', 1, 'Ambush', '', 0, '[]', 0.5, 0.5, 'CampaignEvent', 0)");
+        }
+        await using (var ctx = Ctx())
+        {
+            await DbBootstrap.MigrateAsync(ctx);
+            var nodes = await ctx.Set<Warhammer.Models.Campaign.Node>().ToDictionaryAsync(n => n.Id, n => n.IsPublic);
+            nodes.Should().BeEquivalentTo(new Dictionary<string, bool> { ["t1"] = true, ["e1"] = false });
+        }
+    }
+
+    [Fact]
     public async Task Bootstrap_is_idempotent()
     {
         await using var ctx = Ctx();
