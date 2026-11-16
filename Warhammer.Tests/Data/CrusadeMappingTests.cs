@@ -59,4 +59,26 @@ public class CrusadeMappingTests : SqliteTestBase
         await using (var ctx = CreateContext())
             (await ctx.CrusadeUnitCards.SingleAsync()).BattleScars.Should().ContainSingle(s => s.Name == "Scar");
     }
+
+    [Fact]
+    public async Task Attrition_round_trips_through_the_crusade_service()
+    {
+        var campaigns = new Warhammer.Services.CampaignManagerService(CreateFactory(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Warhammer.Services.CampaignManagerService>.Instance);
+        Warhammer.Services.CrusadeManagerService Svc() => new(CreateFactory(), campaigns,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Warhammer.Services.CrusadeManagerService>.Instance);
+
+        var order = new OrderOfBattle
+        {
+            Units = { new CrusadeUnitCard { UnitName = "U", ModelCount = 10, WoundsPerModel = 2, ModelsLost = 3, WoundsLost = 1 } }
+        };
+        await Svc().SaveCrusadeAsync(order);
+
+        var card = (await Svc().LoadAllCrusadesAsync()).Single().Units.Single();
+        (card.ModelCount, card.WoundsPerModel, card.ModelsLost, card.WoundsLost).Should().Be((10, 2, 3, 1));
+
+        order.Units[0].ModelsLost = 0;
+        await Svc().SaveCrusadeAsync(order);
+        (await Svc().LoadAllCrusadesAsync()).Single().Units.Single().ModelsLost.Should().Be(0);
+    }
 }

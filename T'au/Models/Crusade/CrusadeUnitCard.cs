@@ -40,6 +40,16 @@ public class CrusadeUnitCard
     public bool IsCharacter { get; set; }
     public bool LegendaryVeteransUsed { get; set; }
 
+    // Attrition (house rule): unit size at full strength and what it has lost so far.
+    // A size of 0 means unknown. Limits and wording live in UnitStrength.
+    public int ModelCount { get; set; }
+    public int WoundsPerModel { get; set; }
+    public int ModelsLost { get; set; }
+    public int WoundsLost { get; set; }
+
+    [NotMapped, JsonIgnore]
+    public bool IsDamaged => ModelsLost > 0 || WoundsLost > 0;
+
     [NotMapped, JsonIgnore]
     public CrusadeRank Rank => RankCalculator.RankFor(Xp, IsCharacter, LegendaryVeteransUsed);
 }

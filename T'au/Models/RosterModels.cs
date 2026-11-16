@@ -40,6 +40,10 @@ namespace Warhammer.Models
         [JsonPropertyName("number")]
         public int Number { get; set; }
 
+        // "model", "unit" or "upgrade" in the exported roster.
+        [JsonPropertyName("type")]
+        public string Type { get; set; } = "";
+
         [JsonPropertyName("selections")]
         public List<Selection> Selections { get; set; } = new();
 

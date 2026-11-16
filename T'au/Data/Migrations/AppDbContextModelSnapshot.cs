@@ -267,6 +267,12 @@ namespace Warhammer.Data.Migrations
                     b.Property<bool>("LegendaryVeteransUsed")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("ModelCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ModelsLost")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("OrderOfBattleId")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -279,6 +285,12 @@ namespace Warhammer.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("UnitsDestroyed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("WoundsLost")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("WoundsPerModel")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Xp")
