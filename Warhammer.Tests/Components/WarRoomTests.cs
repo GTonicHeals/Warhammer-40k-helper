@@ -78,6 +78,27 @@ public class WarRoomTests : SqliteTestBase, IDisposable
         cut.Find(".wr-del-note").TextContent.Should().Contain("kept");
     }
 
+    [Fact]
+    public async Task Hidden_territories_are_not_shown_counted_or_named()
+    {
+        _ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        var campaign = await Campaigns.LoadCampaignAsync();
+        campaign.MapNodes.Add(new Territory { Id = "t1", Name = "Hab", IsPublic = true, ControllingPlayerId = "p1", X = 0.2, Y = 0.2,
+                                              ConnectedNodeIds = { "t2" } });
+        campaign.MapNodes.Add(new Territory { Id = "t2", Name = "Secret Vault", ControllingPlayerId = "p1", X = 0.6, Y = 0.6,
+                                              ConnectedNodeIds = { "t1" } });
+        await Campaigns.SaveCampaignAsync(campaign);
+
+        var cut = _ctx.RenderComponent<WarRoom>();
+        cut.WaitForElement(".map-node[data-node-id='t1']");
+
+        cut.FindAll(".map-node[data-node-id='t2']").Should().BeEmpty();
+        cut.FindAll(".map-edge").Should().BeEmpty();
+        await cut.Find(".map-node[data-node-id='t1']").ClickAsync(new MouseEventArgs());
+        cut.Markup.Should().NotContain("Secret Vault");
+        cut.Find(".wr-strip-p1").GetAttribute("style").Should().Contain("width:100%");
+    }
+
     public new void Dispose()
     {
         _ctx.Dispose();

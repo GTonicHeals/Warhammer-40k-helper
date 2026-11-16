@@ -64,9 +64,9 @@ else
             <div class="wr-map-col">
                 <div class="wr-map-shell">
                     <div class="wr-scanlines"></div>
-                    @if (_campaign.MapNodes.OfType<Territory>().Any())
+                    @if (_campaign.MapNodes.OfType<Territory>().Any(t => t.IsPublic))
                     {
-                        <CampaignMap Nodes="_campaign.MapNodes.Where(n => n is Territory || (n is CampaignEvent ce && ce.IsEventRevealed)).ToList()"
+                        <CampaignMap Nodes="TerritoryReveal.VisibleOnWarRoom(_campaign.MapNodes)"
                                      MapNotes="_campaign.GmNotebook.Where(n => n.X >= 0 && n.IsPublic).ToList()"
                                      IsReadOnly="true"
                                      MapSeed="_campaign.MapSeed" MapBiome="@_campaign.MapBiome"
@@ -119,8 +119,9 @@ else
                                 _    => "Neutral"
                             };
                             var links = selectedTerritory.ConnectedNodeIds
-                                .Select(id => _campaign!.MapNodes.FirstOrDefault(n => n.Id == id)?.Name)
-                                .Where(n => n is not null)
+                                .Select(id => _campaign!.MapNodes.FirstOrDefault(n => n.Id == id))
+                                .Where(n => n is not null && TerritoryReveal.IsVisible(n, _campaign!.MapNodes))
+                                .Select(n => n!.Name)
                                 .ToList();
 
                             <div class="wr-intel-name">@selectedTerritory.Name.ToUpperInvariant()</div>
@@ -319,15 +320,16 @@ else
         _p1 = _campaign.Players.FirstOrDefault(p => p.Id == "p1");
         _p2 = _campaign.Players.FirstOrDefault(p => p.Id == "p2");
 
+        // Only revealed Territories count: a total that includes hidden ones would hint at them.
+        var territories = _campaign.MapNodes.OfType<Territory>().Where(t => t.IsPublic).ToList();
         _terrByPid.Clear();
-        foreach (var territory in _campaign.MapNodes.OfType<Territory>())
+        foreach (var territory in territories)
         {
             var pid = territory.ControllingPlayerId;
             if (!string.IsNullOrEmpty(pid))
                 _terrByPid[pid] = _terrByPid.GetValueOrDefault(pid) + 1;
         }
 
-        var territories = _campaign.MapNodes.OfType<Territory>().ToList();
         _p1Terr    = _terrByPid.GetValueOrDefault("p1");
         _p2Terr    = _terrByPid.GetValueOrDefault("p2");
         _neuTerr   = territories.Count - _terrByPid.Values.Sum();
