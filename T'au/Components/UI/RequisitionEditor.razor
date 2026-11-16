@@ -1,0 +1,112 @@
+@using Warhammer.Models.Campaign
+
+@* The Campaign's Requisition list. Edits Campaign.Requisitions in place and reports every change;
+   the Campaign Editor's Save button persists it. *@
+<div class="card bg-dark border-secondary mb-3" id="req-editor">
+    <div class="card-header border-secondary d-flex align-items-center gap-2">
+        <span class="text-warning fw-bold flex-grow-1"><i class="bi bi-box-seam me-2"></i>Requisitions</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="req-restore" @onclick="RestoreDefaultsAsync"
+                title="Add back any default Requisition that is missing">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Restore defaults
+        </button>
+        <button type="button" class="btn btn-sm btn-warning" id="req-add" @onclick="AddAsync">
+            <i class="bi bi-plus-lg me-1"></i>Add
+        </button>
+        <button type="button" class="btn-close btn-close-white" aria-label="Close" @onclick="OnClose"></button>
+    </div>
+    <div class="card-body">
+        <p class="small text-secondary">
+            What an Order of Battle can buy with Requisition Points. An entry with a built-in effect is applied by the app when bought;
+            a text-only entry just takes the points and you apply it by hand.
+        </p>
+        @if (Campaign.Requisitions.Count == 0)
+        {
+            <p class="text-secondary mb-0"><em>No Requisitions. Add one, or restore the defaults.</em></p>
+        }
+        @foreach (var r in Campaign.Requisitions)
+        {
+            var req = r;
+            <div class="row g-2 align-items-end border-bottom border-secondary pb-3 mb-3" data-req="@req.Id" @key="req.Id">
+                <div class="col-md-5">
+                    <label class="form-label small text-warning mb-0">Name</label>
+                    <input class="form-control form-control-sm bg-dark text-white border-secondary" data-req-name="@req.Id"
+                           value="@req.Name" @onchange="e => EditAsync(() => req.Name = Text(e))" />
+                </div>
+                <div class="col-4 col-md-2">
+                    <label class="form-label small text-warning mb-0">Cost</label>
+                    <input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary" data-req-cost="@req.Id"
+                           value="@req.Cost" @onchange="e => EditAsync(() => req.Cost = Number(e))" />
+                </div>
+                <div class="col-8 col-md-4">
+                    <label class="form-label small text-warning mb-0">When bought</label>
+                    <select class="form-select form-select-sm bg-dark text-white border-secondary" data-req-kind="@req.Id"
+                            value="@req.Kind" @onchange="e => EditAsync(() => req.Kind = Enum.TryParse<RequisitionKind>(Text(e), out var k) ? k : RequisitionKind.None)">
+                        @foreach (var kind in Enum.GetValues<RequisitionKind>())
+                        {
+                            <option value="@kind">@KindLabel(kind)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-req-delete="@req.Id"
+                            aria-label="@($"Delete {req.Name}")" @onclick="() => EditAsync(() => Campaign.Requisitions.Remove(req))">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+                @if (req.Kind == RequisitionKind.IncreaseSupplyLimit)
+                {
+                    <div class="col-md-3">
+                        <label class="form-label small text-warning mb-0">Points added</label>
+                        <input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary" data-req-amount="@req.Id"
+                               value="@req.Amount" @onchange="e => EditAsync(() => req.Amount = Number(e))" />
+                    </div>
+                }
+                <div class="@(req.Kind == RequisitionKind.IncreaseSupplyLimit ? "col-md-9" : "col-md-12")">
+                    <label class="form-label small text-warning mb-0">Timing</label>
+                    <input class="form-control form-control-sm bg-dark text-white border-secondary" data-req-timing="@req.Id"
+                           value="@req.Timing" @onchange="e => EditAsync(() => req.Timing = Text(e))" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-warning mb-0">Effect</label>
+                    <textarea rows="2" class="form-control form-control-sm bg-dark text-white border-secondary" data-req-effect="@req.Id"
+                              value="@req.Effect" @onchange="e => EditAsync(() => req.Effect = Text(e))"></textarea>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Campaign Campaign { get; set; } = default!;
+    [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private static string KindLabel(RequisitionKind kind) => kind switch
+    {
+        RequisitionKind.IncreaseSupplyLimit => "Add to Supply Limit",
+        RequisitionKind.RepairAll           => "Repair all wounds",
+        RequisitionKind.ReinforceAll        => "Reinforce all models",
+        _                                   => "Text only"
+    };
+
+    private static string Text(ChangeEventArgs e) => e.Value?.ToString() ?? "";
+
+    // Whole numbers from zero up; anything else is zero.
+    private static int Number(ChangeEventArgs e) => int.TryParse(e.Value?.ToString(), out var n) && n > 0 ? n : 0;
+
+    private async Task EditAsync(Action change)
+    {
+        change();
+        await OnChanged.InvokeAsync();
+    }
+
+    private Task AddAsync() =>
+        EditAsync(() => Campaign.Requisitions.Add(new Requisition { Name = "New Requisition", Cost = 1, Timing = "At any time" }));
+
+    // Adds the defaults that are missing by name; entries already there keep the Game Master's edits.
+    private Task RestoreDefaultsAsync() => EditAsync(() =>
+    {
+        var have = Campaign.Requisitions.Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        Campaign.Requisitions.AddRange(RequisitionDefaults.Create().Where(d => !have.Contains(d.Name)));
+    });
+}
