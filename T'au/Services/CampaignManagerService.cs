@@ -144,6 +144,18 @@ public class CampaignManagerService(
         if (deleted > 0) logger.LogInformation("Deleted Battle {Id}", battleId);
     }
 
+    // Marks Events revealed. Writes only that flag, so a caller holding a stale Campaign
+    // (the War Room) can't roll back captures or Territory reveals saved since it loaded.
+    public async Task RevealEventsAsync(IReadOnlyCollection<string> eventIds)
+    {
+        if (eventIds.Count == 0) return;
+        await using var ctx = await dbFactory.CreateDbContextAsync();
+
+        await ctx.Set<CampaignEvent>()
+            .Where(e => eventIds.Contains(e.Id))
+            .ExecuteUpdateAsync(s => s.SetProperty(e => e.IsEventRevealed, true));
+    }
+
     // Diffs the tracked collection against the incoming one by primary key:
     //   - present in DB, absent from incoming  -> Remove (DELETE)
     //   - present in both                      -> SetValues (UPDATE)

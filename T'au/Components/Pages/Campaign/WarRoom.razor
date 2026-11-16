@@ -363,7 +363,7 @@ else
             {
                 foreach (var evt in newlyRevealed)
                     evt.IsEventRevealed = true;
-                await CampaignSvc.SaveCampaignAsync(_campaign);
+                await CampaignSvc.RevealEventsAsync(newlyRevealed.Select(e => e.Id).ToList());
             }
         }
 

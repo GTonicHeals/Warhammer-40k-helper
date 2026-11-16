@@ -115,6 +115,34 @@ public class WarRoomTests : SqliteTestBase, IDisposable
         cut.Markup.Should().NotContain("Secret Vault");
     }
 
+    [Fact]
+    public async Task Revealing_events_keeps_changes_made_after_the_page_loaded()
+    {
+        _ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        var campaign = await Campaigns.LoadCampaignAsync();
+        campaign.MapNodes.Add(new Territory { Id = "t1", Name = "Hab", IsPublic = true, X = 0.2, Y = 0.2 });
+        campaign.MapNodes.Add(new Territory { Id = "t2", Name = "Ridge", X = 0.6, Y = 0.6 });
+        campaign.MapNodes.Add(new CampaignEvent { Id = "e1", Name = "Ambush", AttachedToNodeId = "t1" });
+        await Campaigns.SaveCampaignAsync(campaign);
+
+        var cut = _ctx.RenderComponent<WarRoom>();
+        cut.WaitForElement(".map-node[data-node-id='t1']");
+
+        // A battle completed elsewhere while the War Room was open.
+        var elsewhere = await Campaigns.LoadCampaignAsync();
+        var t1 = elsewhere.MapNodes.OfType<Territory>().Single(t => t.Id == "t1");
+        t1.ControllingPlayerId = "p2";
+        elsewhere.MapNodes.OfType<Territory>().Single(t => t.Id == "t2").IsPublic = true;
+        await Campaigns.SaveCampaignAsync(elsewhere);
+
+        await cut.Find(".map-node[data-node-id='t1']").ClickAsync(new MouseEventArgs());
+
+        var saved = (await Campaigns.LoadCampaignAsync()).MapNodes;
+        saved.OfType<CampaignEvent>().Single().IsEventRevealed.Should().BeTrue();
+        saved.OfType<Territory>().Single(t => t.Id == "t1").ControllingPlayerId.Should().Be("p2");
+        saved.OfType<Territory>().Single(t => t.Id == "t2").IsPublic.Should().BeTrue();
+    }
+
     public new void Dispose()
     {
         _ctx.Dispose();

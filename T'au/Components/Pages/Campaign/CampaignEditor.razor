@@ -271,7 +271,7 @@
 
                                 <div class="mb-2">
                                     <label class="form-label small text-warning mb-1">Controller</label>
-                                    <select class="form-select form-select-sm bg-dark text-white border-secondary"
+                                    <select id="ce-controller" class="form-select form-select-sm bg-dark text-white border-secondary"
                                             value="@(territory.ControllingPlayerId ?? "")"
                                             @onchange="e => SetController(territory, e.Value?.ToString())">
                                         <option value="">— Neutral —</option>

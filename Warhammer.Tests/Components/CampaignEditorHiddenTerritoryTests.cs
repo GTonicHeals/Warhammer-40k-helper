@@ -76,6 +76,25 @@ public class CampaignEditorHiddenTerritoryTests : SqliteTestBase, IDisposable
         node.QuerySelector(".map-node-label")!.TextContent.Should().StartWith("\U0001f512");
     }
 
+    [Fact]
+    public async Task Setting_a_controller_by_hand_reveals_nothing()
+    {
+        var cut = await RenderWithHiddenAsync("t1", "t2");
+        var campaign = await Fresh().LoadCampaignAsync();
+        campaign.MapNodes.OfType<Territory>().Single(t => t.Id == "t1").ConnectedNodeIds.Add("t2");
+        await Fresh().SaveCampaignAsync(campaign);
+        cut = _ctx.RenderComponent<CampaignEditor>();
+        cut.WaitForElement(".map-node[data-node-id='t1']");
+
+        await Click(cut, ".map-node[data-node-id='t1']");
+        await cut.Find("#ce-controller").ChangeAsync(new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "p1" });
+        await Click(cut, "#campaign-save");
+
+        var saved = (await Fresh().LoadCampaignAsync()).MapNodes.OfType<Territory>().ToList();
+        saved.Single(t => t.Id == "t1").ControllingPlayerId.Should().Be("p1");
+        saved.Should().OnlyContain(t => !t.IsPublic);
+    }
+
     public new void Dispose()
     {
         _ctx.Dispose();
