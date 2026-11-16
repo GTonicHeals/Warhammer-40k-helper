@@ -38,14 +38,20 @@ public class DbBootstrapTests : IDisposable
             var baseline = ctx.Database.GetMigrations().First();
             await ctx.GetService<IMigrator>().MigrateAsync(baseline);
             await ctx.Database.ExecuteSqlRawAsync("DROP TABLE __EFMigrationsHistory");
-            ctx.Campaigns.Add(new Warhammer.Models.Campaign.Campaign { CampaignName = "Live" });
-            await ctx.SaveChangesAsync();
+            // Raw SQL: the row must fit the Baseline schema, not today's model.
+            await ctx.Database.ExecuteSqlRawAsync(
+                "INSERT INTO Campaigns (CampaignName, MapSeed, MapBiome, MapOctaves, MapLacunarity, MapPersistence, MapScale, MapOffsetX, MapOffsetY) " +
+                "VALUES ('Live', 1, 'agri', 4, 2.0, 0.5, 2.0, 0.0, 0.0)");
         }
         await using (var ctx = Ctx())
         {
             await DbBootstrap.MigrateAsync(ctx);
             (await ctx.Database.GetAppliedMigrationsAsync()).Should().BeEquivalentTo(ctx.Database.GetMigrations());
             (await ctx.Campaigns.CountAsync()).Should().Be(1); // table survived, not recreated
+            // Columns added since the Baseline read cleanly on the old row.
+            var live = await ctx.Campaigns.SingleAsync();
+            live.Requisitions.Should().BeEmpty();
+            live.RequisitionsSeeded.Should().BeFalse();
         }
     }
 
