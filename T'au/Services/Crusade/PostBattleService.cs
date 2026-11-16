@@ -81,6 +81,10 @@ public class PostBattleService(
             if (r.HonoursGained.Count != ranks)
                 throw new InvalidOperationException($"{name} owes {ranks} Battle Honour(s) but {r.HonoursGained.Count} were picked.");
 
+            if ((r.ModelsLostAfter is not null || r.WoundsLostAfter is not null) &&
+                !UnitStrength.InRange(card, r.ModelsLostAfter ?? card.ModelsLost, r.WoundsLostAfter ?? card.WoundsLost))
+                throw new InvalidOperationException($"{name}: the damage entered is more than the unit can take.");
+
             var remove = false;
             if (r.Destroyed)
             {
@@ -135,6 +139,10 @@ public class PostBattleService(
         }
 
         card.BattleHonours.AddRange(r.HonoursGained);
+
+        // Attrition carries into the next Battle; a value that was never entered leaves the card as it was.
+        if (r.ModelsLostAfter is { } modelsLost) card.ModelsLost = modelsLost;
+        if (r.WoundsLostAfter is { } woundsLost) card.WoundsLost = woundsLost;
 
         r.RemovedFromOrder = s.Remove;
         if (s.Remove) order.Units.Remove(card);

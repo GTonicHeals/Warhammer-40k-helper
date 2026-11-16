@@ -26,4 +26,8 @@ public class BattleUnitResult
     public List<AppliedTrait> HonoursGained    { get; set; } = new();
     public int                XpGained         { get; set; }
     public bool               RemovedFromOrder { get; set; }
+
+    // Attrition: the unit's condition at the end of this Battle. null = not entered, card unchanged.
+    public int? ModelsLostAfter { get; set; }
+    public int? WoundsLostAfter { get; set; }
 }

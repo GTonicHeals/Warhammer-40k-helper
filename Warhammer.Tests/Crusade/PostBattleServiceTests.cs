@@ -165,4 +165,77 @@ public class PostBattleServiceTests : SqliteTestBase
         a1.BattleHonours.Select(h => h.Name).Should().BeEquivalentTo(new[] { "New" });
         a1.BattlesSurvived.Should().Be(0);
     }
+
+    private async Task<CrusadeUnitCard> A1Async() =>
+        (await Crusades().LoadAllCrusadesAsync()).Single(o => o.PlayerId == "p1").Units.Single(u => u.Id == "a1");
+
+    [Fact]
+    public async Task Complete_writes_entered_damage_to_the_card()
+    {
+        var battleId = await SeedAsync((battle, a) =>
+        {
+            a.Units[0].ModelCount = 10; a.Units[0].WoundsPerModel = 2;
+            battle.UnitResults[0].ModelsLostAfter = 3; battle.UnitResults[0].WoundsLostAfter = 1;
+        });
+
+        await Svc().CompleteAsync(battleId);
+
+        var a1 = await A1Async();
+        (a1.ModelsLost, a1.WoundsLost).Should().Be((3, 1));
+    }
+
+    [Fact]
+    public async Task Complete_leaves_damage_alone_when_none_was_entered()
+    {
+        var battleId = await SeedAsync((_, a) => a.Units[0].ModelsLost = 2);
+
+        await Svc().CompleteAsync(battleId);
+
+        (await A1Async()).ModelsLost.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Complete_can_lower_damage()
+    {
+        var battleId = await SeedAsync((battle, a) =>
+        {
+            a.Units[0].ModelsLost = 4; a.Units[0].WoundsLost = 1;
+            battle.UnitResults[0].ModelsLostAfter = 0; battle.UnitResults[0].WoundsLostAfter = 0;
+        });
+
+        await Svc().CompleteAsync(battleId);
+
+        var a1 = await A1Async();
+        (a1.ModelsLost, a1.WoundsLost).Should().Be((0, 0));
+    }
+
+    [Fact]
+    public async Task Complete_rejects_damage_outside_the_limits_and_saves_nothing()
+    {
+        var battleId = await SeedAsync((battle, a) =>
+        {
+            a.Units[0].ModelCount = 5;
+            battle.UnitResults[0].ModelsLostAfter = 5;
+        });
+
+        await Svc().Invoking(s => s.CompleteAsync(battleId)).Should().ThrowAsync<InvalidOperationException>().WithMessage("*A1*");
+
+        var a = (await Crusades().LoadAllCrusadesAsync()).Single(o => o.PlayerId == "p1");
+        a.Units.Single(u => u.Id == "a1").ModelsLost.Should().Be(0);
+        a.RequisitionPoints.Should().Be(5);
+        (await Campaigns().LoadCampaignAsync()).BattleHistory.Single().Status.Should().Be(BattleStatus.Mustered);
+    }
+
+    [Fact]
+    public async Task Complete_accepts_damage_on_a_unit_struck_from_the_order()
+    {
+        var battleId = await SeedAsync((battle, _) =>
+        {
+            battle.UnitResults[2].ModelsLostAfter = 1; battle.UnitResults[2].WoundsLostAfter = 0;
+        });
+
+        await Svc().CompleteAsync(battleId);
+
+        (await Crusades().LoadAllCrusadesAsync()).Single(o => o.PlayerId == "p2").Units.Should().BeEmpty();
+    }
 }
