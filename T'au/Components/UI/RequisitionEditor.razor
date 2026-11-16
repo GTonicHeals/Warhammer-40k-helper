@@ -35,7 +35,7 @@
                 <div class="col-4 col-md-2">
                     <label class="form-label small text-warning mb-0">Cost</label>
                     <input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary" data-req-cost="@req.Id"
-                           value="@req.Cost" @onchange="e => EditAsync(() => req.Cost = Number(e))" />
+                           @bind:get="req.Cost.ToString()" @bind:set="(string? v) => EditAsync(() => req.Cost = WholeNumber.Parse(v, req.Cost))" />
                 </div>
                 <div class="col-8 col-md-4">
                     <label class="form-label small text-warning mb-0">When bought</label>
@@ -58,7 +58,7 @@
                     <div class="col-md-3">
                         <label class="form-label small text-warning mb-0">Points added</label>
                         <input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary" data-req-amount="@req.Id"
-                               value="@req.Amount" @onchange="e => EditAsync(() => req.Amount = Number(e))" />
+                               @bind:get="req.Amount.ToString()" @bind:set="(string? v) => EditAsync(() => req.Amount = WholeNumber.Parse(v, req.Amount))" />
                     </div>
                 }
                 <div class="@(req.Kind == RequisitionKind.IncreaseSupplyLimit ? "col-md-9" : "col-md-12")">
@@ -90,9 +90,6 @@
     };
 
     private static string Text(ChangeEventArgs e) => e.Value?.ToString() ?? "";
-
-    // Whole numbers from zero up; anything else is zero.
-    private static int Number(ChangeEventArgs e) => int.TryParse(e.Value?.ToString(), out var n) && n > 0 ? n : 0;
 
     private async Task EditAsync(Action change)
     {

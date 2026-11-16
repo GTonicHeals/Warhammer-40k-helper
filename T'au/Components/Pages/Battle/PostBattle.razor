@@ -342,18 +342,19 @@
                              : _battle.Player2Vp > _battle.Player1Vp ? _battle.Player2Id : "";
 
     // The higher score wins; the winner buttons stay available to overrule it (a concession, say).
-    private void SetVp(bool first, object? value)
+    private void SetVp(bool first, string? typed)
     {
-        var vp = int.TryParse(value?.ToString(), out var n) && n >= 0 ? n : 0;
-        if (first) _battle!.Player1Vp = vp; else _battle!.Player2Vp = vp;
+        if (first) _battle!.Player1Vp = WholeNumber.Parse(typed, _battle.Player1Vp);
+        else _battle!.Player2Vp = WholeNumber.Parse(typed, _battle.Player2Vp);
         _battle.WinnerPlayerId = VpWinner;
     }
 
-    // The Game Master decides what each side earned; anything typed is kept between 0 and the maximum.
-    private void SetAward(bool first, object? value)
+    // The Game Master decides what each side earned; anything typed is kept between 0 and the maximum,
+    // and a blank or a fraction keeps the previous award.
+    private void SetAward(bool first, string? typed)
     {
-        var award = int.TryParse(value?.ToString(), out var n) ? Math.Clamp(n, 0, OrderOfBattle.RequisitionPointsMax) : 0;
-        if (first) _battle!.Player1RpAwarded = award; else _battle!.Player2RpAwarded = award;
+        if (first) _battle!.Player1RpAwarded = WholeNumber.Parse(typed, _battle.Player1RpAwarded, max: OrderOfBattle.RequisitionPointsMax);
+        else _battle!.Player2RpAwarded = WholeNumber.Parse(typed, _battle.Player2RpAwarded, max: OrderOfBattle.RequisitionPointsMax);
     }
 
     private int AwardOf(string playerId) => playerId == _battle!.Player1Id ? _battle.Player1RpAwarded : _battle.Player2RpAwarded;
@@ -370,14 +371,14 @@
                 <label class="pb-score-name" for="vp1">@PlayerName(_battle.Player1Id)</label>
                 <div class="small text-secondary text-truncate">@Label(_o1!)</div>
                 <input id="vp1" type="number" min="0" inputmode="numeric" class="form-control bg-dark text-white border-secondary pb-score-input"
-                       value="@_battle.Player1Vp" @onchange="e => SetVp(true, e.Value)" />
+                       @bind:get="_battle.Player1Vp.ToString()" @bind:set="(string? v) => SetVp(true, v)" />
             </div>
             <div class="pb-score-vs">VP</div>
             <div class="pb-score-side">
                 <label class="pb-score-name" for="vp2">@PlayerName(_battle.Player2Id)</label>
                 <div class="small text-secondary text-truncate">@Label(_o2!)</div>
                 <input id="vp2" type="number" min="0" inputmode="numeric" class="form-control bg-dark text-white border-secondary pb-score-input"
-                       value="@_battle.Player2Vp" @onchange="e => SetVp(false, e.Value)" />
+                       @bind:get="_battle.Player2Vp.ToString()" @bind:set="(string? v) => SetVp(false, v)" />
             </div>
         </div>
         <div class="mb-3">
@@ -387,13 +388,13 @@
                     <label class="small text-secondary" for="rp1">@PlayerName(_battle.Player1Id)</label>
                     <input id="rp1" type="number" min="0" max="@OrderOfBattle.RequisitionPointsMax" inputmode="numeric"
                            class="form-control bg-dark text-white border-secondary"
-                           value="@_battle.Player1RpAwarded" @onchange="e => SetAward(true, e.Value)" />
+                           @bind:get="_battle.Player1RpAwarded.ToString()" @bind:set="(string? v) => SetAward(true, v)" />
                 </div>
                 <div class="col-6">
                     <label class="small text-secondary" for="rp2">@PlayerName(_battle.Player2Id)</label>
                     <input id="rp2" type="number" min="0" max="@OrderOfBattle.RequisitionPointsMax" inputmode="numeric"
                            class="form-control bg-dark text-white border-secondary"
-                           value="@_battle.Player2RpAwarded" @onchange="e => SetAward(false, e.Value)" />
+                           @bind:get="_battle.Player2RpAwarded.ToString()" @bind:set="(string? v) => SetAward(false, v)" />
                 </div>
             </div>
             <div class="small text-secondary mt-1">Your call, based on how each side fought. An Order of Battle holds at most @OrderOfBattle.RequisitionPointsMax.</div>
@@ -623,9 +624,10 @@
                                     <button type="button" class="btn btn-outline-secondary" data-kill-minus="@res.CardId" aria-label="One fewer"
                                             disabled="@(res.EnemyUnitsDestroyed == 0)" @onclick="() => res.EnemyUnitsDestroyed--"><i class="bi bi-dash-lg"></i></button>
                                     <input type="number" min="0" inputmode="numeric" class="form-control bg-dark text-white border-secondary"
-                                           data-tally="@res.CardId" value="@res.EnemyUnitsDestroyed"
+                                           data-tally="@res.CardId"
                                            aria-label="@($"Enemy units destroyed by {res.UnitName}")"
-                                           @onchange="e => res.EnemyUnitsDestroyed = int.TryParse((string?)e.Value, out var n) && n >= 0 ? n : 0" />
+                                           @bind:get="res.EnemyUnitsDestroyed.ToString()"
+                                           @bind:set="(string? v) => res.EnemyUnitsDestroyed = WholeNumber.Parse(v, res.EnemyUnitsDestroyed)" />
                                     <button type="button" class="btn btn-outline-secondary" data-kill-plus="@res.CardId" aria-label="One more"
                                             @onclick="() => res.EnemyUnitsDestroyed++"><i class="bi bi-plus-lg"></i></button>
                                     <span class="small text-secondary ms-2">kills</span>

@@ -67,9 +67,8 @@ public class RequisitionEditorTests : IDisposable
 
     [Theory]
     [InlineData("-3")]
-    [InlineData("")]
-    [InlineData("lots")]
-    public async Task A_cost_that_is_not_a_whole_number_from_zero_up_becomes_zero(string typed)
+    [InlineData("0")]
+    public async Task A_cost_below_zero_or_zero_makes_the_requisition_free(string typed)
     {
         var cut = Render();
         var repair = Named("Repair");
@@ -77,6 +76,33 @@ public class RequisitionEditorTests : IDisposable
         await Change(cut, $"[data-req-cost='{repair.Id}']", typed);
 
         repair.Cost.Should().Be(0);
+        cut.Find($"[data-req-cost='{repair.Id}']").GetAttribute("value").Should().Be("0");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("lots")]
+    [InlineData("1.5")]
+    public async Task A_blank_or_unreadable_cost_keeps_the_previous_cost(string typed)
+    {
+        var cut = Render();
+        var legendary = Named("Legendary Veterans");
+
+        await Change(cut, $"[data-req-cost='{legendary.Id}']", typed);
+
+        legendary.Cost.Should().Be(3);
+        cut.Find($"[data-req-cost='{legendary.Id}']").GetAttribute("value").Should().Be("3");
+    }
+
+    [Fact]
+    public async Task A_blank_amount_keeps_the_previous_amount()
+    {
+        var cut = Render();
+        var supply = Named("Increase Supply Limit");
+
+        await Change(cut, $"[data-req-amount='{supply.Id}']", "");
+
+        supply.Amount.Should().Be(50);
     }
 
     [Fact]

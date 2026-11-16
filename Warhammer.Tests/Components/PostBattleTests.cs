@@ -520,8 +520,26 @@ public class PostBattleTests : SqliteTestBase, IDisposable
     }
 
     [Theory]
-    [InlineData("", "0")]
-    [InlineData("abc", "0")]
+    [InlineData("")]
+    [InlineData("2.5")]
+    [InlineData("abc")]
+    public async Task An_award_that_is_not_a_whole_number_keeps_the_previous_award(string typed)
+    {
+        var id = await SeedAsync();
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+        await Change(cut, "#rp1", "3");
+
+        await Change(cut, "#rp1", typed);
+        await Next(cut);
+
+        cut.Find("#pb-step").GetAttribute("data-step").Should().Be("2");
+        var saved = (await new CampaignManagerService(CreateFactory(), NullLogger<CampaignManagerService>.Instance).LoadCampaignAsync())
+            .BattleHistory.Single();
+        saved.Player1RpAwarded.Should().Be(3);
+    }
+
+    [Theory]
     [InlineData("-4", "0")]
     [InlineData("25", "10")]
     public async Task Requisition_award_is_kept_between_zero_and_ten(string typed, string shown)

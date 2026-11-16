@@ -96,7 +96,7 @@
                         var req = r;
                         <div class="d-flex align-items-start gap-3 py-2 border-bottom border-secondary">
                             <div class="flex-grow-1">
-                                <div class="text-white fw-bold">@req.Name <span class="badge bg-warning text-dark ms-1">@req.Cost RP</span></div>
+                                <div class="text-white fw-bold">@req.Name <span class="badge bg-warning text-dark ms-1">@(req.Cost == 0 ? "Free" : $"{req.Cost} RP")</span></div>
                                 <div class="small text-secondary">@req.Timing</div>
                                 <div class="small">@req.Effect</div>
                             </div>
@@ -115,7 +115,7 @@
                                 <div class="col-4 col-md-2">
                                     <label class="form-label small text-warning mb-0" for="req-cost">Cost</label>
                                     <input id="req-cost" type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary"
-                                           value="@_buyCost" @onchange="e => _buyCost = int.TryParse(e.Value?.ToString(), out var n) ? n : null" />
+                                           @bind:get="_buyCost?.ToString()" @bind:set="(string? v) => _buyCost = int.TryParse(v, out var n) ? n : null" />
                                 </div>
                                 <div class="col small text-secondary">
                                     @if (restores && affected > 0)
