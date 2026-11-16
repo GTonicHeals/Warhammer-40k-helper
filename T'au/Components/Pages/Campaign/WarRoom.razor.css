@@ -116,6 +116,8 @@
     background: none; border: none; padding: 0 2px; color: #555; font-size: 0.8rem; line-height: 1; cursor: pointer;
 }
 .wr-del-btn:hover, .wr-del-btn:focus-visible { color: var(--p2); }
+.wr-amend-btn { text-decoration: none; }
+.wr-amend-btn:hover, .wr-amend-btn:focus-visible { color: var(--p1); }
 .wr-table tbody tr.wr-del-confirm, .wr-table tbody tr.wr-del-confirm:hover { background: rgba(255,85,85,0.07); }
 .wr-del-ask { color: var(--p2); letter-spacing: 1px; margin-right: 8px; }
 .wr-del-yes, .wr-del-no {

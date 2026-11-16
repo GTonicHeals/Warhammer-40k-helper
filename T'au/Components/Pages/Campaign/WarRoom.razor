@@ -259,6 +259,11 @@ else
                                                 }
                                             </td>
                                             <td class="wr-nowrap">
+                                                @if (b.Status == BattleStatus.Completed)
+                                                {
+                                                    <a id="@($"wr-amend-{b.Id}")" class="wr-del-btn wr-amend-btn me-1" href="@($"battle/{b.Id}/amend")"
+                                                       title="Amend this entry" aria-label="Amend this entry"><i class="bi bi-pencil"></i></a>
+                                                }
                                                 <button type="button" id="@($"wr-del-{b.Id}")" class="wr-del-btn"
                                                         title="Delete this entry" aria-label="Delete this entry"
                                                         @onclick="() => _confirmDeleteId = b.Id">

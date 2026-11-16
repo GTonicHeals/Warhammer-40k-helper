@@ -54,6 +54,15 @@ public class WarRoomTests : SqliteTestBase, IDisposable
     }
 
     [Fact]
+    public async Task Completed_battles_link_to_the_amend_page()
+    {
+        var cut = await RenderWithBattlesAsync();
+
+        cut.Find("#wr-amend-c1").GetAttribute("href").Should().Be("battle/c1/amend");
+        cut.FindAll("#wr-amend-m1").Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Cancelling_the_confirmation_keeps_the_battle()
     {
         var cut = await RenderWithBattlesAsync();
