@@ -39,13 +39,14 @@
                 }
                 : "node-event";
             var eventCss = node is CampaignEvent ? "node-event-type" : "";
-            <div class="map-node @factionCss @eventCss @(_selectedId == node.Id ? "selected" : "")"
+            var hidden   = !IsReadOnly && node is Territory { IsPublic: false };
+            <div class="map-node @factionCss @eventCss @(hidden ? "node-hidden" : "") @(_selectedId == node.Id ? "selected" : "")"
                  data-node-id="@node.Id"
                  style="left:@(Fmt(node.X * 100))%;top:@(Fmt(node.Y * 100))%"
                  @onclick="@(() => HandleNodeClick(node.Id))"
                  @onclick:stopPropagation="true">
                 <div class="map-node-pip"></div>
-                <span class="map-node-label">@node.Name</span>
+                <span class="map-node-label">@(hidden ? $"\U0001f512 {node.Name}" : node.Name)</span>
             </div>
         }
 
@@ -153,6 +154,7 @@
     .node-p2      { color: #ff5555; }
     .node-neutral { color: #c8960c; }
     .node-event   { color: #bd93f9; }
+    .node-hidden  { opacity: 0.55; }
 
     .map-note-pin  { z-index: 11; }
     .map-note-icon { font-size: 16px; line-height: 1; }

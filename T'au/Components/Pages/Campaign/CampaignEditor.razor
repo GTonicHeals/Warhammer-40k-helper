@@ -89,6 +89,12 @@
                     <button class="btn btn-sm btn-outline-info flex-shrink-0" @onclick="AddMapNoteAsync">
                         <i class="bi bi-pin-map me-1"></i>Add Note
                     </button>
+                    <button id="ce-reveal-all" class="btn btn-sm btn-outline-info flex-shrink-0"
+                            title="Show every territory to the players"
+                            disabled="@(!_campaign.MapNodes.OfType<Territory>().Any(t => !t.IsPublic))"
+                            @onclick="RevealAll">
+                        <i class="bi bi-eye me-1"></i>Reveal all
+                    </button>
                     <span class="text-muted small flex-shrink-0">Seed: @_campaign.MapSeed</span>
                 </div>
                 <CampaignMap @ref="_mapComponent"
@@ -219,6 +225,12 @@
                                 </div>
                                 <div class="ce-editor-meta">
                                     <span class="ce-badge @badgeClass">@badgeLabel</span>
+                                    <button id="ce-visibility"
+                                            class="btn btn-sm @(territory.IsPublic ? "btn-outline-info" : "btn-outline-secondary")"
+                                            title="@(territory.IsPublic ? "Players can see this territory. Click to hide it." : "Hidden from players. Click to reveal it.")"
+                                            @onclick="() => { territory.IsPublic = !territory.IsPublic; MarkDirty(); }">
+                                        <i class="bi @(territory.IsPublic ? "bi-eye" : "bi-eye-slash") me-1"></i>@(territory.IsPublic ? "Revealed" : "Hidden")
+                                    </button>
                                     <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveNode(_selectedNode.Id)">
                                         <i class="bi bi-trash me-1"></i>Delete
                                     </button>
@@ -607,6 +619,13 @@
     private void SetController(Territory territory, string? value)
     {
         territory.ControllingPlayerId = string.IsNullOrEmpty(value) ? null : value;
+        MarkDirty();
+    }
+
+    private void RevealAll()
+    {
+        if (_campaign is null) return;
+        foreach (var t in _campaign.MapNodes.OfType<Territory>()) t.IsPublic = true;
         MarkDirty();
     }
 
