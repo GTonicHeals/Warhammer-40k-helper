@@ -1,6 +1,10 @@
+using System.Text.Json.Serialization;
+
 namespace Warhammer.Models.Campaign;
 
 // What the app does for the buyer when a Requisition is bought. None = the Game Master applies it by hand.
+// Stored by name so reordering the values never changes a saved list; rows saved as numbers still read.
+[JsonConverter(typeof(JsonStringEnumConverter<RequisitionKind>))]
 public enum RequisitionKind { None, IncreaseSupplyLimit, RepairAll, ReinforceAll }
 
 // One entry on the Campaign's Requisition list, edited in the Campaign Editor.

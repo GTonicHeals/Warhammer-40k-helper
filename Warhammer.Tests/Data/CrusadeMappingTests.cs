@@ -118,4 +118,40 @@ public class CrusadeMappingTests : SqliteTestBase
             (await ctx.Campaigns.SingleAsync()).Requisitions.Should().BeEmpty();
         }
     }
+
+    private async Task<string> RawRequisitionsAsync(int campaignId)
+    {
+        await using var ctx = CreateContext();
+        return await ctx.Database
+            .SqlQuery<string>($"SELECT Requisitions AS Value FROM Campaigns WHERE Id = {campaignId}")
+            .SingleAsync();
+    }
+
+    [Fact]
+    public async Task Requisition_kind_is_stored_by_name()
+    {
+        var campaignId = await SeedCampaignAsync();
+        await using (var ctx = CreateContext())
+        {
+            var c = await ctx.Campaigns.SingleAsync();
+            c.Requisitions = Warhammer.Models.Campaign.RequisitionDefaults.Create();
+            await ctx.SaveChangesAsync();
+        }
+
+        var raw = await RawRequisitionsAsync(campaignId);
+        raw.Should().Contain("\"RepairAll\"").And.NotContain("\"Kind\":2");
+    }
+
+    [Fact]
+    public async Task Requisition_kind_stored_as_a_number_still_loads()
+    {
+        var campaignId = await SeedCampaignAsync();
+        await using (var ctx = CreateContext())
+            await ctx.Database.ExecuteSqlAsync(
+                $"UPDATE Campaigns SET Requisitions = {"[{\"Id\":\"r1\",\"Name\":\"Repair\",\"Cost\":1,\"Kind\":2}]"} WHERE Id = {campaignId}");
+
+        await using (var ctx = CreateContext())
+            (await ctx.Campaigns.SingleAsync()).Requisitions.Single().Kind
+                .Should().Be(Warhammer.Models.Campaign.RequisitionKind.RepairAll);
+    }
 }
