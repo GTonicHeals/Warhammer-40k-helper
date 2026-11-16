@@ -210,8 +210,29 @@
                                                class="form-control form-control-sm bg-dark text-white border-secondary"
                                                value="@unit.CrusadePoints" />
                                     </div>
+                                    <div class="col-3">
+                                        <label class="form-label small text-warning mb-0" title="Models in the unit at full strength (0 = unknown)">Models</label>
+                                        <input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary"
+                                               data-model-count="@unit.Id" @bind="unit.ModelCount" @bind:after="() => SaveStrengthAsync(unit)" />
+                                    </div>
+                                    <div class="col-3">
+                                        <label class="form-label small text-warning mb-0" title="Wounds of each model (0 = unknown)">Wounds each</label>
+                                        <input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary"
+                                               data-wounds-per-model="@unit.Id" @bind="unit.WoundsPerModel" @bind:after="() => SaveStrengthAsync(unit)" />
+                                    </div>
+                                    <div class="col-3">
+                                        <label class="form-label small text-warning mb-0" title="Models dead; they stay dead until a Requisition restores them">Models lost</label>
+                                        <input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary"
+                                               data-models-lost="@unit.Id" @bind="unit.ModelsLost" @bind:after="() => SaveStrengthAsync(unit)" />
+                                    </div>
+                                    <div class="col-3">
+                                        <label class="form-label small text-warning mb-0" title="Wounds missing from the one damaged model">Wounds lost</label>
+                                        <input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary"
+                                               data-wounds-lost="@unit.Id" @bind="unit.WoundsLost" @bind:after="() => SaveStrengthAsync(unit)" />
+                                    </div>
                                     <div class="col-12 small text-secondary">
                                         Battles @unit.BattlesPlayed · Survived @unit.BattlesSurvived
+                                        @if (unit.IsDamaged) { <span class="badge bg-danger ms-1" data-strength="@unit.Id">@UnitStrength.Describe(unit)</span> }
                                         @if (unit.IsTitanic) { <span class="badge bg-secondary ms-1">TITANIC</span> }
                                         @if (!unit.XpEligible) { <span class="badge bg-secondary ms-1" title="EPIC HERO, FORTIFICATION and SWARM units never gain XP">No XP</span> }
                                     </div>
@@ -387,7 +408,7 @@
                             var overBy = _crusade.SupplyUsed + u.Points - _crusade.SupplyLimit;
                             <div class="wc-tile @(selected ? "wc-tile-atk-on" : "")"
                                  title="@(overBy > 0 ? $"Adding this unit puts the Order of Battle {overBy} pts over its Supply Limit" : null)"
-                                 @onclick="() => PickUnit(u.Name)">
+                                 data-unit="@u.Name" @onclick="() => PickUnit(u.Name)">
                                 <div class="wc-tile-top">
                                     <i class="bi bi-person-fill wc-tile-ico"></i>
                                     <span class="wc-tile-name">@u.Name</span>
@@ -646,8 +667,36 @@
             }
         }
 
+        // Cards added before attrition existed have no unit size; take it from the roster once.
+        if (_crusade is not null)
+        {
+            var filled = false;
+            foreach (var card in _crusade.Units.Where(c => c.ModelCount == 0))
+                filled |= FillStrengthFromRoster(card);
+            if (filled) await SaveAsync();
+        }
+
         _loaded = true;
         StateHasChanged();
+    }
+
+    // Sets the unit size and wounds from the matching roster datasheet. False when the roster cannot tell.
+    private bool FillStrengthFromRoster(CrusadeUnitCard card)
+    {
+        if (!_selectionsByName.TryGetValue(card.DatasheetName ?? "", out var sel)) return false;
+        var (count, wounds) = UnitStrength.FromRoster(sel);
+        if (count == 0) return false;
+        card.ModelCount = count;
+        card.WoundsPerModel = wounds;
+        UnitStrength.Clamp(card);
+        return true;
+    }
+
+    // Keeps the damage inside what the (possibly just edited) unit size allows.
+    private async Task SaveStrengthAsync(CrusadeUnitCard card)
+    {
+        UnitStrength.Clamp(card);
+        await SaveAsync();
     }
 
     private static int GetPoints(Selection unit)
@@ -696,7 +745,7 @@
         if (available is null) return;
 
         var flags = FlagsFor(available.Name);
-        _crusade.Units.Add(new CrusadeUnitCard
+        var added = new CrusadeUnitCard
         {
             UnitName = available.Name,
             DatasheetName = available.Name,
@@ -704,7 +753,9 @@
             IsCharacter = _newUnitCharacter,
             IsTitanic = flags.IsTitanic,
             XpEligible = flags.XpEligible
-        });
+        };
+        FillStrengthFromRoster(added);
+        _crusade.Units.Add(added);
 
         CloseAddUnitModal();
         _newUnitCharacter = false;

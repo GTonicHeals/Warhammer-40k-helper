@@ -183,6 +183,25 @@ public class MusterTests : SqliteTestBase, IDisposable
         campaign.BattleHistory.Should().ContainSingle();
     }
 
+    [Fact]
+    public async Task Damaged_units_show_their_condition_and_still_cost_full_points()
+    {
+        await Crusades.SaveCrusadeAsync(new OrderOfBattle { Id = "A", ArmyName = "Sept", PlayerId = "p1",
+            Units = { new CrusadeUnitCard { Id = "a1", UnitName = "Breachers", TotalPoints = 90, ModelCount = 10, ModelsLost = 3 },
+                      new CrusadeUnitCard { Id = "a2", UnitName = "Riptide", TotalPoints = 950 } } });
+        await Crusades.SaveCrusadeAsync(new OrderOfBattle { Id = "B", ArmyName = "Chapter", PlayerId = "p2" });
+        var cut = _ctx.RenderComponent<Muster>();
+        cut.WaitForElement("#order1");
+
+        await cut.Find("#order1").ChangeAsync(new ChangeEventArgs { Value = "A" });
+
+        cut.Find("[data-damage-badge='a1']").TextContent.Should().Contain("7/10 models");
+        cut.FindAll("[data-damage-badge='a2']").Should().BeEmpty();
+
+        await cut.Find("input[data-card='a1']").ChangeAsync(new ChangeEventArgs { Value = true });
+        cut.Find("#points1").TextContent.Should().Contain("90 /");
+    }
+
     void IDisposable.Dispose()
     {
         _ctx.Dispose();

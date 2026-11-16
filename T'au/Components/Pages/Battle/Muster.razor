@@ -91,6 +91,10 @@
                                                checked="@picked.Contains(unit.Id)"
                                                @onchange="e => Toggle(picked, unit.Id, (bool)e.Value!)" />
                                         <span class="flex-grow-1 text-white">@unit.UnitName</span>
+                                        @if (unit.IsDamaged)
+                                        {
+                                            <span class="badge bg-danger" data-damage-badge="@unit.Id" title="Attrition carried from earlier Battles">@UnitStrength.Describe(unit)</span>
+                                        }
                                         @if (unit.IsCharacter)
                                         {
                                             <span class="badge bg-secondary">CHARACTER</span>
