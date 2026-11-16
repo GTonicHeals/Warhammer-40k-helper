@@ -1,0 +1,16 @@
+/* Shares the look of the Post-battle damage step (scoped CSS can't be reused across components). */
+.pb-page { max-width: 1100px; }
+.pb-btn { min-height: 2.75rem; padding-inline: 1.1rem; display: inline-flex; align-items: center; justify-content: center; }
+.pb-step-title { font-size: 1.15rem; font-weight: 700; color: #fff; }
+
+.pb-side-head { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin-bottom: .5rem; padding-bottom: .25rem; border-bottom: 1px solid #495057; }
+
+.pb-unit { padding: .65rem .75rem; margin-bottom: .5rem; border: 1px solid #495057; border-radius: .5rem; }
+.pb-unit-head { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.pb-unit-name { flex: 1; min-width: 9rem; }
+.pb-unit-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .5rem; }
+
+.pb-stepper { display: flex; align-items: center; }
+.pb-stepper .btn { width: 2.75rem; height: 2.75rem; padding: 0; color: #dee2e6; border-color: #6c757d; }
+.pb-stepper .btn:disabled { color: #6c757d; border-color: #495057; }
+.pb-damage-val { min-width: 3rem; text-align: center; font-weight: 700; color: #fff; font-size: 1.1rem; }

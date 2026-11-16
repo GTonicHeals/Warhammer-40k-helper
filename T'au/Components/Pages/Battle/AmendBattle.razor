@@ -1,0 +1,229 @@
+@page "/battle/{Id}/amend"
+@rendermode InteractiveServer
+@using Warhammer.Models.Campaign
+@using Warhammer.Models.Crusade
+@using Warhammer.Services
+@using Warhammer.Services.Crusade
+@inject CampaignManagerService CampaignSvc
+@inject CrusadeManagerService CrusadeMgr
+@inject PostBattleService PostBattleSvc
+
+<PageTitle>Amend battle</PageTitle>
+
+<div class="container-fluid py-3 pb-page">
+    <h3 class="text-warning mb-1"><i class="bi bi-pencil-square me-2"></i>Amend battle</h3>
+
+    @if (!_loaded)
+    {
+        <p class="text-secondary">Loading the Battle…</p>
+    }
+    else if (_message is not null)
+    {
+        <p class="text-secondary">
+            @_message
+            @if (_battle is { Status: BattleStatus.Mustered })
+            {
+                <a href="@($"battle/{_battle.Id}/post")">Finish the Post-battle Sequence.</a>
+            }
+            <a href="war-room">Back to the War Room.</a>
+        </p>
+    }
+    else
+    {
+        var battle = _battle!;
+        var draw = string.IsNullOrEmpty(battle.WinnerPlayerId);
+        <div class="small text-secondary mb-3">
+            @battle.MissionName · @PlayerName(battle.Player1Id) vs @PlayerName(battle.Player2Id) · @battle.DatePlayed.ToLocalTime().ToString("yyyy-MM-dd")
+        </div>
+        <p class="small text-secondary">
+            Only the captured territory and unit damage can be changed. Damage changes are applied to the Crusade Cards as a difference,
+            so anything restored since the Battle stays restored.
+        </p>
+
+        <div class="card bg-dark border-secondary mb-3">
+            <div class="card-body">
+                @if (draw)
+                {
+                    <div id="ab-territory-draw" class="small text-secondary">A Draw captures no territory.</div>
+                }
+                else
+                {
+                    <label class="form-label small text-warning mb-1" for="territory">Territory captured by @PlayerName(battle.WinnerPlayerId)</label>
+                    <select id="territory" class="form-select bg-dark text-white border-secondary"
+                            value="@(_territoryId ?? "")"
+                            @onchange="e => _territoryId = string.IsNullOrEmpty((string?)e.Value) ? null : (string)e.Value!">
+                        <option value="">None</option>
+                        @foreach (var t in _campaign!.MapNodes.OfType<Territory>().OrderBy(t => t.Name))
+                        {
+                            <option value="@t.Id">@(t.IsPublic ? t.Name : $"{t.Name} (hidden)")</option>
+                        }
+                    </select>
+                    @if (battle.CapturedTerritoryId is { } oldId && _territoryId != oldId)
+                    {
+                        <div id="ab-old-territory" class="small text-warning mt-1">
+                            <i class="bi bi-exclamation-circle me-1"></i>@TerritoryName(oldId) stays with its current controller. Change it in the Campaign Editor if needed.
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <div class="card bg-dark border-secondary">
+            <div class="card-body">
+                <div class="pb-step-title mb-2">What did each unit lose?</div>
+                <div class="row g-3">
+                    @foreach (var (playerId, results) in new[] { (battle.Player1Id, Side(battle.Player1Id)), (battle.Player2Id, Side(battle.Player2Id)) })
+                    {
+                        <div class="col-md-6">
+                            <div class="pb-side-head">
+                                <span class="fw-bold text-white">@PlayerName(playerId)</span>
+                            </div>
+                            @foreach (var r in results)
+                            {
+                                var res = r;
+                                var card = CardOf(res);
+                                <div class="pb-unit" data-damage="@res.CardId">
+                                    <div class="pb-unit-head">
+                                        <div class="pb-unit-name">
+                                            <div class="text-white">@res.UnitName</div>
+                                            @if (card is not null && UnitStrength.Describe(card) is { Length: > 0 } now)
+                                            {
+                                                <div class="small text-secondary">Now: @now</div>
+                                            }
+                                        </div>
+                                        @if (res.Destroyed)
+                                        {
+                                            <span class="badge bg-danger"><i class="bi bi-x-octagon-fill me-1"></i>Destroyed</span>
+                                        }
+                                    </div>
+                                    @if (card is null)
+                                    {
+                                        <div class="small text-secondary mt-1" data-damage-locked="@res.CardId">No longer in the Order of Battle</div>
+                                    }
+                                    else
+                                    {
+                                        var (models, wounds) = _damage[res.CardId];
+                                        var maxModels = UnitStrength.MaxModelsLost(card);
+                                        var maxWounds = UnitStrength.MaxWoundsLost(card);
+                                        <div class="pb-unit-controls">
+                                            <div class="pb-stepper" role="group" aria-label="@($"Models lost by {res.UnitName}")">
+                                                <button type="button" class="btn btn-outline-secondary" data-models-minus="@res.CardId" aria-label="One fewer model lost"
+                                                        disabled="@(models <= 0)" @onclick="() => SetDamage(res, models - 1, wounds)"><i class="bi bi-dash-lg"></i></button>
+                                                <span class="pb-damage-val" data-models-lost="@res.CardId">@models</span>
+                                                <button type="button" class="btn btn-outline-secondary" data-models-plus="@res.CardId" aria-label="One more model lost"
+                                                        disabled="@(maxModels is { } mm && models >= mm)" @onclick="() => SetDamage(res, models + 1, wounds)"><i class="bi bi-plus-lg"></i></button>
+                                                <span class="small text-secondary ms-2">models lost</span>
+                                            </div>
+                                            <div class="pb-stepper" role="group" aria-label="@($"Wounds lost by {res.UnitName}")">
+                                                <button type="button" class="btn btn-outline-secondary" data-wounds-minus="@res.CardId" aria-label="One fewer wound lost"
+                                                        disabled="@(wounds <= 0)" @onclick="() => SetDamage(res, models, wounds - 1)"><i class="bi bi-dash-lg"></i></button>
+                                                <span class="pb-damage-val" data-wounds-lost="@res.CardId">@wounds</span>
+                                                <button type="button" class="btn btn-outline-secondary" data-wounds-plus="@res.CardId" aria-label="One more wound lost"
+                                                        disabled="@(maxWounds is { } mw && wounds >= mw)" @onclick="() => SetDamage(res, models, wounds + 1)"><i class="bi bi-plus-lg"></i></button>
+                                                <span class="small text-secondary ms-2">wounds lost</span>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (_error is not null)
+        {
+            <div class="alert alert-danger py-2 mt-3 mb-0" id="ab-error"><i class="bi bi-exclamation-triangle me-1"></i>@_error</div>
+        }
+
+        <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+            <a class="btn btn-outline-secondary pb-btn" href="war-room"><i class="bi bi-map me-1"></i>Back to the War Room</a>
+            @if (_saved)
+            {
+                <span id="ab-saved" class="small text-success"><i class="bi bi-cloud-check me-1"></i>Battle amended.</span>
+            }
+            <button id="ab-save" class="btn btn-warning fw-bold pb-btn ms-auto" disabled="@_busy" @onclick="SaveAsync">
+                <i class="bi bi-check2-circle me-1"></i>Save changes
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private bool _loaded, _busy, _saved;
+    private string? _message, _error, _territoryId;
+    private Campaign? _campaign;
+    private BattleRecord? _battle;
+    private readonly Dictionary<string, CrusadeUnitCard> _cards = new();
+    // cardId → models/wounds lost as the page shows them; only units that can still be amended.
+    private readonly Dictionary<string, (int Models, int Wounds)> _damage = new();
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _campaign = await CampaignSvc.LoadCampaignAsync();
+        _battle = _campaign.BattleHistory.FirstOrDefault(b => b.Id == Id);
+        if (_battle is null) _message = "This Battle was not found.";
+        else if (_battle.Status != BattleStatus.Completed) _message = "This Battle hasn't been completed yet.";
+        else
+        {
+            _territoryId = _battle.CapturedTerritoryId;
+            await CrusadeMgr.LoadAllCrusadesAsync();
+            var orders = new[] { _battle.Player1OrderId, _battle.Player2OrderId }
+                .Where(id => id is not null).Select(id => CrusadeMgr.GetCrusade(id!)).OfType<OrderOfBattle>().ToList();
+
+            _cards.Clear();
+            _damage.Clear();
+            foreach (var r in _battle.UnitResults.Where(r => !r.RemovedFromOrder))
+            {
+                var card = orders.SelectMany(o => o.Units).FirstOrDefault(u => u.Id == r.CardId);
+                if (card is null) continue;
+                _cards[r.CardId] = card;
+                _damage[r.CardId] = PostBattleService.RecordedDamage(r, card);
+            }
+        }
+        _loaded = true;
+    }
+
+    private IEnumerable<BattleUnitResult> Side(string playerId) => _battle!.UnitResults.Where(r => r.PlayerId == playerId);
+
+    private CrusadeUnitCard? CardOf(BattleUnitResult r) => _cards.GetValueOrDefault(r.CardId);
+
+    private void SetDamage(BattleUnitResult r, int models, int wounds)
+    {
+        _damage[r.CardId] = (models, wounds);
+        _saved = false;
+    }
+
+    private string PlayerName(string playerId) =>
+        _campaign!.Players.FirstOrDefault(p => p.Id == playerId)?.Name ?? playerId;
+
+    private string TerritoryName(string territoryId) =>
+        _campaign!.MapNodes.FirstOrDefault(n => n.Id == territoryId)?.Name ?? "The previous territory";
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var amendment = new BattleAmendment(_territoryId,
+                _damage.Select(d => new UnitDamageAmendment(d.Key, d.Value.Models, d.Value.Wounds)).ToList());
+            await PostBattleSvc.AmendAsync(_battle!.Id, amendment);
+            await LoadAsync();
+            _saved = true;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}
