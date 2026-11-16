@@ -23,8 +23,10 @@ public class CrusadeManagerService(
 
     public async Task<IReadOnlyCollection<OrderOfBattle>> LoadAllCrusadesAsync()
     {
+        var campaignId = await campaigns.GetCurrentCampaignIdAsync();
         await using var ctx = await dbFactory.CreateDbContextAsync();
         var orders = await ctx.OrdersOfBattle
+            .Where(o => o.CampaignId == campaignId)
             .Include(o => o.Units)
             .AsNoTracking()
             .OrderBy(o => o.CreatedUtc)
@@ -35,12 +37,19 @@ public class CrusadeManagerService(
         return _snapshot.Values;
     }
 
+    // True if an Order of Battle with this Id is stored in any campaign, not just the current one.
+    public async Task<bool> ExistsAsync(string id)
+    {
+        await using var ctx = await dbFactory.CreateDbContextAsync();
+        return await ctx.OrdersOfBattle.AnyAsync(o => o.Id == id);
+    }
+
     public async Task SaveCrusadeAsync(OrderOfBattle crusade)
     {
         ArgumentNullException.ThrowIfNull(crusade);
 
         if (crusade.CampaignId == 0)
-            crusade.CampaignId = (campaigns.Campaign ?? await campaigns.LoadCampaignAsync()).Id;
+            crusade.CampaignId = await campaigns.GetCurrentCampaignIdAsync();
         crusade.UpdatedUtc = DateTime.UtcNow;
 
         await using var ctx = await dbFactory.CreateDbContextAsync();

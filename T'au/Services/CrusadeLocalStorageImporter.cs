@@ -29,7 +29,6 @@ public class CrusadeLocalStorageImporter(
         }
         if (entries.Count == 0) return 0;
 
-        await crusades.LoadAllCrusadesAsync();
         var imported = 0;
 
         foreach (var (key, json) in entries)
@@ -46,7 +45,8 @@ public class CrusadeLocalStorageImporter(
             }
             if (order is null) continue;
 
-            if (crusades.GetCrusade(order.Id) is null)
+            // Checked across every campaign: a leftover key must not drag an army out of another campaign.
+            if (!await crusades.ExistsAsync(order.Id))
             {
                 order.CampaignId = 0;   // legacy data has none; SaveCrusadeAsync assigns the current campaign
                 await ApplyKeywordFlagsAsync(order);
