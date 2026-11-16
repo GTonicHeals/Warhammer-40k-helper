@@ -4,6 +4,10 @@ using Warhammer.Models.Crusade;
 
 namespace Warhammer.Services.Crusade;
 
+// A correction to a Completed Battle: the Territory it captured and what each unit lost.
+public sealed record UnitDamageAmendment(string CardId, int ModelsLost, int WoundsLost);
+public sealed record BattleAmendment(string? CapturedTerritoryId, IReadOnlyList<UnitDamageAmendment> Damage);
+
 // Applies a finished Battle to both Orders of Battle and the Campaign in one call.
 // Everything is validated before anything is mutated, so a rejected Battle leaves
 // the cards, orders and snapshot untouched; a Completed Battle is never applied twice.
@@ -59,6 +63,87 @@ public class PostBattleService(
         battle.Status = BattleStatus.Completed;
         await campaigns.SaveCampaignAsync(campaign);
         logger.LogInformation("Completed Battle {Id}", battle.Id);
+    }
+
+    // The damage this Battle left the unit with, as recorded; the card's own value when none was entered.
+    public static (int ModelsLost, int WoundsLost) RecordedDamage(BattleUnitResult r, CrusadeUnitCard card) =>
+        (r.ModelsLostAfter ?? card.ModelsLost, r.WoundsLostAfter ?? card.WoundsLost);
+
+    private sealed record DamageFix(BattleUnitResult Result, OrderOfBattle Order, CrusadeUnitCard Card, int Models, int Wounds);
+
+    // Corrects a Completed Battle. Only the captured Territory and unit damage change; everything else
+    // the Battle applied stays. Damage moves the card by the difference from what was recorded, so a
+    // Repair or Reinforce bought since is kept. A previously captured Territory is left as it is.
+    public async Task AmendAsync(string battleId, BattleAmendment amendment)
+    {
+        var campaign = await campaigns.LoadCampaignAsync();
+        var battle = campaign.BattleHistory.FirstOrDefault(b => b.Id == battleId)
+            ?? throw new InvalidOperationException($"Battle {battleId} not found.");
+        if (battle.Status != BattleStatus.Completed)
+            throw new InvalidOperationException("Only a completed Battle can be amended.");
+
+        var territoryChanged = amendment.CapturedTerritoryId != battle.CapturedTerritoryId;
+        Territory? captured = null;
+        if (territoryChanged && amendment.CapturedTerritoryId is not null)
+        {
+            if (string.IsNullOrEmpty(battle.WinnerPlayerId))
+                throw new InvalidOperationException("A Draw captures no territory.");
+            captured = campaign.MapNodes.OfType<Territory>().FirstOrDefault(t => t.Id == amendment.CapturedTerritoryId)
+                ?? throw new InvalidOperationException("That Territory no longer exists.");
+        }
+
+        await crusades.LoadAllCrusadesAsync();
+        var orders = new[] { battle.Player1OrderId, battle.Player2OrderId }
+            .Where(id => id is not null).Select(id => crusades.GetCrusade(id!)).OfType<OrderOfBattle>().ToList();
+
+        var fixes = new List<DamageFix>();
+        foreach (var d in amendment.Damage)
+        {
+            var r = battle.UnitResults.FirstOrDefault(x => x.CardId == d.CardId)
+                ?? throw new InvalidOperationException($"Unit {d.CardId} was not in this Battle.");
+            var order = r.RemovedFromOrder ? null : orders.FirstOrDefault(o => o.Units.Any(u => u.Id == r.CardId));
+            if (order is null)
+                throw new InvalidOperationException($"{r.UnitName} is no longer in its Order of Battle.");
+            var card = order.Units.Single(u => u.Id == r.CardId);
+            var name = string.IsNullOrEmpty(card.UnitName) ? r.UnitName : card.UnitName;
+            if (!UnitStrength.InRange(card, d.ModelsLost, d.WoundsLost))
+                throw new InvalidOperationException($"{name}: the damage entered is more than the unit can take.");
+            fixes.Add(new DamageFix(r, order, card, d.ModelsLost, d.WoundsLost));
+        }
+
+        if (territoryChanged)
+        {
+            battle.CapturedTerritoryId = amendment.CapturedTerritoryId;
+            if (captured is not null)
+            {
+                captured.ControllingPlayerId = battle.WinnerPlayerId;
+                foreach (var revealed in TerritoryReveal.RevealedByCapture(campaign.MapNodes, captured.Id))
+                    revealed.IsPublic = true;
+            }
+        }
+
+        var changedOrders = new HashSet<OrderOfBattle>();
+        foreach (var f in fixes)
+        {
+            var (models, wounds) = RecordedDamage(f.Result, f.Card);
+            if (f.Models != models)
+            {
+                f.Card.ModelsLost += f.Models - models;
+                f.Result.ModelsLostAfter = f.Models;
+                changedOrders.Add(f.Order);
+            }
+            if (f.Wounds != wounds)
+            {
+                f.Card.WoundsLost += f.Wounds - wounds;
+                f.Result.WoundsLostAfter = f.Wounds;
+                changedOrders.Add(f.Order);
+            }
+            UnitStrength.Clamp(f.Card);
+        }
+
+        foreach (var order in changedOrders) await crusades.SaveCrusadeAsync(order);
+        await campaigns.SaveCampaignAsync(campaign);
+        logger.LogInformation("Amended Battle {Id}", battle.Id);
     }
 
     private List<Step> Validate(BattleRecord battle, OrderOfBattle order1, OrderOfBattle order2)

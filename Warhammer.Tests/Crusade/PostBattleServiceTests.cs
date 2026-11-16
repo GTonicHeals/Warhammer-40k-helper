@@ -348,4 +348,160 @@ public class PostBattleServiceTests : SqliteTestBase
 
         (await A1Async()).WoundsLost.Should().Be(0);
     }
+
+    // ── Amending a Completed Battle ────────────────────────────────────
+
+    private static BattleAmendment Amend(string? territory, params UnitDamageAmendment[] damage) => new(territory, damage);
+
+    private async Task<string?> ControllerAsync(string territoryId) =>
+        (await Campaigns().LoadCampaignAsync()).MapNodes.OfType<Territory>().Single(t => t.Id == territoryId).ControllingPlayerId;
+
+    private async Task<BattleRecord> BattleAsync() => (await Campaigns().LoadCampaignAsync()).BattleHistory.Single();
+
+    private async Task<string> SeedCompletedAsync(Action<BattleRecord, OrderOfBattle>? tweak = null)
+    {
+        var id = await SeedAsync(tweak);
+        await Svc().CompleteAsync(id);
+        return id;
+    }
+
+    private async Task AddTerritoryAsync(string id, string name)
+    {
+        var campaign = await Campaigns().LoadCampaignAsync();
+        campaign.MapNodes.Add(new Territory { Id = id, Name = name });
+        await Campaigns().SaveCampaignAsync(campaign);
+    }
+
+    // A Repair bought after the Battle: the card is back to full strength.
+    private async Task RepairA1Async()
+    {
+        var order = (await Crusades().LoadAllCrusadesAsync()).Single(o => o.PlayerId == "p1");
+        order.Units.Single(u => u.Id == "a1").ModelsLost = 0;
+        await Crusades().SaveCrusadeAsync(order);
+    }
+
+    [Fact]
+    public async Task Amend_sets_a_forgotten_territory_and_reveals_neighbours()
+    {
+        var id = await SeedAsync((b, _) => b.CapturedTerritoryId = null);
+        await AddHiddenNeighboursAsync();
+        await Svc().CompleteAsync(id);
+
+        await Svc().AmendAsync(id, Amend("t1"));
+
+        (await ControllerAsync("t1")).Should().Be("p1");
+        (await BattleAsync()).CapturedTerritoryId.Should().Be("t1");
+        (await RevealedAsync()).Should().BeEquivalentTo(new Dictionary<string, bool> { ["t1"] = true, ["t2"] = true, ["t3"] = false });
+    }
+
+    [Fact]
+    public async Task Amend_changing_the_territory_leaves_the_old_one_as_it_is()
+    {
+        var id = await SeedCompletedAsync();
+        await AddTerritoryAsync("t4", "Spire");
+
+        await Svc().AmendAsync(id, Amend("t4"));
+
+        (await ControllerAsync("t4")).Should().Be("p1");
+        (await ControllerAsync("t1")).Should().Be("p1");
+        (await BattleAsync()).CapturedTerritoryId.Should().Be("t4");
+    }
+
+    [Fact]
+    public async Task Amend_clearing_the_territory_only_changes_the_record()
+    {
+        var id = await SeedCompletedAsync();
+
+        await Svc().AmendAsync(id, Amend(null));
+
+        (await BattleAsync()).CapturedTerritoryId.Should().BeNull();
+        (await ControllerAsync("t1")).Should().Be("p1");
+    }
+
+    [Fact]
+    public async Task Amend_rejects_a_territory_on_a_draw()
+    {
+        var id = await SeedCompletedAsync((b, _) => { b.WinnerPlayerId = ""; b.CapturedTerritoryId = null; });
+
+        var act = () => Svc().AmendAsync(id, Amend("t1"));
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("A Draw captures no territory.");
+        (await ControllerAsync("t1")).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Amend_rejects_a_mustered_battle()
+    {
+        var id = await SeedAsync();
+
+        var act = () => Svc().AmendAsync(id, Amend("t1"));
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Only a completed Battle can be amended.");
+    }
+
+    [Fact]
+    public async Task Amend_damage_applies_only_the_difference()
+    {
+        var id = await SeedCompletedAsync((b, a) =>
+        {
+            a.Units[0].ModelCount = 5;
+            b.UnitResults[0].ModelsLostBefore = 0; b.UnitResults[0].ModelsLostAfter = 2;
+        });
+        await RepairA1Async();
+
+        await Svc().AmendAsync(id, Amend("t1", new UnitDamageAmendment("a1", 3, 0)));
+
+        (await A1Async()).ModelsLost.Should().Be(1);
+        (await BattleAsync()).UnitResults.Single(r => r.CardId == "a1").ModelsLostAfter.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Amend_damage_clamps_the_card()
+    {
+        var id = await SeedCompletedAsync((b, a) =>
+        {
+            a.Units[0].ModelCount = 5;
+            b.UnitResults[0].ModelsLostBefore = 0; b.UnitResults[0].ModelsLostAfter = 2;
+        });
+        await RepairA1Async();
+
+        await Svc().AmendAsync(id, Amend("t1", new UnitDamageAmendment("a1", 0, 0)));
+
+        (await A1Async()).ModelsLost.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Amend_rejects_damage_out_of_range()
+    {
+        var id = await SeedCompletedAsync((_, a) => a.Units[0].ModelCount = 5);
+
+        var act = () => Svc().AmendAsync(id, Amend("t1", new UnitDamageAmendment("a1", 5, 0)));
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("A1: the damage entered is more than the unit can take.");
+        (await A1Async()).ModelsLost.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Amend_rejects_damage_for_a_removed_unit()
+    {
+        var id = await SeedCompletedAsync((b, _) => b.UnitResults[2].UnitName = "B1");
+
+        var act = () => Svc().AmendAsync(id, Amend("t1", new UnitDamageAmendment("b1", 1, 0)));
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("B1 is no longer in its Order of Battle.");
+    }
+
+    [Fact]
+    public async Task Amend_with_no_changes_changes_nothing()
+    {
+        var id = await SeedAsync((b, _) => b.CapturedTerritoryId = null);
+        await AddHiddenNeighboursAsync();
+        await Svc().CompleteAsync(id);
+
+        await Svc().AmendAsync(id, Amend(null, new UnitDamageAmendment("a1", 0, 0)));
+
+        (await RevealedAsync()).Values.Should().AllBeEquivalentTo(false);
+        var a1 = await A1Async();
+        (a1.ModelsLost, a1.WoundsLost).Should().Be((0, 0));
+    }
 }
