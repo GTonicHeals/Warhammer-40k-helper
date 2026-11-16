@@ -35,12 +35,24 @@ public class CampaignManagerService(
         }
 
         // A campaign gets the default Requisition list exactly once; after that the list is the Game Master's.
+        // The write only lands while the row is still unseeded, so when two first loads race (two tabs,
+        // two processes) one seeds and the other reads back what it wrote.
         if (!campaign.RequisitionsSeeded)
         {
-            campaign.Requisitions = RequisitionDefaults.Create();
+            await using var seedCtx = await dbFactory.CreateDbContextAsync();
+            var defaults = RequisitionDefaults.Create();
+            var id = campaign.Id;
+            var seeded = await seedCtx.Campaigns
+                .Where(c => c.Id == id && !c.RequisitionsSeeded)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(c => c.Requisitions, defaults)
+                    .SetProperty(c => c.RequisitionsSeeded, true));
+
+            campaign.Requisitions = seeded == 1
+                ? defaults
+                : await seedCtx.Campaigns.Where(c => c.Id == id).Select(c => c.Requisitions).SingleAsync();
             campaign.RequisitionsSeeded = true;
-            await SaveCampaignAsync(campaign, saveRequisitions: true);
-            logger.LogInformation("Seeded the default Requisition list for campaign {Id}", campaign.Id);
+            if (seeded == 1) logger.LogInformation("Seeded the default Requisition list for campaign {Id}", campaign.Id);
         }
 
         Campaign = campaign;

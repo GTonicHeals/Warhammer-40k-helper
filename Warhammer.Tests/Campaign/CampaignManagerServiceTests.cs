@@ -348,6 +348,68 @@ public class CampaignManagerServiceTests : SqliteTestBase
     }
 
     [Fact]
+    public async Task Two_first_loads_at_once_seed_the_requisitions_once()
+    {
+        // A file database, so each service gets its own connection, as two requests would.
+        var path = Path.Combine(Path.GetTempPath(), $"seed-race-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<Warhammer.Data.AppDbContext>()
+            .UseSqlite($"Data Source={path};Pooling=False").Options;
+        await using (var ctx = new Warhammer.Data.AppDbContext(options))
+        {
+            await ctx.Database.EnsureCreatedAsync();
+            ctx.Campaigns.Add(new CampaignEntity { CampaignName = "Old" });
+            await ctx.SaveChangesAsync();
+        }
+
+        try
+        {
+            // Each service holds its second context until the other has read the campaign too,
+            // so both see RequisitionsSeeded == false.
+            var bothRead = new Rendezvous(2);
+            var a = new CampaignManagerService(new PausingFactory(options, bothRead), NullLogger<CampaignManagerService>.Instance);
+            var b = new CampaignManagerService(new PausingFactory(options, bothRead), NullLogger<CampaignManagerService>.Instance);
+
+            var loaded = await Task.WhenAll(a.LoadCampaignAsync(), b.LoadCampaignAsync());
+
+            await using var check = new Warhammer.Data.AppDbContext(options);
+            var stored = (await check.Campaigns.AsNoTracking().SingleAsync()).Requisitions;
+            stored.Should().HaveCount(7);
+            loaded[0].Requisitions.Select(r => r.Id).Should().Equal(stored.Select(r => r.Id));
+            loaded[1].Requisitions.Select(r => r.Id).Should().Equal(stored.Select(r => r.Id));
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            File.Delete(path);
+        }
+    }
+
+    // Waits until `count` callers have arrived, or a short timeout passes (so an implementation
+    // that never asks for a second context is not blocked forever).
+    private sealed class Rendezvous(int count)
+    {
+        private int _arrived;
+        private readonly TaskCompletionSource _all = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task ArriveAsync()
+        {
+            if (Interlocked.Increment(ref _arrived) == count) _all.TrySetResult();
+            return Task.WhenAny(_all.Task, Task.Delay(1000));
+        }
+    }
+
+    private sealed class PausingFactory(DbContextOptions<Warhammer.Data.AppDbContext> options, Rendezvous rendezvous)
+        : IDbContextFactory<Warhammer.Data.AppDbContext>
+    {
+        private int _created;
+        public Warhammer.Data.AppDbContext CreateDbContext() => new(options);
+        public async Task<Warhammer.Data.AppDbContext> CreateDbContextAsync(CancellationToken ct = default)
+        {
+            if (Interlocked.Increment(ref _created) == 2) await rendezvous.ArriveAsync();
+            return new(options);
+        }
+    }
+
+    [Fact]
     public async Task Requisition_edits_persist()
     {
         var campaign = await CreateService().LoadCampaignAsync();
