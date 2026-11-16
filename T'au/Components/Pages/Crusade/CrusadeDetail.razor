@@ -3,9 +3,12 @@
 @using Warhammer.Helpers
 @using Warhammer.Models
 @using Warhammer.Models.Crusade
+@using Warhammer.Models.Campaign
+@using Warhammer.Services.Crusade
 @using Warhammer.Services
 @using Warhammer.Components.Pages.Battle
 @inject CrusadeManagerService CrusadeMgr
+@inject CampaignManagerService CampaignSvc
 @inject RosterLoadService RosterLoader
 @inject CrusadeTraitsService Traits
 @inject NavigationManager Nav
@@ -69,8 +72,99 @@
                     <button class="btn btn-outline-warning" @onclick="IncRp"
                             disabled="@(_crusade.RequisitionPoints >= OrderOfBattle.RequisitionPointsMax)">+</button>
                 </div>
+                <button class="btn btn-sm btn-outline-warning w-100 mt-1" id="req-open" @onclick="ToggleRequisitions">
+                    <i class="bi bi-box-seam me-1"></i>Requisitions
+                </button>
             </div>
         </div>
+
+        @if (_showRequisitions)
+        {
+            <div class="card bg-dark border-secondary mb-4" id="req-panel">
+                <div class="card-header border-secondary d-flex align-items-center">
+                    <span class="text-warning fw-bold flex-grow-1"><i class="bi bi-box-seam me-2"></i>Requisitions</span>
+                    <span class="small text-secondary me-3">@_crusade.RequisitionPoints Requisition Point@(_crusade.RequisitionPoints == 1 ? "" : "s") to spend</span>
+                    <button type="button" class="btn-close btn-close-white" aria-label="Close" @onclick="ToggleRequisitions"></button>
+                </div>
+                <div class="card-body">
+                    @if (_requisitions.Count == 0)
+                    {
+                        <p class="text-secondary mb-0"><em>The Campaign has no Requisitions. Add some in the Campaign Editor.</em></p>
+                    }
+                    @foreach (var r in _requisitions)
+                    {
+                        var req = r;
+                        <div class="d-flex align-items-start gap-3 py-2 border-bottom border-secondary">
+                            <div class="flex-grow-1">
+                                <div class="text-white fw-bold">@req.Name <span class="badge bg-warning text-dark ms-1">@req.Cost RP</span></div>
+                                <div class="small text-secondary">@req.Timing</div>
+                                <div class="small">@req.Effect</div>
+                            </div>
+                            <button class="btn btn-sm btn-warning flex-shrink-0" data-buy="@req.Id" @onclick="() => PickRequisition(req)">Buy</button>
+                        </div>
+                    }
+
+                    @if (_buying is { } buying)
+                    {
+                        var affected = RequisitionRules.UnitsAffected(_crusade, buying);
+                        var restores = buying.Kind is RequisitionKind.RepairAll or RequisitionKind.ReinforceAll;
+                        var blocked = _buyCost is { } c ? RequisitionRules.CannotBuy(_crusade, c) : "Enter the cost in Requisition Points.";
+                        <div class="border border-warning rounded p-3 mt-3" id="req-confirm">
+                            <div class="text-white fw-bold mb-2">Buy @buying.Name?</div>
+                            <div class="row g-2 align-items-end">
+                                <div class="col-4 col-md-2">
+                                    <label class="form-label small text-warning mb-0" for="req-cost">Cost</label>
+                                    <input id="req-cost" type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary"
+                                           value="@_buyCost" @onchange="e => _buyCost = int.TryParse(e.Value?.ToString(), out var n) ? n : null" />
+                                </div>
+                                <div class="col small text-secondary">
+                                    @if (restores && affected > 0)
+                                    {
+                                        <span>@affected unit@(affected == 1 ? "" : "s") will be restored.</span>
+                                    }
+                                    else if (buying.Kind == RequisitionKind.IncreaseSupplyLimit)
+                                    {
+                                        <span>Supply Limit @_crusade.SupplyLimit → @(_crusade.SupplyLimit + Math.Max(0, buying.Amount)).</span>
+                                    }
+                                    else if (buying.Kind == RequisitionKind.None)
+                                    {
+                                        <span>Text only: the points are spent and you apply the effect by hand.</span>
+                                    }
+                                </div>
+                            </div>
+                            @if (blocked is not null)
+                            {
+                                <div class="small text-danger mt-2" id="req-warning"><i class="bi bi-exclamation-triangle me-1"></i>@blocked</div>
+                            }
+                            else if (restores && affected == 0)
+                            {
+                                <div class="small text-warning mt-2" id="req-warning"><i class="bi bi-exclamation-circle me-1"></i>No unit needs this right now. Buying it still spends the points.</div>
+                            }
+                            <div class="d-flex gap-2 mt-3">
+                                <button class="btn btn-sm btn-success" id="req-confirm-buy" disabled="@(blocked is not null)" @onclick="BuyAsync">
+                                    <i class="bi bi-check2 me-1"></i>Buy
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" id="req-cancel" @onclick="() => _buying = null">Cancel</button>
+                            </div>
+                            <div class="small text-secondary mt-2">A purchase cannot be undone here; correct mistakes with the +/− buttons and the card fields.</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (_crusade.RequisitionLog.Count > 0)
+        {
+            <div class="mb-4" id="req-log">
+                <div class="small text-warning fw-bold mb-1">Requisitions bought</div>
+                @foreach (var entry in Enumerable.Reverse(_crusade.RequisitionLog))
+                {
+                    <div class="small text-secondary" data-req-log>
+                        @entry.DateUtc.ToLocalTime().ToString("d MMM yyyy") · <span class="text-white">@entry.Name</span> · @entry.Cost RP
+                    </div>
+                }
+            </div>
+        }
 
         <h3 class="text-warning"><i class="bi bi-people"></i> Order of Battle (@_crusade.Units.Count)</h3>
 
@@ -638,6 +732,8 @@
         _selectionsByName = new(StringComparer.OrdinalIgnoreCase);
         _upgradePanelOpen.Clear();
         _scarChoice.Clear();
+        _showRequisitions = false;
+        _buying = null;
         _modalTrait = null;
         _newTraitCategory = _newTraitName = _newTraitEffect = "";
         CloseAddUnitModal();
@@ -666,6 +762,8 @@
                     .ToList();
             }
         }
+
+        _requisitions = (await CampaignSvc.LoadCampaignAsync()).Requisitions;
 
         // Cards added before attrition existed have no unit size; take it from the roster once.
         if (_crusade is not null)
@@ -703,6 +801,33 @@
     {
         var cost = unit.Costs?.FirstOrDefault(c => c.Name == "pts");
         return cost is null ? 0 : (int)Math.Round(cost.Value);
+    }
+
+    // ── Requisitions ───────────────────────────────────────────────────
+    private List<Requisition> _requisitions = new();
+    private bool _showRequisitions;
+    private Requisition? _buying;
+    private int? _buyCost;   // null = nothing valid typed
+
+    private void ToggleRequisitions()
+    {
+        _showRequisitions = !_showRequisitions;
+        _buying = null;
+    }
+
+    private void PickRequisition(Requisition req)
+    {
+        _buying = req;
+        _buyCost = req.Cost;
+    }
+
+    private async Task BuyAsync()
+    {
+        if (_crusade is null || _buying is null || _buyCost is not { } cost) return;
+        if (RequisitionRules.CannotBuy(_crusade, cost) is not null) return;
+        RequisitionRules.Buy(_crusade, _buying, cost, DateTime.UtcNow);
+        _buying = null;
+        await SaveAsync();
     }
 
     private async Task SaveAsync()

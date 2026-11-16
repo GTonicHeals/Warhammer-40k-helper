@@ -65,8 +65,12 @@ The points ceiling of an Order of Battle. Supply Used is the sum of its Crusade 
 _Avoid_: points limit, cap
 
 **Requisition Point**:
-Campaign currency an Order of Battle spends on Requisitions such as Increase Supply Limit or Fresh Recruits. Never more than ten.
+Campaign currency an Order of Battle spends on Requisitions such as Increase Supply Limit, Repair or Reinforce. Never more than ten.
 _Avoid_: RP (in prose), resource
+
+**Requisition**:
+An entry on the Campaign's Requisition list that an Order of Battle buys with Requisition Points. The Game Master edits the list in the Campaign Editor.
+_Avoid_: upgrade, purchase (alone)
 
 **Crusade Points**:
 The score of a Crusade Card's accumulated upgrades: plus one per Battle Honour (two if Titanic, more for relic tiers), minus one per Battle Scar. Derived, never typed.
