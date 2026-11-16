@@ -40,6 +40,23 @@ public static class UnitStrength
         return string.Join(" · ", parts);
     }
 
+    // How a Battle changed the card, before → after: "10 → 7 models · 0 → 1 wound lost",
+    // or "Back to full strength". "" when nothing changed.
+    public static string DescribeChange(CrusadeUnitCard c, int modelsLostAfter, int woundsLostAfter)
+    {
+        if (modelsLostAfter == c.ModelsLost && woundsLostAfter == c.WoundsLost) return "";
+        if (modelsLostAfter == 0 && woundsLostAfter == 0) return "Back to full strength";
+
+        var parts = new List<string>(2);
+        if (modelsLostAfter != c.ModelsLost)
+            parts.Add(c.ModelCount > 0
+                ? $"{Math.Max(0, c.ModelCount - c.ModelsLost)} → {Math.Max(0, c.ModelCount - modelsLostAfter)} models"
+                : $"{c.ModelsLost} → {modelsLostAfter} models lost");
+        if (woundsLostAfter != c.WoundsLost)
+            parts.Add($"{c.WoundsLost} → {woundsLostAfter} {(woundsLostAfter == 1 ? "wound" : "wounds")} lost");
+        return string.Join(" · ", parts);
+    }
+
     // Unit size and wounds per model from a roster selection; 0 for whatever cannot be told.
     // Wounds come from the largest group of models (the first one on a tie).
     public static (int ModelCount, int WoundsPerModel) FromRoster(Selection? unit)

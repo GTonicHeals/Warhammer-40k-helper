@@ -501,13 +501,9 @@
     }
 
     // The line shown in the review when this Battle changed the unit's condition; null when it did not.
-    private string? DamageChange(BattleUnitResult r)
-    {
-        if (CardOf(r) is not { } card) return null;
-        var (models, wounds) = (ModelsLostOf(r), WoundsLostOf(r));
-        if (models == card.ModelsLost && wounds == card.WoundsLost) return null;
-        return UnitStrength.Describe(card, models, wounds) is { Length: > 0 } text ? text : "Full strength";
-    }
+    private string? DamageChange(BattleUnitResult r) =>
+        CardOf(r) is { } card && UnitStrength.DescribeChange(card, ModelsLostOf(r), WoundsLostOf(r)) is { Length: > 0 } text
+            ? text : null;
 
     private RenderFragment StepDamage => __builder =>
     {
@@ -909,11 +905,11 @@
                                 <div class="small text-secondary mt-1">@side.Vp VP</div>
                             </div>
                         </div>
-                        <div class="small text-secondary mb-2">
+                        <div class="small text-secondary mb-2" data-rp="@side.PlayerId">
                             <i class="bi bi-box-seam me-1"></i>Requisition Points @side.RpBefore → <span class="text-white">@side.RpAfter</span>
-                            @if (side.RpAwarded > 0 && side.RpAfter == side.RpBefore)
+                            @if (side.RpAwarded > 0)
                             {
-                                <span> (already at the maximum of @OrderOfBattle.RequisitionPointsMax)</span>
+                                <span> (+@side.RpAwarded awarded@(side.RpBefore + side.RpAwarded > side.RpAfter ? $", capped at {OrderOfBattle.RequisitionPointsMax}" : ""))</span>
                             }
                         </div>
                         @foreach (var u in side.Units)
@@ -937,7 +933,7 @@
                                 @if (u.Damage is not null)
                                 {
                                     <div class="small text-danger" data-damage-change="@u.CardId">
-                                        <i class="bi bi-heartbreak me-1"></i>Now: @u.Damage
+                                        <i class="bi bi-heartbreak me-1"></i>@u.Damage
                                     </div>
                                 }
                                 @if (u.RankAfter != u.RankBefore)

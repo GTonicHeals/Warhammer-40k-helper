@@ -430,12 +430,12 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         await Next(cut); await Next(cut);
 
         cut.Find("#pb-step").GetAttribute("data-step").Should().Be("7");
-        cut.Find("[data-damage-change='a1']").TextContent.Should().Contain("7/10 models");
+        cut.Find("[data-damage-change='a1']").TextContent.Trim().Should().Be("10 → 7 models");
         cut.FindAll("[data-damage-change='a3']").Should().BeEmpty();
 
         await Click(cut, "#pb-complete");
         cut.WaitForElement("#pb-done");
-        cut.Find("#pb-done [data-damage-change='a1']").TextContent.Should().Contain("7/10 models");
+        cut.Find("#pb-done [data-damage-change='a1']").TextContent.Trim().Should().Be("10 → 7 models");
         (await CardAsync("a1")).ModelsLost.Should().Be(3);
     }
 
@@ -446,7 +446,7 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         await Click(cut, "[data-models-minus='a1']");
         await Next(cut); await Next(cut);
 
-        cut.Find("[data-damage-change='a1']").TextContent.Should().Contain("Full strength");
+        cut.Find("[data-damage-change='a1']").TextContent.Trim().Should().Be("Back to full strength");
     }
 
     [Fact]
@@ -509,9 +509,8 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         await Change(cut, "#rp2", "0");
         for (var step = 0; step < 4; step++) await Next(cut);
 
-        cut.Find("[data-side='p1']").TextContent.Should().Contain("5 → 8");
-        cut.Find("[data-side='p2']").TextContent.Should().Contain("5 → 5");
-        cut.Find("[data-side='p2']").TextContent.Should().NotContain("already at the maximum");
+        Squash(cut.Find("[data-side='p1'] [data-rp]").TextContent).Should().Be("Requisition Points 5 → 8 (+3 awarded)");
+        Squash(cut.Find("[data-side='p2'] [data-rp]").TextContent).Should().Be("Requisition Points 5 → 5");
 
         await Click(cut, "#pb-complete");
         cut.WaitForElement("#pb-done");
@@ -562,8 +561,28 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         await Change(cut, "#rp1", "3");
         for (var step = 0; step < 4; step++) await Next(cut);
 
-        cut.Find("[data-side='p1']").TextContent.Should().Contain("9 → 10");
+        Squash(cut.Find("[data-side='p1'] [data-rp]").TextContent)
+            .Should().Be("Requisition Points 9 → 10 (+3 awarded, capped at 10)");
+
+        await Click(cut, "#pb-complete");
+        cut.WaitForElement("#pb-done");
+        Squash(cut.Find("#pb-done [data-side='p1'] [data-rp]").TextContent)
+            .Should().Be("Requisition Points 9 → 10 (+3 awarded, capped at 10)");
     }
+
+    [Fact]
+    public async Task Award_to_a_side_already_at_the_maximum_reads_as_capped()
+    {
+        var id = await SeedAsync(a => a.RequisitionPoints = 10);
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+        for (var step = 0; step < 4; step++) await Next(cut);
+
+        Squash(cut.Find("[data-side='p1'] [data-rp]").TextContent)
+            .Should().Be("Requisition Points 10 → 10 (+1 awarded, capped at 10)");
+    }
+
+    private static string Squash(string text) => System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ").Trim();
 
     [Fact]
     public async Task Stepping_back_to_the_cards_own_value_is_not_an_entry()

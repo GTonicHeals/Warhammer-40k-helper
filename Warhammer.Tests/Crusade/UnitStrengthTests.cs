@@ -23,6 +23,17 @@ public class UnitStrengthTests
     public void Describe_can_word_a_condition_other_than_the_cards_own() =>
         UnitStrength.Describe(Card(10, 2), 4, 0).Should().Be("6/10 models");
 
+    [Theory]
+    [InlineData(10, 2, 0, 0, 3, 0, "10 → 7 models")]
+    [InlineData(10, 2, 3, 1, 3, 0, "1 → 0 wounds lost")]
+    [InlineData(10, 2, 0, 0, 0, 1, "0 → 1 wound lost")]
+    [InlineData(10, 2, 1, 0, 3, 1, "9 → 7 models · 0 → 1 wound lost")]
+    [InlineData(10, 2, 3, 1, 0, 0, "Back to full strength")]
+    [InlineData(0, 0, 1, 0, 2, 0, "1 → 2 models lost")]
+    [InlineData(10, 2, 3, 1, 3, 1, "")]
+    public void DescribeChange_words_before_and_after(int count, int w, int ml, int wl, int mlAfter, int wlAfter, string expected) =>
+        UnitStrength.DescribeChange(Card(count, w, ml, wl), mlAfter, wlAfter).Should().Be(expected);
+
     [Fact]
     public void IsDamaged_follows_either_number()
     {
