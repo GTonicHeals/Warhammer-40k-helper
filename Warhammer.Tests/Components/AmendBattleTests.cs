@@ -147,6 +147,45 @@ public class AmendBattleTests : SqliteTestBase, IDisposable
     }
 
     [Fact]
+    public async Task Saving_leaves_damage_the_gm_did_not_touch_even_if_the_card_changed_since_loading()
+    {
+        var id = await SeedAsync();
+        await SetA1ModelsLostAsync(2);   // no damage was entered for a1, so the page starts from the card: 2
+        var cut = Render(id);
+        cut.WaitForElement("#ab-save");
+        cut.Find("[data-models-lost='a1']").TextContent.Should().Be("2");
+
+        await SetA1ModelsLostAsync(0);   // a Repair bought in another tab
+        await cut.Find("#territory").ChangeAsync(new ChangeEventArgs { Value = "t1" });
+        await Click(cut, "#ab-save");
+
+        cut.WaitForElement("#ab-saved");
+        (await Crusades.LoadAllCrusadesAsync()).Single(o => o.Id == "A").Units.Single().ModelsLost.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Saving_damage_leaves_a_territory_set_elsewhere_since_loading()
+    {
+        var id = await SeedAsync();
+        var cut = Render(id);
+        cut.WaitForElement("#ab-save");
+
+        await PostBattle.AmendAsync(id, new BattleAmendment("t1", []));   // another tab
+        await Click(cut, "[data-models-plus='a1']");
+        await Click(cut, "#ab-save");
+
+        cut.WaitForElement("#ab-saved");
+        (await Campaigns.LoadCampaignAsync()).BattleHistory.Single().CapturedTerritoryId.Should().Be("t1");
+    }
+
+    private async Task SetA1ModelsLostAsync(int value)
+    {
+        var order = (await Crusades.LoadAllCrusadesAsync()).Single(o => o.Id == "A");
+        order.Units.Single().ModelsLost = value;
+        await Crusades.SaveCrusadeAsync(order);
+    }
+
+    [Fact]
     public async Task A_mustered_battle_points_to_the_post_battle_page()
     {
         var id = await SeedAsync(complete: false);

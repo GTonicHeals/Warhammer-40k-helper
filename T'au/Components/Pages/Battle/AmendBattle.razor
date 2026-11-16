@@ -160,6 +160,9 @@
     private readonly Dictionary<string, CrusadeUnitCard> _cards = new();
     // cardId → models/wounds lost as the page shows them; only units that can still be amended.
     private readonly Dictionary<string, (int Models, int Wounds)> _damage = new();
+    // What the page showed when it loaded; only differences from these are sent.
+    private Dictionary<string, (int Models, int Wounds)> _loadedDamage = new();
+    private string? _loadedTerritoryId;
 
     protected override Task OnInitializedAsync() => LoadAsync();
 
@@ -185,6 +188,8 @@
                 _cards[r.CardId] = card;
                 _damage[r.CardId] = PostBattleService.RecordedDamage(r, card);
             }
+            _loadedDamage = new(_damage);
+            _loadedTerritoryId = _territoryId;
         }
         _loaded = true;
     }
@@ -211,8 +216,11 @@
         _error = null;
         try
         {
+            // Only what was changed here, so values set elsewhere since this page loaded are kept.
             var amendment = new BattleAmendment(_territoryId,
-                _damage.Select(d => new UnitDamageAmendment(d.Key, d.Value.Models, d.Value.Wounds)).ToList());
+                _damage.Where(d => d.Value != _loadedDamage[d.Key])
+                       .Select(d => new UnitDamageAmendment(d.Key, d.Value.Models, d.Value.Wounds)).ToList(),
+                ChangesTerritory: _territoryId != _loadedTerritoryId);
             await PostBattleSvc.AmendAsync(_battle!.Id, amendment);
             await LoadAsync();
             _saved = true;

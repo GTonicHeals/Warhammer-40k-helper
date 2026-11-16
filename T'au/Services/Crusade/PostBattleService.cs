@@ -5,8 +5,10 @@ using Warhammer.Models.Crusade;
 namespace Warhammer.Services.Crusade;
 
 // A correction to a Completed Battle: the Territory it captured and what each unit lost.
+// Send only what the GM changed: an out-of-date page must not overwrite values set elsewhere since.
+// ChangesTerritory = false leaves the Battle's Territory as it is, whatever CapturedTerritoryId says.
 public sealed record UnitDamageAmendment(string CardId, int ModelsLost, int WoundsLost);
-public sealed record BattleAmendment(string? CapturedTerritoryId, IReadOnlyList<UnitDamageAmendment> Damage);
+public sealed record BattleAmendment(string? CapturedTerritoryId, IReadOnlyList<UnitDamageAmendment> Damage, bool ChangesTerritory = true);
 
 // Applies a finished Battle to both Orders of Battle and the Campaign in one call.
 // Everything is validated before anything is mutated, so a rejected Battle leaves
@@ -82,7 +84,7 @@ public class PostBattleService(
         if (battle.Status != BattleStatus.Completed)
             throw new InvalidOperationException("Only a completed Battle can be amended.");
 
-        var territoryChanged = amendment.CapturedTerritoryId != battle.CapturedTerritoryId;
+        var territoryChanged = amendment.ChangesTerritory && amendment.CapturedTerritoryId != battle.CapturedTerritoryId;
         Territory? captured = null;
         if (territoryChanged && amendment.CapturedTerritoryId is not null)
         {
