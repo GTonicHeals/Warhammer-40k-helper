@@ -65,7 +65,7 @@
 
         @if (_showRequisitions)
         {
-            <RequisitionEditor Campaign="_campaign" OnChanged="MarkDirty" OnClose="() => _showRequisitions = false" />
+            <RequisitionEditor Campaign="_campaign" OnChanged="MarkRequisitionsDirty" OnClose="() => _showRequisitions = false" />
         }
 
         <div class="row g-4">
@@ -464,6 +464,15 @@
 
     private void MarkDirty() => _hasUnsavedChanges = true;
 
+    // Requisition edits are only written by the Save button; the GM Notes autosave leaves them out.
+    private bool _requisitionsDirty;
+
+    private void MarkRequisitionsDirty()
+    {
+        _requisitionsDirty = true;
+        MarkDirty();
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender || _loaded) return;
@@ -481,7 +490,7 @@
             anyPlaced = true;
         }
         if (anyPlaced)
-            await CampaignSvc.SaveCampaignAsync(_campaign, saveRequisitions: true);
+            await CampaignSvc.SaveCampaignAsync(_campaign);
 
         StateHasChanged();
     }
@@ -629,6 +638,7 @@
         await CampaignSvc.SaveCampaignAsync(_campaign, saveRequisitions: true);
         _saving = false;
         _hasUnsavedChanges = false;
+        _requisitionsDirty = false;
 
         var token = ++_saveToastToken;
         _showSavedToast = true;
@@ -644,7 +654,8 @@
     private async Task HandleGmNotesChanged()
     {
         if (_campaign is null) return;
-        await CampaignSvc.SaveCampaignAsync(_campaign, saveRequisitions: true);
-        _hasUnsavedChanges = false;
+        await CampaignSvc.SaveCampaignAsync(_campaign);
+        // Unconfirmed Requisition edits are still waiting for the Save button.
+        _hasUnsavedChanges = _requisitionsDirty;
     }
 }

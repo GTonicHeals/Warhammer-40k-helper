@@ -39,6 +39,31 @@ public class CampaignEditorRequisitionsTests : SqliteTestBase, IDisposable
         cut.FindAll("#req-editor").Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Gm_notes_autosave_leaves_unconfirmed_requisition_edits_unsaved()
+    {
+        var cut = _ctx.RenderComponent<CampaignEditor>();
+        cut.WaitForElement("#req-open");
+        await cut.Find("#req-open").ClickAsync(new MouseEventArgs());
+        var first = cut.Find("[data-req-cost]");
+        var storedCost = int.Parse(first.GetAttribute("value")!);
+        await first.ChangeAsync(new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = (storedCost + 4).ToString() });
+
+        // A GM Notes change autosaves the campaign without the Save button.
+        await cut.FindAll("button").First(b => b.TextContent.Trim() == "GM Notes").ClickAsync(new MouseEventArgs());
+        await cut.FindAll("button").First(b => b.TextContent.Contains("Add New Note")).ClickAsync(new MouseEventArgs());
+
+        var saved = await new CampaignManagerService(CreateFactory(), NullLogger<CampaignManagerService>.Instance).LoadCampaignAsync();
+        saved.GmNotebook.Should().HaveCount(1, "the note itself is autosaved");
+        saved.Requisitions[0].Cost.Should().Be(storedCost, "the requisition edit was not confirmed with Save");
+        cut.FindComponent<Warhammer.Components.UI.UnsavedChangesGuard>().Instance.IsDirty.Should().BeTrue();
+
+        await cut.Find("#campaign-save").ClickAsync(new MouseEventArgs());
+        saved = await new CampaignManagerService(CreateFactory(), NullLogger<CampaignManagerService>.Instance).LoadCampaignAsync();
+        saved.Requisitions[0].Cost.Should().Be(storedCost + 4);
+        cut.FindComponent<Warhammer.Components.UI.UnsavedChangesGuard>().Instance.IsDirty.Should().BeFalse();
+    }
+
     void IDisposable.Dispose()
     {
         _ctx.Dispose();
