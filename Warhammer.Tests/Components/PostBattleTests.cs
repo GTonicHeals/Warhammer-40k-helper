@@ -49,15 +49,17 @@ public class PostBattleTests : SqliteTestBase, IDisposable
 
     private static AppliedTrait Scar(string n) => new() { Name = n, Type = CrusadeTraitTypes.BattleScar };
 
-    private async Task<string> SeedAsync()
+    private async Task<string> SeedAsync(Action<OrderOfBattle>? tweakA = null)
     {
         var campaign = await Campaigns.LoadCampaignAsync();
         campaign.MapNodes.Add(new Territory { Id = "t1", Name = "Hab" });
-        await Crusades.SaveCrusadeAsync(new OrderOfBattle { Id = "A", ArmyName = "Sept", PlayerId = "p1",
+        var orderA = new OrderOfBattle { Id = "A", ArmyName = "Sept", PlayerId = "p1",
             Units = { new CrusadeUnitCard { Id = "a1", UnitName = "A1", Xp = 14,
                           BattleHonours = { new AppliedTrait { Name = "Old", Type = CrusadeTraitTypes.BattleTrait } } },
                       new CrusadeUnitCard { Id = "a2", UnitName = "A2", XpEligible = false },
-                      new CrusadeUnitCard { Id = "a3", UnitName = "A3" } } });
+                      new CrusadeUnitCard { Id = "a3", UnitName = "A3" } } };
+        tweakA?.Invoke(orderA);
+        await Crusades.SaveCrusadeAsync(orderA);
         await Crusades.SaveCrusadeAsync(new OrderOfBattle { Id = "B", ArmyName = "Chapter", PlayerId = "p2",
             Units = { new CrusadeUnitCard { Id = "b1", UnitName = "B1", BattleScars = { Scar("s1"), Scar("s2"), Scar("s3") } } } });
 
@@ -97,6 +99,7 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         await Change(cut, "input[data-destroyed='a2']", true);
         await Next(cut);
         await Next(cut);
+        await Next(cut);
 
         cut.Find("#pb-next").HasAttribute("disabled").Should().BeTrue();
         cut.Find("#pb-next-hint").TextContent.Should().Contain("Pass or Fail");
@@ -106,8 +109,8 @@ public class PostBattleTests : SqliteTestBase, IDisposable
 
         // No unit gained a rank, so Rank-ups is skipped.
         await Next(cut);
-        cut.Find("#pb-step").GetAttribute("data-step").Should().Be("6");
-        cut.Find("[data-goto='5']").ClassList.Should().Contain("is-skipped");
+        cut.Find("#pb-step").GetAttribute("data-step").Should().Be("7");
+        cut.Find("[data-goto='6']").ClassList.Should().Contain("is-skipped");
         cut.FindAll(".pb-review-side").Should().HaveCount(2);
     }
 
@@ -149,12 +152,15 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         await Change(cut, "input[data-destroyed='b1']", true);
         await Next(cut);
 
-        // 3. Tallies
+        // 3. Damage: nothing to enter
+        await Next(cut);
+
+        // 4. Tallies
         await Change(cut, "input[data-tally='a1']", "3");
         await Change(cut, "input[data-mark='a1']", "a1");
         await Next(cut);
 
-        // 4. Out of Action
+        // 5. Out of Action
         cut.Find("#pb-next").HasAttribute("disabled").Should().BeTrue();
         await Click(cut, "button[data-ooa-fail='a2']");
         await Click(cut, "button[data-penalty-scar='a2']");
@@ -164,14 +170,14 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         cut.Markup.Should().Contain("struck from the Order of Battle");
         await Next(cut);
 
-        // 5. Rank-ups: a1 goes 14 → 19, one honour owed
+        // 6. Rank-ups: a1 goes 14 → 19, one honour owed
         cut.Find("#pb-next").HasAttribute("disabled").Should().BeTrue();
         await Change(cut, "[data-rankup='a1'] .hp-type", CrusadeTraitTypes.BattleTrait);
         await Change(cut, "[data-rankup='a1'] .hp-trait", "Hardened");
         await Click(cut, "[data-rankup='a1'] .hp-add");
         await Next(cut);
 
-        // 6. Review
+        // 7. Review
         await Click(cut, "#pb-complete");
 
         cut.WaitForAssertion(() => cut.Find("#pb-done").TextContent.Should().Contain("Battle recorded"));
@@ -197,7 +203,7 @@ public class PostBattleTests : SqliteTestBase, IDisposable
 
         await Change(cut, "input[name='winner'][value='p1']", "p1");
         // Nothing destroyed and nobody promoted: Out of Action and Rank-ups are skipped.
-        for (var step = 0; step < 3; step++) await Next(cut);
+        for (var step = 0; step < 4; step++) await Next(cut);
 
         var button = cut.Find("#pb-complete");
         _gated.Close();
@@ -218,7 +224,7 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         var id = await SeedAsync();
         var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
         cut.WaitForElement("#pb-next");
-        await Next(cut); await Next(cut);
+        await Next(cut); await Next(cut); await Next(cut);
 
         await Change(cut, "input[data-mark='a1']", "a1");
         await Change(cut, "input[data-mark='a3']", "a3");
@@ -287,7 +293,7 @@ public class PostBattleTests : SqliteTestBase, IDisposable
         var id = await SeedAsync();
         var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
         cut.WaitForElement("#pb-next");
-        await Next(cut); await Next(cut);
+        await Next(cut); await Next(cut); await Next(cut);
 
         cut.Find("[data-xp='a3']").TextContent.Should().Be("+1 XP");
         cut.Find("[data-kill-minus='a3']").HasAttribute("disabled").Should().BeTrue();
@@ -328,6 +334,160 @@ public class PostBattleTests : SqliteTestBase, IDisposable
 
         cut.WaitForAssertion(() => cut.Markup.Should().Contain("already been completed"));
         cut.FindAll("#pb-next").Should().BeEmpty();
+    }
+
+    // ── Damage step (attrition) ────────────────────────────────────────
+    private static void Squad(OrderOfBattle a) { a.Units[0].ModelCount = 10; a.Units[0].WoundsPerModel = 2; }
+
+    private async Task<IRenderedComponent<PostBattle>> AtDamageStepAsync(string id)
+    {
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+        await Next(cut); await Next(cut);
+        cut.Find("#pb-step").GetAttribute("data-step").Should().Be("3");
+        return cut;
+    }
+
+    private async Task<CrusadeUnitCard> CardAsync(string cardId) =>
+        (await new CrusadeManagerService(CreateFactory(),
+            new CampaignManagerService(CreateFactory(), NullLogger<CampaignManagerService>.Instance),
+            NullLogger<CrusadeManagerService>.Instance).LoadAllCrusadesAsync()).SelectMany(o => o.Units).Single(u => u.Id == cardId);
+
+    [Fact]
+    public async Task Step_titles_include_damage_after_casualties()
+    {
+        var id = await SeedAsync();
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+        cut.FindAll(".pb-steplabel").Select(e => e.TextContent)
+            .Should().Equal("Result", "Casualties", "Damage", "Tallies", "Out of Action", "Rank-ups", "Review");
+    }
+
+    [Fact]
+    public async Task Damage_step_starts_from_the_cards_condition_and_needs_no_input()
+    {
+        var id = await SeedAsync(a => { Squad(a); a.Units[0].ModelsLost = 2; });
+        var cut = await AtDamageStepAsync(id);
+
+        cut.Find("[data-models-lost='a1']").TextContent.Should().Be("2");
+        cut.Find("[data-damage='a1']").TextContent.Should().Contain("8/10 models");
+        cut.Find("[data-damage='a3']").TextContent.Should().Contain("Full strength");
+        cut.Find("#pb-next").HasAttribute("disabled").Should().BeFalse();
+
+        await Next(cut); await Next(cut);
+        cut.FindAll("[data-damage-change]").Should().BeEmpty();
+        await Click(cut, "#pb-complete");
+        cut.WaitForElement("#pb-done");
+        (await CardAsync("a1")).ModelsLost.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Damage_steppers_stop_at_the_limits()
+    {
+        var cut = await AtDamageStepAsync(await SeedAsync(Squad));
+
+        cut.Find("[data-models-minus='a1']").HasAttribute("disabled").Should().BeTrue();
+        cut.Find("[data-wounds-minus='a1']").HasAttribute("disabled").Should().BeTrue();
+        for (var i = 0; i < 9; i++) await Click(cut, "[data-models-plus='a1']");
+        cut.Find("[data-models-lost='a1']").TextContent.Should().Be("9");
+        cut.Find("[data-models-plus='a1']").HasAttribute("disabled").Should().BeTrue();
+
+        await Click(cut, "[data-wounds-plus='a1']");
+        cut.Find("[data-wounds-lost='a1']").TextContent.Should().Be("1");
+        cut.Find("[data-wounds-plus='a1']").HasAttribute("disabled").Should().BeTrue();
+
+        await Click(cut, "[data-models-minus='a1']");
+        cut.Find("[data-models-lost='a1']").TextContent.Should().Be("8");
+    }
+
+    [Fact]
+    public async Task Single_model_unit_has_no_models_to_lose()
+    {
+        var cut = await AtDamageStepAsync(await SeedAsync(a => { a.Units[0].ModelCount = 1; a.Units[0].WoundsPerModel = 14; }));
+
+        cut.Find("[data-models-plus='a1']").HasAttribute("disabled").Should().BeTrue();
+        cut.Find("[data-wounds-plus='a1']").HasAttribute("disabled").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Unknown_size_allows_free_entry()
+    {
+        var cut = await AtDamageStepAsync(await SeedAsync());
+
+        for (var i = 0; i < 12; i++) await Click(cut, "[data-models-plus='a1']");
+        for (var i = 0; i < 12; i++) await Click(cut, "[data-wounds-plus='a1']");
+
+        cut.Find("[data-models-lost='a1']").TextContent.Should().Be("12");
+        cut.Find("[data-models-plus='a1']").HasAttribute("disabled").Should().BeFalse();
+        cut.Find("[data-wounds-plus='a1']").HasAttribute("disabled").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Entered_damage_reaches_the_review_and_the_card()
+    {
+        var cut = await AtDamageStepAsync(await SeedAsync(Squad));
+        for (var i = 0; i < 3; i++) await Click(cut, "[data-models-plus='a1']");
+        await Next(cut); await Next(cut);
+
+        cut.Find("#pb-step").GetAttribute("data-step").Should().Be("7");
+        cut.Find("[data-damage-change='a1']").TextContent.Should().Contain("7/10 models");
+        cut.FindAll("[data-damage-change='a3']").Should().BeEmpty();
+
+        await Click(cut, "#pb-complete");
+        cut.WaitForElement("#pb-done");
+        cut.Find("#pb-done [data-damage-change='a1']").TextContent.Should().Contain("7/10 models");
+        (await CardAsync("a1")).ModelsLost.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Repairing_a_unit_in_the_damage_step_reads_as_full_strength()
+    {
+        var cut = await AtDamageStepAsync(await SeedAsync(a => { Squad(a); a.Units[0].ModelsLost = 1; }));
+        await Click(cut, "[data-models-minus='a1']");
+        await Next(cut); await Next(cut);
+
+        cut.Find("[data-damage-change='a1']").TextContent.Should().Contain("Full strength");
+    }
+
+    [Fact]
+    public async Task Destroyed_units_are_listed_in_the_damage_step()
+    {
+        var id = await SeedAsync();
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+        await Next(cut);
+        await Change(cut, "input[data-destroyed='a2']", true);
+        await Next(cut);
+
+        cut.Find("[data-damage='a2']").TextContent.Should().Contain("Destroyed");
+        cut.Find("[data-damage='a3']").TextContent.Should().NotContain("Destroyed");
+        cut.FindAll("[data-models-plus='a2']").Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Damage_survives_a_reload()
+    {
+        var id = await SeedAsync(Squad);
+        var cut = await AtDamageStepAsync(id);
+        await Click(cut, "[data-models-plus='a1']");
+        await Click(cut, "[data-models-plus='a1']");
+        await Next(cut);
+
+        var reloaded = await AtDamageStepAsync(id);
+        reloaded.Find("[data-models-lost='a1']").TextContent.Should().Be("2");
+    }
+
+    [Fact]
+    public async Task Out_of_action_no_longer_promises_an_unharmed_return()
+    {
+        var id = await SeedAsync();
+        var cut = _ctx.RenderComponent<PostBattle>(p => p.Add(x => x.Id, id));
+        cut.WaitForElement("#pb-next");
+        await Next(cut);
+        await Change(cut, "input[data-destroyed='a2']", true);
+        await Next(cut); await Next(cut); await Next(cut);
+
+        cut.Find("#pb-step").TextContent.Should().Contain("takes no penalty").And.NotContain("unharmed");
     }
 
     void IDisposable.Dispose()

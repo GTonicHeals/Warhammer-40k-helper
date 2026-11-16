@@ -41,7 +41,7 @@ The steps run once after a Battle: record the result, award experience, test des
 _Avoid_: aftermath, debrief, wrap-up
 
 **Out of Action Test**:
-The roll made for each Crusade Card destroyed in a Battle. A pass restores the unit; a fail costs a Battle Honour or adds a Battle Scar.
+The roll made for each Crusade Card destroyed in a Battle. A pass spares the unit a penalty; a fail costs a Battle Honour or adds a Battle Scar.
 _Avoid_: injury roll, casualty roll
 
 **Battle Honour**:
@@ -51,6 +51,10 @@ _Avoid_: honour, trait (alone), upgrade
 **Battle Scar**:
 A permanent penalty a Crusade Card takes after failing an Out of Action test.
 _Avoid_: scar, injury
+
+**Attrition**:
+The models and wounds a Crusade Card has lost and carries into its next Battle. A house rule; the core rules restore every unit.
+_Avoid_: damage (alone), casualties (that is the destroyed-units step)
 
 **Rank**:
 A Crusade Card's experience tier: Battle-ready, Blooded, Battle-hardened, Heroic, Legendary.

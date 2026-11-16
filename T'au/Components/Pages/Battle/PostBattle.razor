@@ -76,9 +76,10 @@
                 {
                     case 1: @StepResult break;
                     case 2: @StepCasualties break;
-                    case 3: @StepTallies break;
-                    case 4: @StepOutOfAction break;
-                    case 5: @StepRankUps break;
+                    case 3: @StepDamage break;
+                    case 4: @StepTallies break;
+                    case 5: @StepOutOfAction break;
+                    case 6: @StepRankUps break;
                     default: @StepReview break;
                 }
             </div>
@@ -122,9 +123,9 @@
 @code {
     [Parameter] public string Id { get; set; } = "";
 
-    private static readonly string[] StepTitles = ["Result", "Casualties", "Tallies", "Out of Action", "Rank-ups", "Review"];
+    private static readonly string[] StepTitles = ["Result", "Casualties", "Damage", "Tallies", "Out of Action", "Rank-ups", "Review"];
 
-    private sealed record UnitSummary(string Name, bool Eligible, int Xp, int XpAfter, CrusadeRank RankBefore, CrusadeRank RankAfter,
+    private sealed record UnitSummary(string CardId, string? Damage, string Name, bool Eligible, int Xp, int XpAfter, CrusadeRank RankBefore, CrusadeRank RankAfter,
         string Fate, string FateClass, int Kills, bool Marked, List<string> Honours);
     private sealed record SideSummary(string PlayerId, string OrderId, string Player, string Army, string Result, int Vp,
         int RpBefore, int RpAfter, List<UnitSummary> Units);
@@ -202,8 +203,8 @@
     // ── Step validity and navigation ───────────────────────────────────
     private string NextHint => _step switch
     {
-        4 => "Enter Pass or Fail for every destroyed unit, and pick its penalty.",
-        5 => "Choose the Battle Honours each promoted unit earned.",
+        5 => "Enter Pass or Fail for every destroyed unit, and pick its penalty.",
+        6 => "Choose the Battle Honours each promoted unit earned.",
         _ => ""
     };
 
@@ -211,16 +212,16 @@
 
     private bool StepIsValid(int step) => step switch
     {
-        4 => DestroyedUnits().All(OutOfActionComplete),
-        5 => _battle!.UnitResults.Where(r => CardOf(r) is not null).All(r => r.HonoursGained.Count == OwedHonours(r)),
+        5 => DestroyedUnits().All(OutOfActionComplete),
+        6 => _battle!.UnitResults.Where(r => CardOf(r) is not null).All(r => r.HonoursGained.Count == OwedHonours(r)),
         _ => true
     };
 
     // Steps with nothing to enter are skipped: no destroyed unit, or no unit promoted.
     private bool StepNeeded(int step) => step switch
     {
-        4 => DestroyedUnits().Count > 0,
-        5 => PromotedUnits().Count > 0,
+        5 => DestroyedUnits().Count > 0,
+        6 => PromotedUnits().Count > 0,
         _ => true
     };
 
@@ -452,7 +453,88 @@
         </div>
     };
 
-    // ── Step 3: Tallies and Marked for Greatness ───────────────────────
+    // ── Step 3: Damage (attrition) ─────────────────────────────────────
+    // What the unit has lost as entered so far; until a stepper is touched it is the card's own condition.
+    private int ModelsLostOf(BattleUnitResult r) => r.ModelsLostAfter ?? CardOf(r)?.ModelsLost ?? 0;
+    private int WoundsLostOf(BattleUnitResult r) => r.WoundsLostAfter ?? CardOf(r)?.WoundsLost ?? 0;
+
+    // The line shown in the review when this Battle changed the unit's condition; null when it did not.
+    private string? DamageChange(BattleUnitResult r)
+    {
+        if (CardOf(r) is not { } card) return null;
+        var (models, wounds) = (ModelsLostOf(r), WoundsLostOf(r));
+        if (models == card.ModelsLost && wounds == card.WoundsLost) return null;
+        return UnitStrength.Describe(card, models, wounds) is { Length: > 0 } text ? text : "Full strength";
+    }
+
+    private RenderFragment StepDamage => __builder =>
+    {
+        <div class="pb-step-title">What did each unit lose?</div>
+        <p class="small text-secondary">
+            Record what each unit lost. Dead models and missing wounds carry into its next Battle until a Requisition restores them.
+            Units that took no losses need nothing entered.
+        </p>
+        <div class="row g-3">
+            @foreach (var side in Sides())
+            {
+                var damaged = side.Results.Count(r => ModelsLostOf(r) > 0 || WoundsLostOf(r) > 0);
+                <div class="col-md-6">
+                    <div class="pb-side-head">
+                        <span><span class="fw-bold text-white">@side.Player</span> <span class="small text-secondary">@side.Army</span></span>
+                        <span class="small @(damaged > 0 ? "text-danger" : "text-secondary")">@damaged of @side.Results.Count under strength</span>
+                    </div>
+                    @foreach (var r in side.Results)
+                    {
+                        var res = r;
+                        var card = CardOf(res)!;
+                        var before = UnitStrength.Describe(card);
+                        var models = ModelsLostOf(res);
+                        var wounds = WoundsLostOf(res);
+                        var maxModels = UnitStrength.MaxModelsLost(card);
+                        var maxWounds = UnitStrength.MaxWoundsLost(card);
+                        <div class="pb-unit" data-damage="@res.CardId">
+                            <div class="pb-unit-head">
+                                <div class="pb-unit-name">
+                                    <div class="text-white">@res.UnitName</div>
+                                    <div class="small text-secondary">
+                                        Came in: @(before.Length > 0 ? before : "Full strength")
+                                        @if (card.ModelCount > 0)
+                                        {
+                                            <span> · @card.ModelCount model@(card.ModelCount == 1 ? "" : "s")@(card.WoundsPerModel > 0 ? $", {card.WoundsPerModel}W each" : "")</span>
+                                        }
+                                    </div>
+                                </div>
+                                @if (res.Destroyed)
+                                {
+                                    <span class="badge bg-danger"><i class="bi bi-x-octagon-fill me-1"></i>Destroyed</span>
+                                }
+                            </div>
+                            <div class="pb-unit-controls">
+                                <div class="pb-stepper" role="group" aria-label="@($"Models lost by {res.UnitName}")">
+                                    <button type="button" class="btn btn-outline-secondary" data-models-minus="@res.CardId" aria-label="One fewer model lost"
+                                            disabled="@(models <= 0)" @onclick="() => res.ModelsLostAfter = models - 1"><i class="bi bi-dash-lg"></i></button>
+                                    <span class="pb-damage-val" data-models-lost="@res.CardId">@models</span>
+                                    <button type="button" class="btn btn-outline-secondary" data-models-plus="@res.CardId" aria-label="One more model lost"
+                                            disabled="@(maxModels is { } mm && models >= mm)" @onclick="() => res.ModelsLostAfter = models + 1"><i class="bi bi-plus-lg"></i></button>
+                                    <span class="small text-secondary ms-2">models lost</span>
+                                </div>
+                                <div class="pb-stepper" role="group" aria-label="@($"Wounds lost by {res.UnitName}")">
+                                    <button type="button" class="btn btn-outline-secondary" data-wounds-minus="@res.CardId" aria-label="One fewer wound lost"
+                                            disabled="@(wounds <= 0)" @onclick="() => res.WoundsLostAfter = wounds - 1"><i class="bi bi-dash-lg"></i></button>
+                                    <span class="pb-damage-val" data-wounds-lost="@res.CardId">@wounds</span>
+                                    <button type="button" class="btn btn-outline-secondary" data-wounds-plus="@res.CardId" aria-label="One more wound lost"
+                                            disabled="@(maxWounds is { } mw && wounds >= mw)" @onclick="() => res.WoundsLostAfter = wounds + 1"><i class="bi bi-plus-lg"></i></button>
+                                    <span class="small text-secondary ms-2">wounds lost</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    };
+
+    // ── Step 4: Tallies and Marked for Greatness ───────────────────────
     private RenderFragment StepTallies => __builder =>
     {
         <div class="pb-step-title">Kills and glory</div>
@@ -529,7 +611,7 @@
         foreach (var r in side) r.MarkedForGreatness = mark && ReferenceEquals(r, tapped);
     }
 
-    // ── Step 4: Out of Action tests ────────────────────────────────────
+    // ── Step 5: Out of Action tests ────────────────────────────────────
     private RenderFragment StepOutOfAction => __builder =>
     {
         var destroyed = DestroyedUnits();
@@ -542,7 +624,7 @@
         else
         {
             <p class="small text-secondary">
-                Roll one D6 for each destroyed unit. On a 2+ it passes and returns unharmed; on a 1 it fails and takes a Battle Scar or a Devastating Blow.
+                Roll one D6 for each destroyed unit. On a 2+ it passes and takes no penalty; on a 1 it fails and takes a Battle Scar or a Devastating Blow.
                 <span class="text-white">@destroyed.Count(OutOfActionComplete) of @destroyed.Count done.</span>
             </p>
         }
@@ -644,7 +726,7 @@
         r.RemovedFromOrder = options.WillBeRemoved;
     }
 
-    // ── Step 5: Rank-ups ───────────────────────────────────────────────
+    // ── Step 6: Rank-ups ───────────────────────────────────────────────
     private static int RankFloor(CrusadeRank rank) => rank switch
     {
         CrusadeRank.BattleReady    => 0,
@@ -721,7 +803,7 @@
         }
     };
 
-    // ── Step 6: Review, and the summary shown once the Battle is recorded ──
+    // ── Step 7: Review, and the summary shown once the Battle is recorded ──
     private List<SideSummary> BuildSummary() => Sides().Select(side =>
     {
         var result = string.IsNullOrEmpty(_battle!.WinnerPlayerId) ? "Draw"
@@ -737,7 +819,7 @@
                 : r.Penalty == OutOfActionPenalty.BattleScar      ? ($"Battle Scar: {r.ScarTaken?.Name}", "text-danger")
                 : r.Penalty == OutOfActionPenalty.DevastatingBlow ? ($"Devastating Blow: loses {r.HonourLost}", "text-danger")
                 :                                                   ("Destroyed", "");
-            return new UnitSummary(r.UnitName, card.XpEligible, xp, card.Xp + xp, card.Rank, RankAt(card, card.Xp + xp),
+            return new UnitSummary(r.CardId, DamageChange(r), r.UnitName, card.XpEligible, xp, card.Xp + xp, card.Rank, RankAt(card, card.Xp + xp),
                 fate, fateClass, r.EnemyUnitsDestroyed, r.MarkedForGreatness,
                 r.HonoursGained.Select(h => h.WeaponName is { } w ? $"{h.Name} ({w})" : h.Name).ToList());
         }).ToList();
@@ -808,6 +890,12 @@
                                         <span class="text-warning"> · <i class="bi bi-star-fill"></i> Marked for Greatness</span>
                                     }
                                 </div>
+                                @if (u.Damage is not null)
+                                {
+                                    <div class="small text-danger" data-damage-change="@u.CardId">
+                                        <i class="bi bi-heartbreak me-1"></i>Now: @u.Damage
+                                    </div>
+                                }
                                 @if (u.RankAfter != u.RankBefore)
                                 {
                                     <div class="small pb-rank-new">

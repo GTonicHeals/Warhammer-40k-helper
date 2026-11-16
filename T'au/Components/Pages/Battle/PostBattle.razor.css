@@ -97,6 +97,7 @@
 .pb-stepper .btn { width: 2.75rem; height: 2.75rem; padding: 0; color: #dee2e6; border-color: #6c757d; }
 .pb-stepper .btn:disabled { color: #6c757d; border-color: #495057; }
 .pb-stepper input { width: 3.5rem; height: 2.75rem; margin: 0 .25rem; text-align: center; font-weight: 700; }
+.pb-damage-val { min-width: 3rem; text-align: center; font-weight: 700; color: #fff; font-size: 1.1rem; }
 .pb-stepper input::-webkit-outer-spin-button,
 .pb-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .pb-stepper input { -moz-appearance: textfield; appearance: textfield; }
