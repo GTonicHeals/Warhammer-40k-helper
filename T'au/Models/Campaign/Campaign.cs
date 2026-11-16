@@ -21,4 +21,9 @@ public class Campaign
     public List<Node>           MapNodes      { get; set; } = new();
     public List<BattleRecord>   BattleHistory { get; set; } = new();
     public List<GmNote>         GmNotebook    { get; set; } = new();
+
+    // What an Order of Battle can buy with Requisition Points; edited in the Campaign Editor.
+    public List<Requisition>    Requisitions  { get; set; } = new();
+    // The default list is given once. Without this flag a list the Game Master emptied would refill.
+    public bool                 RequisitionsSeeded { get; set; }
 }

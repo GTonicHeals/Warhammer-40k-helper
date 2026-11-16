@@ -115,6 +115,13 @@ namespace Warhammer.Data.Migrations
                     b.Property<int>("MapSeed")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Requisitions")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("RequisitionsSeeded")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.ToTable("Campaigns");
@@ -334,6 +341,10 @@ namespace Warhammer.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PlayerId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RequisitionLog")
                         .IsRequired()
                         .HasColumnType("TEXT");
 

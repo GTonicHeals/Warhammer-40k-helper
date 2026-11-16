@@ -18,6 +18,7 @@ public class OrderOfBattle
     public int RequisitionPoints { get; set; } = 5;
     public List<CrusadeUnitCard> Units { get; set; } = new();
     public List<CrusadeTrait> CustomTraits { get; set; } = new(); // user-added relics & traits scoped to this crusade
+    public List<Warhammer.Models.Campaign.RequisitionPurchase> RequisitionLog { get; set; } = new(); // Requisitions bought, oldest first
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
 

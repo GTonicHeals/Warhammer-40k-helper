@@ -34,6 +34,15 @@ public class CampaignManagerService(
             logger.LogInformation("Seeded default campaign with Id={Id}", campaign.Id);
         }
 
+        // A campaign gets the default Requisition list exactly once; after that the list is the Game Master's.
+        if (!campaign.RequisitionsSeeded)
+        {
+            campaign.Requisitions = RequisitionDefaults.Create();
+            campaign.RequisitionsSeeded = true;
+            await SaveCampaignAsync(campaign);
+            logger.LogInformation("Seeded the default Requisition list for campaign {Id}", campaign.Id);
+        }
+
         Campaign = campaign;
         return campaign;
     }

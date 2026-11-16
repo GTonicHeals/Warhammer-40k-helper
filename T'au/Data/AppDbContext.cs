@@ -51,10 +51,14 @@ public class AppDbContext : DbContext
             e.HasOne<Campaign>().WithMany().HasForeignKey(o => o.CampaignId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(o => o.Units).WithOne().HasForeignKey(u => u.OrderOfBattleId).OnDelete(DeleteBehavior.Cascade);
             e.Property(o => o.CustomTraits).HasJsonConversion();
+            e.Property(o => o.RequisitionLog).HasJsonConversion();
         });
 
         modelBuilder.Entity<BattleRecord>()
             .Property(b => b.UnitResults).HasJsonConversion();
+
+        modelBuilder.Entity<Campaign>()
+            .Property(c => c.Requisitions).HasJsonConversion();
 
         modelBuilder.Entity<CrusadeUnitCard>(e =>
         {
@@ -82,5 +86,7 @@ internal static class JsonColumnExtensions
 internal static class JsonColumn<T>
 {
     public static string Serialize(List<T>? v) => JsonSerializer.Serialize(v ?? new List<T>(), CrusadeJson.Options);
-    public static List<T> Deserialize(string json) => JsonSerializer.Deserialize<List<T>>(json, CrusadeJson.Options) ?? new List<T>();
+    // Blank reads as empty: a column added by a migration holds "" on rows that predate it.
+    public static List<T> Deserialize(string json) =>
+        string.IsNullOrWhiteSpace(json) ? new List<T>() : JsonSerializer.Deserialize<List<T>>(json, CrusadeJson.Options) ?? new List<T>();
 }

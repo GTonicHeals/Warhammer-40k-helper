@@ -81,4 +81,41 @@ public class CrusadeMappingTests : SqliteTestBase
         await Svc().SaveCrusadeAsync(order);
         (await Svc().LoadAllCrusadesAsync()).Single().Units.Single().ModelsLost.Should().Be(0);
     }
+
+    [Fact]
+    public async Task Requisition_log_round_trips()
+    {
+        var campaignId = await SeedCampaignAsync();
+        var order = new OrderOfBattle { CampaignId = campaignId };
+        order.RequisitionLog.Add(new Warhammer.Models.Campaign.RequisitionPurchase { Name = "Repair", Cost = 1, DateUtc = new DateTime(2026, 11, 15, 0, 0, 0, DateTimeKind.Utc) });
+        await using (var ctx = CreateContext()) { ctx.OrdersOfBattle.Add(order); await ctx.SaveChangesAsync(); }
+        await using (var ctx = CreateContext())
+        {
+            var loaded = await ctx.OrdersOfBattle.SingleAsync();
+            loaded.RequisitionLog.Should().ContainSingle().Which.Should().BeEquivalentTo(new { Name = "Repair", Cost = 1 });
+            loaded.RequisitionLog.Add(new Warhammer.Models.Campaign.RequisitionPurchase { Name = "Reinforce", Cost = 1 });
+            await ctx.SaveChangesAsync();
+        }
+        await using (var ctx = CreateContext())
+            (await ctx.OrdersOfBattle.SingleAsync()).RequisitionLog.Select(l => l.Name).Should().Equal("Repair", "Reinforce");
+    }
+
+    // A column added by a migration can hold "" on rows that predate it; that must read as an empty list.
+    [Fact]
+    public async Task Blank_json_columns_read_as_empty_lists()
+    {
+        var campaignId = await SeedCampaignAsync();
+        await using (var ctx = CreateContext())
+        {
+            ctx.OrdersOfBattle.Add(new OrderOfBattle { Id = "o", CampaignId = campaignId });
+            await ctx.SaveChangesAsync();
+            await ctx.Database.ExecuteSqlRawAsync("UPDATE OrdersOfBattle SET RequisitionLog = ''");
+            await ctx.Database.ExecuteSqlRawAsync("UPDATE Campaigns SET Requisitions = ''");
+        }
+        await using (var ctx = CreateContext())
+        {
+            (await ctx.OrdersOfBattle.SingleAsync()).RequisitionLog.Should().BeEmpty();
+            (await ctx.Campaigns.SingleAsync()).Requisitions.Should().BeEmpty();
+        }
+    }
 }

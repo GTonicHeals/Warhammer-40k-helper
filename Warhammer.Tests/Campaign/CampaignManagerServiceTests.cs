@@ -306,4 +306,56 @@ public class CampaignManagerServiceTests : SqliteTestBase
             (await ctx.GmNotes        .AnyAsync()).Should().BeFalse();
         }
     }
+
+    [Fact]
+    public async Task Load_seeds_the_default_requisitions_once()
+    {
+        var campaign = await CreateService().LoadCampaignAsync();
+
+        campaign.Requisitions.Should().HaveCount(7);
+        campaign.Requisitions.Take(3).Select(r => (r.Name, r.Cost, r.Kind, r.Amount)).Should().Equal(
+            ("Increase Supply Limit", 1, RequisitionKind.IncreaseSupplyLimit, 50),
+            ("Repair", 1, RequisitionKind.RepairAll, 0),
+            ("Reinforce", 1, RequisitionKind.ReinforceAll, 0));
+        campaign.Requisitions.Skip(3).Should().OnlyContain(r => r.Kind == RequisitionKind.None);
+        campaign.Requisitions.Single(r => r.Name == "Legendary Veterans").Cost.Should().Be(3);
+        campaign.Requisitions.Should().NotContain(r => r.Name == "Fresh Recruits");
+        campaign.Requisitions.Should().OnlyContain(r => r.Effect.Length > 0 && r.Timing.Length > 0);
+        campaign.Requisitions.Select(r => r.Id).Should().OnlyHaveUniqueItems();
+
+        // The seeded list is in the database, not just in memory.
+        (await CreateService().LoadCampaignAsync()).Requisitions.Should().HaveCount(7);
+
+        campaign.Requisitions.Clear();
+        await CreateService().SaveCampaignAsync(campaign);
+
+        (await CreateService().LoadCampaignAsync()).Requisitions.Should().BeEmpty("an emptied list is the Game Master's choice");
+    }
+
+    [Fact]
+    public async Task Load_seeds_requisitions_for_a_campaign_that_predates_them()
+    {
+        await using (var ctx = CreateContext())
+        {
+            ctx.Campaigns.Add(new CampaignEntity { CampaignName = "Old" });
+            await ctx.SaveChangesAsync();
+        }
+
+        var campaign = await CreateService().LoadCampaignAsync();
+
+        campaign.CampaignName.Should().Be("Old");
+        campaign.Requisitions.Should().HaveCount(7);
+    }
+
+    [Fact]
+    public async Task Requisition_edits_persist()
+    {
+        var campaign = await CreateService().LoadCampaignAsync();
+        campaign.Requisitions[0].Cost = 4;
+        campaign.Requisitions[0].Amount = 75;
+        await CreateService().SaveCampaignAsync(campaign);
+
+        var reloaded = (await CreateService().LoadCampaignAsync()).Requisitions[0];
+        (reloaded.Cost, reloaded.Amount, reloaded.Kind).Should().Be((4, 75, RequisitionKind.IncreaseSupplyLimit));
+    }
 }
