@@ -220,7 +220,6 @@ main {
     overflow-y: auto;
     background-color: var(--s-1);
     position: relative;
-    padding-bottom: 70px;
 }
 
 .content {
