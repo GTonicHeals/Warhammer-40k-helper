@@ -29,6 +29,9 @@ public static partial class AttackModifierEngine
         var save = new List<ModChip>();
 
         bool plusHit = s.PlusHit, minusHit = s.MinusHit, plusWound = s.PlusWound, bgnt = false, cover = false;
+        // Every source counts separately; the ±1 cap is applied once on the total in WoundCalculationService.
+        int rawHit = (s.PlusHit ? 1 : 0) - (s.MinusHit ? 1 : 0);
+        int rawWound = (s.PlusWound ? 1 : 0) - (s.MinusWound ? 1 : 0);
 
         // Hit
         var torrent = Has("Torrent");
@@ -40,6 +43,7 @@ public static partial class AttackModifierEngine
             hit.Add(new(Die.Hit, ChipSide.Attacker, "heavy", "Heavy +1", "+1 to hit if the attacker remained stationary",
                 s.Stationary ? ChipState.Auto : ChipState.Waiting));
             plusHit |= s.Stationary;
+            if (s.Stationary) rawHit++;
         }
 
         if (f.IsRanged && Has("Indirect Fire"))
@@ -48,12 +52,14 @@ public static partial class AttackModifierEngine
                 s.NotVisible ? ChipState.Auto : ChipState.Waiting));
             minusHit |= s.NotVisible;
             cover |= s.NotVisible;
+            if (s.NotVisible) rawHit--;
         }
 
         if (f.IsRanged && f.DefenderHasStealth)
         {
             hit.Add(new(Die.Hit, ChipSide.Defender, "stealth", "Stealth −1", "−1 to hit against ranged attacks", ChipState.Auto));
             minusHit = true;
+            rawHit--;
         }
 
         bool DefenderIs(string kw) => f.DefenderKeywords.Any(k => string.Equals(k, kw, StringComparison.OrdinalIgnoreCase));
@@ -64,6 +70,7 @@ public static partial class AttackModifierEngine
             hit.Add(new(Die.Hit, ChipSide.Attacker, "bgnt", "Big Guns −1", "−1 to hit while within Engagement Range",
                 s.InEngagementRange ? ChipState.Auto : ChipState.Waiting));
             bgnt = s.InEngagementRange;
+            if (bgnt) rawHit--;
         }
 
         hit.Add(Manual(Die.Hit, ChipSide.Attacker, "plusHit", "+1 Hit", s.PlusHit));
@@ -75,6 +82,7 @@ public static partial class AttackModifierEngine
             wound.Add(new(Die.Wound, ChipSide.Attacker, "lance", "Lance +1", "+1 to wound if the bearer charged this turn",
                 s.Charged ? ChipState.Auto : ChipState.Waiting));
             plusWound |= s.Charged;
+            if (s.Charged) rawWound++;
         }
 
         int? anti = null;
@@ -132,7 +140,9 @@ public static partial class AttackModifierEngine
             HasCover:          f.IsRanged && cover,
             InvulnSave:        f.DefenderInvuln ?? 0,
             IsRanged:          f.IsRanged,
-            IgnoresCover:      ignoresCover);
+            IgnoresCover:      ignoresCover,
+            RawHitMod:         rawHit,
+            RawWoundMod:       rawWound);
 
         return new AttackResolution(input, [.. hit, .. wound, .. save], anti);
     }

@@ -232,17 +232,28 @@ public class WoundCalculationServiceTests
     }
 
     [Fact]
-    public void Calculate_WithModifierThatWouldExceedCap_NetHitModClampedToMinus1()
+    public void Calculate_WithTwoHitPenalties_StacksToMinus2()
     {
-        // Arrange — MinusOneHit + BGNT would be -2 raw, but 10th Ed caps at -1
+        // Arrange — MinusOneHit + BGNT = -2 raw; house rule cap is ±2
         var input = BaseInput(hitRoll: "3+") with { MinusOneHit = true, BgntApplied = true };
 
         // Act
         var result = WoundCalculationService.Calculate(input);
 
         // Assert
-        Assert.Equal(-1, result.NetHitMod);
-        Assert.Equal("4+", result.EffectiveHitRoll); // only -1 applied, not -2
+        Assert.Equal(-2, result.NetHitMod);
+        Assert.Equal("5+", result.EffectiveHitRoll);
+    }
+
+    [Fact]
+    public void Calculate_WithHitPenaltyBeyondCap_NetHitModClampedToMinus2()
+    {
+        var input = BaseInput(hitRoll: "3+") with { RawHitMod = -3 };
+
+        var result = WoundCalculationService.Calculate(input);
+
+        Assert.Equal(-2, result.NetHitMod);
+        Assert.Equal("5+", result.EffectiveHitRoll);
     }
 
     [Fact]

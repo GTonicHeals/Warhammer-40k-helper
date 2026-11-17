@@ -139,6 +139,39 @@ public class AttackModifierEngineTests
     }
 
     [Fact]
+    public void Heavy_and_manual_plus_hit_stack_to_plus_two()
+    {
+        var r = Resolve(Facts(kw: ["Heavy"], skill: "4+"), Sit(stationary: true, plusHit: true));
+        var res = Warhammer.Services.WoundCalculationService.Calculate(r.Input);
+        res.NetHitMod.Should().Be(2);
+        res.EffectiveHitRoll.Should().Be("2+");
+    }
+
+    [Fact]
+    public void Hit_bonus_caps_at_plus_two()
+    {
+        var input = Resolve(Facts(skill: "5+"), Sit()).Input with { RawHitMod = 3 };
+        Warhammer.Services.WoundCalculationService.Calculate(input).NetHitMod.Should().Be(2);
+    }
+
+    [Fact]
+    public void Two_plus_hit_sources_outweigh_stealth()
+    {
+        // 10th Ed: sum all modifiers, then cap — (+1 Heavy +1 spotted −1 Stealth) = +1
+        var r = Resolve(Facts(kw: ["Heavy"], stealth: true), Sit(stationary: true, plusHit: true));
+        var res = Warhammer.Services.WoundCalculationService.Calculate(r.Input);
+        res.NetHitMod.Should().Be(1);
+        res.EffectiveHitRoll.Should().Be("2+");
+    }
+
+    [Fact]
+    public void Lance_and_manual_plus_wound_outweigh_minus_wound()
+    {
+        var r = Resolve(Facts(kw: ["Lance"], ranged: false), Sit(charged: true, plusWound: true, minusWound: true));
+        Warhammer.Services.WoundCalculationService.Calculate(r.Input).NetWoundMod.Should().Be(1);
+    }
+
+    [Fact]
     public void Ranged_only_situations_are_ignored_for_melee()
     {
         var r = Resolve(Facts(kw: ["Heavy", "Indirect Fire"], atkKw: ["Vehicle"], ranged: false),

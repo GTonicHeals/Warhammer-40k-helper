@@ -15,7 +15,11 @@ public record WoundCalcInput(
     bool HasCover,
     int InvulnSave,           // 0 = none, else 3/4/5/6
     bool IsRanged = true,
-    bool IgnoresCover = false
+    bool IgnoresCover = false,
+    // Sum of every hit/wound modifier source before the 10th Ed ±1 cap (e.g. Heavy + spotted = +2).
+    // When null, the sum is derived from the single-source bools above.
+    int? RawHitMod = null,
+    int? RawWoundMod = null
 );
 
 public record WoundCalcResult(
@@ -32,9 +36,12 @@ public static class WoundCalculationService
 {
     public static WoundCalcResult Calculate(WoundCalcInput i)
     {
-        // Net modifiers — 10th Ed: each is capped at [-1, +1]
-        int netHit   = Math.Clamp((i.PlusOneHit   ? 1 : 0) - (i.MinusOneHit   ? 1 : 0) - (i.BgntApplied ? 1 : 0), -1, 1);
-        int netWound = Math.Clamp((i.PlusOneWound  ? 1 : 0) - (i.MinusOneWound ? 1 : 0), -1, 1);
+        // Net modifiers — all sources are summed, then the total is capped.
+        // House rule: hit modifiers cap at ±2 (e.g. Heavy + spotted = +2); wound stays at ±1 (10th Ed).
+        int rawHit   = i.RawHitMod   ?? (i.PlusOneHit   ? 1 : 0) - (i.MinusOneHit   ? 1 : 0) - (i.BgntApplied ? 1 : 0);
+        int rawWound = i.RawWoundMod ?? (i.PlusOneWound ? 1 : 0) - (i.MinusOneWound ? 1 : 0);
+        int netHit   = Math.Clamp(rawHit,   -2, 2);
+        int netWound = Math.Clamp(rawWound, -1, 1);
 
         // Effective AP (AP reduction makes it less severe; floor at 0)
         int effectiveAp = i.WeaponAp.HasValue
