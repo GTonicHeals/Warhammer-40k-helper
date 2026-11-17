@@ -364,3 +364,7 @@ FodyWeavers.xsd
 /CICD_PROGRESS.md
 /CICD_SETUP.md
 /.claude/settings.local.json
+
+# SQLite temp files created while the app runs
+*.db-shm
+*.db-wal
