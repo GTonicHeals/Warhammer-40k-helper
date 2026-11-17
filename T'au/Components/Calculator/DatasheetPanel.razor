@@ -8,7 +8,7 @@
             @onclick="() => BandClicked.InvokeAsync()">
         <span class="ds-role">@Role</span>
         <h2 class="ds-name">@(Unit?.Label ?? $"Choose the {(Role == "Attacker" ? "attacking" : "target")} unit")</h2>
-        <span class="ds-player">@(Unit is not null ? PlayerTheme.GetLabel(Unit.PlayerId) : "▾")</span>
+        <span class="ds-player">@(Unit is not null ? Unit.Group.Badge : "▾")</span>
     </header>
 
     @if (PickerOpen || Unit is null)

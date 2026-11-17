@@ -56,6 +56,10 @@
                                         no roster
                                     </span>
                                 }
+                                <span class="badge ms-1 @(crusade.IsGmArmy ? "bg-danger" : "bg-success")"
+                                      title="@(crusade.IsGmArmy ? "Run by the Game Master" : "A player's army")">
+                                    @(crusade.IsGmArmy ? "GM" : "Player")
+                                </span>
                             </div>
                             <div class="crusade-card-body">
                                 <p class="mb-1"><strong>Faction:</strong> @(string.IsNullOrWhiteSpace(crusade.Faction) ? "—" : crusade.Faction)</p>

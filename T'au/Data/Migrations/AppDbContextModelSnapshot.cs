@@ -347,6 +347,9 @@ namespace Warhammer.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsGmArmy")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("PlayerId")
                         .IsRequired()
                         .HasColumnType("TEXT");

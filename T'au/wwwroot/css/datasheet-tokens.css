@@ -207,6 +207,10 @@
     .ds-units { padding: 0.5rem 0.9rem 0.9rem; max-height: 60vh; overflow: auto; }
     .ds-ugroup + .ds-ugroup { margin-top: 0.6rem; }
     .ds-uplayer { font: 700 0.8rem/1 var(--ds-font-display); margin: 0.4rem 0 0.3rem; }
+    .ds-utag {
+        margin-left: 0.4rem; padding: 0.1rem 0.35rem; border: 1px solid currentColor; border-radius: 3px;
+        font-size: 0.65rem; letter-spacing: 0.05em; text-transform: uppercase; opacity: 0.85;
+    }
     .ds-unit {
         display: flex; justify-content: space-between; align-items: center;
         width: 100%;

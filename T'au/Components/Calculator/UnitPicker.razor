@@ -1,26 +1,32 @@
 @using Warhammer.Models
 @using Warhammer.Models.Calculator
 
-@* Player filter + the units grouped by player, one row each with T/Sv and the player stripe. *@
+@* Group filter + the units grouped by army (players, then GM, then plain rosters), one row each with T/Sv and the seat stripe. *@
 <div class="ds-units">
-    <div class="ds-filter" role="group" aria-label="Filter by player">
+    <div class="ds-filter" role="group" aria-label="Filter by army">
         <button type="button" class="ds-filter-btn @(PlayerFilter is null ? "ds-filter-on" : "")"
                 @onclick="() => FilterChanged.InvokeAsync(null)">All</button>
-        @foreach (var p in Players)
+        @foreach (var (g, seat) in Groups)
         {
-            var id = p.Id;
+            var id = g.Id;
             <button type="button" class="ds-filter-btn @(PlayerFilter == id ? "ds-filter-on" : "")" data-filter="@id"
-                    style="--ds-accent:@PlayerTheme.GetColor(id)" @onclick="() => FilterChanged.InvokeAsync(id)">
-                Player @p.Index
+                    style="--ds-accent:@PlayerTheme.GetColor(seat)" @onclick="() => FilterChanged.InvokeAsync(id)">
+                @g.Name
             </button>
         }
     </div>
-    @foreach (var p in Players.Where(p => PlayerFilter is null || p.Id == PlayerFilter))
+    @foreach (var (g, seat) in Groups.Where(x => PlayerFilter is null || x.Group.Id == PlayerFilter))
     {
-        var color = PlayerTheme.GetColor(p.Id);
+        var color = PlayerTheme.GetColor(seat);
         <div class="ds-ugroup">
-            <div class="ds-uplayer" style="color:@color">Player @p.Index</div>
-            @foreach (var u in Units.Where(x => x.PlayerId == p.Id))
+            <div class="ds-uplayer" style="color:@color">
+                @g.Name
+                @if (g.Tag is not null)
+                {
+                    <span class="ds-utag">@g.Tag</span>
+                }
+            </div>
+            @foreach (var u in Units.Where(x => x.Group.Id == g.Id))
             {
                 var unit = u;
                 var profile = RosterHelper.GetAllProfilesRecursive(u.Unit, "Unit").FirstOrDefault();
@@ -47,6 +53,7 @@
     [Parameter] public EventCallback<string?> FilterChanged { get; set; }
     [Parameter] public EventCallback<UnitEntry> Picked { get; set; }
 
-    private IEnumerable<(string Id, int Index)> Players =>
-        Units.Select(u => (u.PlayerId, u.PlayerIndex)).DistinctBy(x => x.PlayerId).OrderBy(x => x.PlayerIndex);
+    // Each group with the roster seat that colours it.
+    private IEnumerable<(UnitGroup Group, string Seat)> Groups =>
+        Units.Select(u => (u.Group, u.PlayerId)).DistinctBy(x => x.Group.Id).OrderBy(x => x.Group.Order);
 }

@@ -281,13 +281,15 @@
             if (!string.IsNullOrEmpty(detachment) && detachmentRule != null)
                 DetachmentRules[detachment] = detachmentRule;
 
+            // Plain rosters list after every Crusade army (players 0xx, GM 1xx, rosters 2xx).
+            var group = new UnitGroup(playerId, $"Roster {playerIndex}", PlayerTheme.GetLabel(playerId), 200 + playerIndex);
             foreach (var unit in RosterLoadService.GetPlayableUnits(roster).DistinctBy(u => u.Name))
             {
                 AllUnits.Add(new UnitEntry(
                     $"{playerId}_{unit.Name}",
                     unit.Name,
                     playerId,
-                    playerIndex,
+                    group,
                     unit,
                     detachment
                 ));
@@ -300,13 +302,26 @@
         RestoreFromState();
     }
 
-    // Crusade Cards (SQLite) become extra "pc" entries carrying their honour and scar modifiers.
+    // Each Order of Battle (SQLite) becomes its own picker group carrying its cards' honour and
+    // scar modifiers: player armies first, then the Game Master's armies.
     private async Task AddCrusadeUnitsAsync()
     {
         await Crusades.LoadAllCrusadesAsync();
 
-        foreach (var crusade in Crusades.Crusades)
+        var ordered = Crusades.Crusades
+            .Where(c => !string.IsNullOrEmpty(c.PlayerId))
+            .OrderBy(c => c.IsGmArmy)
+            .ThenBy(c => c.CreatedUtc)
+            .ToList();
+
+        for (var i = 0; i < ordered.Count; i++)
         {
+            var crusade = ordered[i];
+            var name = string.IsNullOrWhiteSpace(crusade.ArmyName) ? "Unnamed Crusade" : crusade.ArmyName;
+            var group = crusade.IsGmArmy
+                ? new UnitGroup($"pc_{crusade.Id}", name, "GM", 100 + i, "GM")
+                : new UnitGroup($"pc_{crusade.Id}", name, "PLAYER", i, "Player");
+
             if (string.IsNullOrEmpty(crusade.PlayerId)) continue;
 
             var roster = await RosterLoader.LoadRosterAsync(crusade.PlayerId);
@@ -325,8 +340,8 @@
                 AllUnits.Add(new UnitEntry(
                     Key:            $"pc_{crusade.Id}_{card.Id}",
                     Label:          label,
-                    PlayerId:       "pc",
-                    PlayerIndex:    0,
+                    PlayerId:       crusade.PlayerId,
+                    Group:          group,
                     Unit:           selection,
                     DetachmentName: crusade.DetachmentName,
                     CrusadeData:    card
@@ -337,8 +352,9 @@
 
     private void RestoreFromState()
     {
-        AttackerPlayerFilter = CalcState.AttackerFilter;
-        DefenderPlayerFilter = CalcState.DefenderFilter;
+        // A saved filter can name a group that no longer exists (old "pc" bucket, deleted army).
+        AttackerPlayerFilter = AllUnits.Any(u => u.Group.Id == CalcState.AttackerFilter) ? CalcState.AttackerFilter : null;
+        DefenderPlayerFilter = AllUnits.Any(u => u.Group.Id == CalcState.DefenderFilter) ? CalcState.DefenderFilter : null;
 
         if (SelectedAttacker == null && !string.IsNullOrEmpty(CalcState.AttackerUnitKey))
         {
@@ -365,7 +381,7 @@
     private void SetAttackerFilter(string? playerId)
     {
         AttackerPlayerFilter = playerId;
-        if (SelectedAttacker != null && playerId != null && SelectedAttacker.PlayerId != playerId)
+        if (SelectedAttacker != null && playerId != null && SelectedAttacker.Group.Id != playerId)
             ClearAttacker();
         CalcState.AttackerFilter = AttackerPlayerFilter;
     }
@@ -373,7 +389,7 @@
     private void SetDefenderFilter(string? playerId)
     {
         DefenderPlayerFilter = playerId;
-        if (SelectedDefender != null && playerId != null && SelectedDefender.PlayerId != playerId)
+        if (SelectedDefender != null && playerId != null && SelectedDefender.Group.Id != playerId)
             ClearDefender();
         CalcState.DefenderFilter = DefenderPlayerFilter;
     }

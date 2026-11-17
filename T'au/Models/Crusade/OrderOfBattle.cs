@@ -14,6 +14,7 @@ public class OrderOfBattle
     public string Faction { get; set; } = "";
     public string DetachmentName { get; set; } = "";
     public string PlayerId { get; set; } = "";   // FK to RosterLoadService player IDs (p1, p2, ...); empty = legacy crusade
+    public bool IsGmArmy { get; set; }           // true = an army the Game Master runs; false = a player's army
     public int SupplyLimit { get; set; } = 1000;
     public int RequisitionPoints { get; set; } = 5;
     public List<CrusadeUnitCard> Units { get; set; } = new();

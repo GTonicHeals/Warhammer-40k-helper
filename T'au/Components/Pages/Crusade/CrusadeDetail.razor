@@ -33,6 +33,16 @@
             <input class="form-control form-control-lg crusade-title-input"
                    @bind="_crusade.ArmyName" @bind:after="SaveAsync"
                    placeholder="Unnamed Crusade" />
+            <div class="btn-group ms-2 flex-shrink-0" role="group" aria-label="Who plays this army">
+                <button type="button" class="btn @(!_crusade.IsGmArmy ? "btn-warning" : "btn-outline-warning")"
+                        aria-pressed="@(!_crusade.IsGmArmy ? "true" : "false")" @onclick="() => SetGmArmy(false)">
+                    <i class="bi bi-person-fill me-1"></i>Player
+                </button>
+                <button type="button" class="btn @(_crusade.IsGmArmy ? "btn-warning" : "btn-outline-warning")"
+                        aria-pressed="@(_crusade.IsGmArmy ? "true" : "false")" @onclick="() => SetGmArmy(true)">
+                    <i class="bi bi-eye-fill me-1"></i>GM
+                </button>
+            </div>
             <a href="crusade" class="btn btn-outline-secondary ms-2 text-nowrap flex-shrink-0"><i class="bi bi-arrow-left"></i> Back</a>
         </div>     
 
@@ -844,6 +854,14 @@
     {
         if (_crusade is null) return;
         await CrusadeMgr.SaveCrusadeAsync(_crusade);
+    }
+
+    // Player armies list first in the Wound Calculator, the Game Master's after them.
+    private async Task SetGmArmy(bool isGm)
+    {
+        if (_crusade is null || _crusade.IsGmArmy == isGm) return;
+        _crusade.IsGmArmy = isGm;
+        await SaveAsync();
     }
 
     private async Task IncRp()
