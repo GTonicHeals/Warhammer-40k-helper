@@ -37,6 +37,28 @@ public class RequisitionRulesTests
     }
 
     [Fact]
+    public void Paying_twice_the_cost_increases_supply_limit_twice()
+    {
+        var order = Order();
+
+        RequisitionRules.Buy(order, Req(RequisitionKind.IncreaseSupplyLimit, amount: 50), 2, Now);
+
+        order.SupplyLimit.Should().Be(1100);
+        order.RequisitionPoints.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData(1, 0, 50)]   // free grant still gives one increase
+    [InlineData(2, 3, 50)]   // only whole multiples of the cost count
+    [InlineData(2, 4, 100)]
+    [InlineData(0, 3, 50)]   // free requisition: one increase whatever is paid
+    public void Supply_increase_scales_with_whole_multiples_of_the_cost(int reqCost, int paid, int expected)
+    {
+        RequisitionRules.SupplyIncrease(Req(RequisitionKind.IncreaseSupplyLimit, cost: reqCost, amount: 50), paid)
+            .Should().Be(expected);
+    }
+
+    [Fact]
     public void Repair_restores_every_wound_and_leaves_models()
     {
         var order = Order();

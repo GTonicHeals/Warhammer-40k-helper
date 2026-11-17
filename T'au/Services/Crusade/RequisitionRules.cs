@@ -21,6 +21,14 @@ public static class RequisitionRules
         _ => 0
     };
 
+    // Supply Limit gained when paying `cost` for an Increase Supply Limit: one Amount per whole
+    // multiple of the requisition's cost (2 RP on a 1 RP / +50 entry = +100), at least one.
+    public static int SupplyIncrease(Requisition req, int cost)
+    {
+        var times = req.Cost > 0 ? Math.Max(1, cost / req.Cost) : 1;
+        return Math.Max(0, req.Amount) * times;
+    }
+
     // Validates before touching anything, so a refused purchase leaves the Order of Battle as it was.
     public static void Buy(OrderOfBattle order, Requisition req, int cost, DateTime nowUtc)
     {
@@ -30,7 +38,7 @@ public static class RequisitionRules
         switch (req.Kind)
         {
             case RequisitionKind.IncreaseSupplyLimit:
-                order.SupplyLimit += Math.Max(0, req.Amount);
+                order.SupplyLimit += SupplyIncrease(req, cost);
                 break;
             case RequisitionKind.RepairAll:
                 foreach (var u in order.Units) u.WoundsLost = 0;

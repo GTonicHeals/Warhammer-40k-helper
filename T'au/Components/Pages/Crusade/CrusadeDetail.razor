@@ -134,7 +134,7 @@
                                     }
                                     else if (buying.Kind == RequisitionKind.IncreaseSupplyLimit)
                                     {
-                                        <span>Supply Limit @_crusade.SupplyLimit → @(_crusade.SupplyLimit + Math.Max(0, buying.Amount)).</span>
+                                        <span>Supply Limit @_crusade.SupplyLimit → @(_crusade.SupplyLimit + RequisitionRules.SupplyIncrease(buying, _buyCost ?? 0)).</span>
                                     }
                                     else if (buying.Kind == RequisitionKind.None)
                                     {
