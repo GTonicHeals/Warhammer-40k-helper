@@ -9,6 +9,10 @@
         <span class="ds-role">@Role</span>
         <h2 class="ds-name">@(Unit?.Label ?? $"Choose the {(Role == "Attacker" ? "attacking" : "target")} unit")</h2>
         <span class="ds-player">@(Unit is not null ? Unit.Group.Badge : "▾")</span>
+        @if (Unit is not null)
+        {
+            <span class="ds-band-caret" aria-hidden="true">@(PickerOpen ? "▴" : "▾")</span>
+        }
     </header>
 
     @if (PickerOpen || Unit is null)
@@ -34,11 +38,21 @@
         </div>
         @Weapons
         @Chips
-        @Body
-        <div class="ds-sheet-foot">
-            <button type="button" class="ds-link" @onclick="() => DatasheetClicked.InvokeAsync()">
-                <i class="bi bi-file-text me-1"></i>Datasheet
-            </button>
+        @* Stratagems and abilities are reference material: on the stacked (phone) layout they fold
+           away behind the toggle in the foot so the rolls and the other sheet stay close. *@
+        <div class="ds-lower">
+            <div class="ds-extras @(_extrasOpen ? "ds-extras-open" : "")">
+                @Body
+            </div>
+            <div class="ds-sheet-foot">
+                <button type="button" class="ds-link ds-extras-toggle" aria-expanded="@(_extrasOpen ? "true" : "false")"
+                        @onclick="() => _extrasOpen = !_extrasOpen">
+                    Stratagems &amp; abilities @(_extrasOpen ? "▴" : "▾")
+                </button>
+                <button type="button" class="ds-link" @onclick="() => DatasheetClicked.InvokeAsync()">
+                    <i class="bi bi-file-text me-1"></i>Datasheet
+                </button>
+            </div>
         </div>
     }
 </section>
@@ -62,6 +76,7 @@
     [Parameter] public EventCallback DatasheetClicked { get; set; }
 
     private Profile? _profile;
+    private bool _extrasOpen;
 
     private string Accent => Unit is null ? "#777" : PlayerTheme.GetColor(Unit.PlayerId);
 

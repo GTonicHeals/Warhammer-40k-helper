@@ -29,7 +29,7 @@
     }
     else
     {
-        <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center justify-content-between mb-3 crusade-head">
             <input class="form-control form-control-lg crusade-title-input"
                    @bind="_crusade.ArmyName" @bind:after="SaveAsync"
                    placeholder="Unnamed Crusade" />
@@ -677,6 +677,16 @@
     .wc-tile-ico { font-size: 0.65rem; color: #555; flex-shrink: 0; margin-top: 2px; }
     .wc-tile-name { font-size: 0.78rem; font-weight: 600; color: #d0d0d0; line-height: 1.25; word-break: break-word; }
     .wc-tile-foot { display: flex; justify-content: flex-end; }
+    /* Phones: the army name gets its own line; unit stat inputs line up under wrapped labels. */
+    @@media (max-width: 640px) {
+        .crusade-head { flex-wrap: wrap; gap: 0.5rem; }
+        .crusade-head .crusade-title-input { flex: 1 0 100%; font-size: 1.25rem; padding-left: 0.5rem; padding-right: 0.5rem; }
+        .crusade-head .btn-group, .crusade-head > .btn { margin-left: 0 !important; }
+        .crusade-head .btn-group { flex: 1 1 auto; }
+        .crusade-card-body > .row { align-items: flex-end; }
+        .crusade-card-body .form-label { font-size: 0.8rem; }
+        .crusade-card-body .form-check-input { width: 1.25rem; height: 1.25rem; margin-top: 0; }
+    }
 </style>
 
 @code {

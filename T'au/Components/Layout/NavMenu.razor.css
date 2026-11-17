@@ -201,6 +201,9 @@
 @media (max-width: 640px) {
     .navbar-toggler-btn {
         display: flex;
+        width: 2.75rem;
+        height: 2.75rem;
+        margin-right: 0.25rem;
     }
 
     .nav-scrollable {
@@ -214,7 +217,9 @@
         border-bottom: 2px solid var(--c-primary, #d35400);
         box-shadow: var(--sh-lg, 0 8px 24px rgba(0, 0, 0, 0.7));
         max-height: calc(100vh - var(--toprow-h, 3.5rem));
+        max-height: calc(100dvh - var(--toprow-h, 3.5rem));
         overflow-y: auto;
+        overscroll-behavior: contain;
         z-index: 50;
         scrollbar-width: thin;
         scrollbar-color: var(--b-strong, #555) var(--s-2, #1a1a1a);

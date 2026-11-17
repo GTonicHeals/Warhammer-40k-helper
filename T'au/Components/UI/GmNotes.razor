@@ -8,7 +8,7 @@
             <i class="bi bi-arrow-left me-1"></i>Back to Map
         </button>
     </div>
-    <div class="gm-notes-body">
+    <div class="gm-notes-body @(_selectedNote is not null ? "gm-has-selection" : "")">
         <div class="row h-100 g-0">
 
             <!-- Left: note list -->
@@ -68,6 +68,10 @@
                 }
                 else
                 {
+                    @* Phones show the list or the editor, never both: this is the way back to the list. *@
+                    <button type="button" class="btn btn-sm btn-outline-warning gm-back-to-list" @onclick="() => _selectedNote = null">
+                        <i class="bi bi-list-ul me-1"></i>All notes
+                    </button>
                     <input class="gm-note-title-input"
                            placeholder="Note title…"
                            @bind="_selectedNote.Title"
@@ -253,6 +257,23 @@
         padding-top: 40px;
         text-align: center;
         letter-spacing: 1px;
+    }
+    .gm-back-to-list { display: none; }
+
+    /* Phones: list and editor stacked would push the editor off the (non-scrolling) overlay,
+       so show one at a time: the list, then the picked note with a button back. */
+    @@media (max-width: 767.98px) {
+        .gm-notes-header { padding: 8px 12px; gap: 8px; font-size: 0.85rem; letter-spacing: 1px; }
+        .gm-notes-body { padding: 10px; }
+        .gm-list-col { border-right: none; padding-right: 0; }
+        .gm-editor-col { padding-left: 0; }
+        .gm-notes-body:not(.gm-has-selection) .gm-editor-col { display: none; }
+        .gm-notes-body.gm-has-selection .gm-list-col { display: none; }
+        .gm-back-to-list { display: inline-flex; align-self: flex-start; flex-shrink: 0; }
+        .gm-action-btn, .gm-delete-btn { width: 40px; height: 40px; font-size: 1rem; }
+        .gm-note-item { gap: 6px; padding: 8px; }
+        .gm-note-title-input, .gm-note-tags-input, .gm-notes-textarea { font-size: 16px; }
+        .gm-notes-textarea { padding: 12px; line-height: 1.55; }
     }
 </style>
 

@@ -699,5 +699,13 @@ else
         padding: 15px;
     }
 
-
+    /* Phones: the wound counter and Battle-shock are tapped all game long. */
+    @@media (max-width: 640px) {
+        .unit-status-bar { padding: 6px 10px; }
+        .usb-btn { width: 2.75rem; height: 2.75rem; font-size: 1.4rem; }
+        .usb-wounds-val { font-size: 1.1rem; min-width: 4.5rem; }
+        .usb-wounds-max { font-size: 0.75rem; color: #9a9a9a; }
+        .usb-shock-btn { min-height: 2.75rem; padding: 2px 12px; font-size: 0.75rem; }
+        .datasheet-body { padding: 10px; }
+    }
 </style>

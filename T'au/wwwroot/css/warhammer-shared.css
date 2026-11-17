@@ -283,3 +283,58 @@
     font-weight: bold;
     color: #aaa;
 }
+
+
+/* =============================================================
+   PHONES (≤ 640px) — shared touch and fit rules
+   ============================================================= */
+@media (max-width: 640px) {
+    /* iOS zooms the page when a focused field's text is under 16px. */
+    input.form-control, textarea.form-control, select.form-select,
+    .form-control-sm, .form-select-sm {
+        font-size: 16px;
+    }
+
+    .form-control-sm, .form-select-sm { min-height: 2.5rem; }
+
+    /* Finger-sized buttons. */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.3rem; /* inline-flex drops the space between an icon and its label */
+        min-height: 2.75rem;
+    }
+    .btn-sm { min-height: 2.5rem; min-width: 2.5rem; }
+    .btn.d-block, .btn.w-100 { display: flex; }
+    .btn-close { padding: 0.9rem; }
+    .strat-badge { min-height: 2.5rem; }
+
+    /* Long words (unit and weapon names) must not push a card wider than the screen. */
+    h1, h2, h3, h4, h5 { overflow-wrap: break-word; }
+    h1 { font-size: 1.75rem; }
+
+    /* Hover cards become a sheet pinned to the bottom of the screen: they can no longer
+       hang off the edge, and a tap shows them where a thumb is not in the way. */
+    .kw-tooltip, .strat-hover-tooltip {
+        position: fixed;
+        left: 0.75rem;
+        right: 0.75rem;
+        bottom: 0.75rem;
+        top: auto;
+        transform: none;
+        min-width: 0;
+        max-width: none;
+        max-height: 45vh;
+        overflow-y: auto;
+        z-index: 2000;
+    }
+    .kw-tooltip-title { font-size: 0.85rem; }
+    .kw-tooltip-body { font-size: 0.85rem; }
+
+    /* Datasheet weapon tables: tighter cells so all six characteristics stay on screen. */
+    .weapon-table { font-size: 0.85rem; }
+    .weapon-table th, .weapon-table td { padding-left: 3px; padding-right: 3px; }
+    .weapon-table td.weapon-name { overflow-wrap: anywhere; }
+    .datasheet-footer { align-items: flex-start; padding: 8px 10px; }
+}

@@ -51,6 +51,8 @@ public class WoundCalculatorPageTests : SqliteTestBase, IDisposable
         _ctx.Services.AddSingleton(new RosterLoadService(env, NullLogger<RosterLoadService>.Instance));
         _ctx.Services.AddSingleton(new StratagemService(env, NullLogger<StratagemService>.Instance));
         _ctx.Services.AddSingleton<WoundCalcStateService>();
+        // The page mirrors its selection to localStorage; no browser here, so those calls are no-ops.
+        _ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         _ctx.Services.AddSingleton(sp => new CampaignManagerService(factory, NullLogger<CampaignManagerService>.Instance));
         _ctx.Services.AddSingleton(sp => new CrusadeManagerService(factory,
             sp.GetRequiredService<CampaignManagerService>(), NullLogger<CrusadeManagerService>.Instance));
@@ -98,6 +100,59 @@ public class WoundCalculatorPageTests : SqliteTestBase, IDisposable
         cut.WaitForAssertion(() => Roll(cut, "hit").Should().Be("4+"));
         Roll(cut, "wound").Should().Be("2+");
         Roll(cut, "save").Should().Be("5+");
+    }
+
+    [Fact]
+    public async Task Situation_toggles_survive_leaving_the_page()
+    {
+        var cut = _ctx.RenderComponent<WoundCalculator>();
+        cut.WaitForElement("[data-role='attacker'] button[data-unit='p1_Hammerhead']");
+        await cut.Find("[data-role='attacker'] button[data-unit='p1_Hammerhead']").ClickAsync(new MouseEventArgs());
+        await cut.Find("button[data-weapon='Railgun']").ClickAsync(new MouseEventArgs());
+        await cut.Find("[data-role='defender'] button[data-unit='p2_Pathfinders']").ClickAsync(new MouseEventArgs());
+        await cut.Find("button[data-chip='heavy']").ClickAsync(new MouseEventArgs());
+        Roll(cut, "hit").Should().Be("3+");
+
+        // A fresh page (same circuit state) comes back with Heavy still on.
+        var again = _ctx.RenderComponent<WoundCalculator>();
+        again.WaitForAssertion(() => Roll(again, "hit").Should().Be("3+"));
+        again.Find("button[data-chip='heavy']").ClassList.Should().NotContain("ds-chip-waiting");
+    }
+
+    [Fact]
+    public void State_round_trips_through_its_browser_storage_copy()
+    {
+        var state = new WoundCalcStateService
+        {
+            AttackerUnitKey = "p1_Hammerhead", WeaponName = "Railgun", DefenderUnitKey = "p2_Pathfinders",
+            Situation = Warhammer.Models.Calculator.Situation.None with { Cover = true }, Invuln = 4
+        };
+
+        var copy = new WoundCalcStateService();
+        copy.TryLoadJson(state.ToJson()).Should().BeTrue();
+
+        copy.AttackerUnitKey.Should().Be("p1_Hammerhead");
+        copy.WeaponName.Should().Be("Railgun");
+        copy.Situation!.Cover.Should().BeTrue();
+        copy.Invuln.Should().Be(4);
+        copy.IsEmpty.Should().BeFalse();
+        new WoundCalcStateService().TryLoadJson("not json").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Reset_clears_both_sheets()
+    {
+        var cut = _ctx.RenderComponent<WoundCalculator>();
+        cut.WaitForElement("[data-role='attacker'] button[data-unit='p1_Hammerhead']");
+        await cut.Find("[data-role='attacker'] button[data-unit='p1_Hammerhead']").ClickAsync(new MouseEventArgs());
+        await cut.Find("[data-role='defender'] button[data-unit='p2_Pathfinders']").ClickAsync(new MouseEventArgs());
+
+        await cut.Find(".ds-reset").ClickAsync(new MouseEventArgs());
+
+        var state = _ctx.Services.GetRequiredService<WoundCalcStateService>();
+        state.AttackerUnitKey.Should().BeNull();
+        state.DefenderUnitKey.Should().BeNull();
+        cut.FindAll("[data-role='attacker'] button[data-unit]").Should().NotBeEmpty();
     }
 
     void IDisposable.Dispose()

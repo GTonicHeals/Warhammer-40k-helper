@@ -159,3 +159,28 @@
     .wr-content { flex-direction: column; }
     .wr-side-col { width: 100%; border-left: none; border-top: 1px solid var(--amber); }
 }
+
+/* Phones: readable HUD type and finger-sized log actions. */
+@media (max-width: 640px) {
+    .wr-hud-bar { padding: 8px 10px; gap: 8px; }
+    .wr-hud-left { flex-wrap: wrap; gap: 4px 8px; }
+    .wr-hud-sep { display: none; }
+    .wr-campaign-name { flex-basis: 100%; font-size: 0.82rem; }
+    .wr-terr-pill { font-size: 0.78rem; padding: 4px 10px; }
+    .wr-panel-head { font-size: 0.8rem; padding: 9px 12px; }
+    .wr-panel-body { font-size: 0.85rem; }
+    .wr-intel-label { font-size: 0.72rem; color: #8a8a8a; }
+    .wr-standby { color: #777; }
+    .wr-standing-stats { gap: 16px; }
+    .wr-stat-l { font-size: 0.7rem; color: #8a8a8a; }
+    .wr-stat-v { font-size: 1.05rem; }
+    .wr-muted { color: #8a8a8a; }
+    .wr-table { font-size: 0.8rem; }
+    .wr-table thead th { font-size: 0.7rem; }
+    .wr-del-btn { padding: 10px 8px; font-size: 1rem; color: #999; }
+    .wr-del-yes, .wr-del-no { padding: 9px 14px; font-size: 0.8rem; }
+    .wr-secret-head { font-size: 0.72rem; }
+}
+@media (max-width: 640px) {
+    .wr-table td a { display: inline-block; padding: 8px 4px; }
+}

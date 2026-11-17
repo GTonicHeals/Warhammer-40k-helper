@@ -137,3 +137,19 @@
     background: rgba(211, 84, 0, 0.12);
 }
 .ce-connection-item input[type="checkbox"] { accent-color: #d35400; }
+
+/* Phones: the top bar and the map toolbar wrap instead of pushing the page sideways. */
+@media (max-width: 640px) {
+    .ce-topbar { flex-wrap: wrap; gap: 0.5rem !important; }
+    .ce-topbar .campaign-title-input { flex: 1 0 100%; font-size: 1.35rem; padding-left: 0.5rem; padding-right: 0.5rem; }
+    .ce-topbar .btn { flex: 1 1 auto; padding-left: 0.6rem !important; padding-right: 0.6rem !important; }
+    .ce-map-toolbar { flex-wrap: wrap; }
+    .ce-biome-select { max-width: none; flex: 1 0 100%; }
+    .ce-map-toolbar .btn { flex: 1 1 auto; }
+    .ce-form-panel { padding: 12px; }
+    .ce-editor-header { flex-wrap: wrap; }
+    .ce-editor-title { flex: 1 0 100%; }
+    .ce-editor-meta { flex: 1 0 100%; justify-content: flex-end; flex-wrap: wrap; }
+    .ce-editor-title-input { font-size: 16px; padding: 8px 6px; }
+    .ce-connection-item { padding: 9px 12px; font-size: 0.9rem; }
+}

@@ -27,7 +27,7 @@
             <div class="alert alert-danger">@_error</div>
         }
 
-        <div class="d-flex gap-2 mb-4">
+        <div class="d-flex gap-2 mb-4 campaigns-new">
             <input class="form-control" id="new-campaign-name" placeholder="New campaign name"
                    @bind="_newName" @bind:event="oninput" />
             <button class="btn btn-warning flex-shrink-0" id="new-campaign" @onclick="CreateAsync" disabled="@_busy">
@@ -36,7 +36,7 @@
         </div>
 
         <div class="table-responsive">
-            <table class="table table-dark table-hover align-middle">
+            <table class="table table-dark table-hover align-middle campaigns-table">
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -50,7 +50,7 @@
                     @foreach (var c in _campaigns)
                     {
                         <tr @key="c.Id">
-                            <td>
+                            <td class="c-name">
                                 @if (_renamingId == c.Id)
                                 {
                                     <div class="d-flex gap-2">
@@ -68,10 +68,10 @@
                                     }
                                 }
                             </td>
-                            <td class="text-center">@c.PlayerCount</td>
-                            <td class="text-center">@c.BattleCount</td>
-                            <td class="text-muted small">@(c.LastOpenedUtc?.ToLocalTime().ToString("g") ?? "—")</td>
-                            <td class="text-end text-nowrap">
+                            <td class="text-center" data-label="Players">@c.PlayerCount</td>
+                            <td class="text-center" data-label="Battles">@c.BattleCount</td>
+                            <td class="text-muted small" data-label="Opened">@(c.LastOpenedUtc?.ToLocalTime().ToString("g") ?? "—")</td>
+                            <td class="text-end text-nowrap c-actions">
                                 @if (!c.IsCurrent)
                                 {
                                     <button class="btn btn-sm btn-warning" @onclick="() => OpenAsync(c.Id)" disabled="@_busy">
@@ -94,14 +94,14 @@
                         @if (_deletingId == c.Id)
                         {
                             <tr>
-                                <td colspan="5">
+                                <td colspan="5" class="c-full">
                                     <div class="alert alert-danger mb-0">
                                         <p class="mb-2">
                                             This permanently deletes <strong>@c.Name</strong>: its map, players, battles,
                                             GM notes and Crusade armies. Type the campaign name to confirm.
                                         </p>
-                                        <div class="d-flex gap-2">
-                                            <input class="form-control form-control-sm" @bind="_deleteText" @bind:event="oninput"
+                                        <div class="d-flex gap-2 flex-wrap">
+                                            <input class="form-control form-control-sm c-delete-input" @bind="_deleteText" @bind:event="oninput"
                                                    placeholder="@c.Name" />
                                             <button class="btn btn-sm btn-danger flex-shrink-0" @onclick="() => DeleteAsync(c.Id)"
                                                     disabled="@(_busy || _deleteText != c.Name)">
@@ -191,3 +191,28 @@
         _busy = false;
     }
 }
+
+<style>
+    /* Phones: each campaign is a card (name, counts, then its actions) instead of a table that scrolls sideways. */
+    @@media (max-width: 640px) {
+        .campaigns-new { flex-wrap: wrap; }
+        .campaigns-new .btn { flex: 1 0 100%; }
+        .campaigns-table, .campaigns-table tbody { display: block; }
+        .campaigns-table thead { display: none; }
+        .campaigns-table tr {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.3rem 1rem;
+            padding: 0.8rem 0.75rem;
+            background: var(--bs-table-bg);
+            border-bottom: 1px solid var(--bs-table-border-color, #373b3e);
+        }
+        .campaigns-table td { display: block; padding: 0; border: 0; background: transparent; box-shadow: none; }
+        .campaigns-table td.c-name, .campaigns-table td.c-full { flex: 1 0 100%; }
+        .campaigns-table td.c-name { font-size: 1.05rem; }
+        .campaigns-table td[data-label]::before { content: attr(data-label) ": "; color: #9a9a9a; }
+        .campaigns-table td.c-actions { flex: 1 0 100%; display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.35rem; }
+        .campaigns-table .c-delete-input { flex: 1 0 100%; }
+    }
+</style>

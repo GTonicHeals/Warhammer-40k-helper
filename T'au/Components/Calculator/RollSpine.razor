@@ -1,10 +1,27 @@
-@* The three rolls needed, bridging the two datasheets, plus the swap button. *@
-<aside class="ds-spine" aria-live="polite">
-    @Tile("hit", "Hit", Hit)
-    @Tile("wound", "Wound", Wound)
-    @Tile("save", "Save", Save)
-    <button type="button" class="ds-swap" title="Swap attacker and defender" aria-label="Swap attacker and defender"
-            @onclick="() => Swap.InvokeAsync()">⇄</button>
+@* The three rolls needed, bridging the two datasheets, plus the swap and reset buttons.
+   On the stacked (phone/tablet portrait) layout the spine is a sticky result bar at the top
+   of the page, with a one-glance Summary of what is being rolled. *@
+<aside class="ds-spine">
+    <div class="ds-spine-rolls" aria-live="polite">
+        @Tile("hit", "Hit", Hit)
+        @Tile("wound", "Wound", Wound)
+        @Tile("save", "Save", Save)
+    </div>
+    <div class="ds-spine-actions">
+        <button type="button" class="ds-swap" title="Swap attacker and defender" aria-label="Swap attacker and defender"
+                @onclick="() => Swap.InvokeAsync()">⇄</button>
+        @if (Reset.HasDelegate)
+        {
+            <button type="button" class="ds-reset" title="Clear both units and start over" aria-label="Clear both units and start over"
+                    disabled="@(!CanReset)" @onclick="() => Reset.InvokeAsync()">
+                <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+            </button>
+        }
+    </div>
+    @if (Summary is not null)
+    {
+        <div class="ds-spine-summary">@Summary</div>
+    }
 </aside>
 
 @code {
@@ -12,6 +29,10 @@
     [Parameter] public string? Wound { get; set; }
     [Parameter] public string? Save { get; set; }
     [Parameter] public EventCallback Swap { get; set; }
+    [Parameter] public EventCallback Reset { get; set; }
+    [Parameter] public bool CanReset { get; set; } = true;
+    // What is being rolled (weapon, profile, target) or the next step; only shown on the stacked layout.
+    [Parameter] public RenderFragment? Summary { get; set; }
 
     // 2–3 easy, 4 mid, 5+ (and impossible) hard, AUTO small text, nothing yet dimmed.
     public static string Tone(string? roll) => roll switch

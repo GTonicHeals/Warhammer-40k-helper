@@ -27,7 +27,7 @@
     }
     else
     {
-        <div class="d-flex align-items-center justify-content-between mb-3 gap-3">
+        <div class="d-flex align-items-center justify-content-between mb-3 gap-3 ce-topbar">
             <input class="form-control form-control-lg campaign-title-input"
                    @bind="_campaign.CampaignName"
                    @bind:after="MarkDirty"
@@ -71,7 +71,7 @@
         <div class="row g-4">
             <!-- Left: Map -->
             <div class="col-lg-7">
-                <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="d-flex align-items-center gap-2 mb-2 ce-map-toolbar">
                     <select class="form-select form-select-sm bg-dark text-warning border-secondary ce-biome-select"
                             value="@_campaign.MapBiome"
                             @onchange="OnBiomeChanged">

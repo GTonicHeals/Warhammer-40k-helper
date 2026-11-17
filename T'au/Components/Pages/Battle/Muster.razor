@@ -86,7 +86,7 @@
                                 @foreach (var u in order.Units)
                                 {
                                     var unit = u;
-                                    <label class="d-flex align-items-center gap-2 py-1 border-bottom border-secondary">
+                                    <label class="d-flex align-items-center gap-2 py-1 border-bottom border-secondary muster-unit">
                                         <input type="checkbox" class="form-check-input mt-0" data-card="@unit.Id"
                                                checked="@picked.Contains(unit.Id)"
                                                @onchange="e => Toggle(picked, unit.Id, (bool)e.Value!)" />
@@ -99,7 +99,7 @@
                                         {
                                             <span class="badge bg-secondary">CHARACTER</span>
                                         }
-                                        <span class="small text-secondary">@unit.TotalPoints pts</span>
+                                        <span class="small text-secondary text-nowrap">@unit.TotalPoints pts</span>
                                     </label>
                                 }
                                 @if (points > _pointsLimit)
@@ -137,7 +137,7 @@
             {
                 <span id="begin-hint" class="small text-secondary"><i class="bi bi-info-circle me-1"></i>@hint</span>
             }
-            <button id="begin-battle" class="btn btn-warning fw-bold" disabled="@(!CanBegin || _saving)" @onclick="BeginAsync">
+            <button id="begin-battle" class="btn btn-warning fw-bold text-nowrap flex-shrink-0" disabled="@(!CanBegin || _saving)" @onclick="BeginAsync">
                 <i class="bi bi-play-fill me-1"></i>Begin battle
             </button>
         </div>
@@ -253,3 +253,13 @@
         CardId = u.Id, PlayerId = playerId, UnitName = u.UnitName, Points = u.TotalPoints
     };
 }
+
+<style>
+    /* Phones: each unit row is one comfortable tap target. */
+    @@media (max-width: 640px) {
+        .muster-unit { min-height: 2.75rem; cursor: pointer; }
+        .muster-unit .form-check-input { width: 1.35rem; height: 1.35rem; flex-shrink: 0; }
+        .muster-unit .badge { font-size: 0.62rem; }
+        .muster-unit .flex-grow-1 { min-width: 0; overflow-wrap: break-word; }
+    }
+</style>

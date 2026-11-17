@@ -11,6 +11,7 @@
 @inject WoundCalcStateService CalcState
 @inject RosterLoadService RosterLoader
 @inject CrusadeManagerService Crusades
+@inject IJSRuntime JS
 
 <PageTitle>Wound Calculator</PageTitle>
 
@@ -48,7 +49,9 @@
             </DatasheetPanel>
 
             <!-- ── ROLL SPINE ─────────────────────────── -->
-            <RollSpine Hit="@EffectiveHitRoll" Wound="@EffectiveWoundRoll" Save="@FinalSaveRoll" Swap="SwapRoles" />
+            <RollSpine Hit="@EffectiveHitRoll" Wound="@EffectiveWoundRoll" Save="@FinalSaveRoll" Swap="SwapRoles"
+                       Reset="ResetAll" CanReset="@(SelectedAttacker != null || SelectedDefender != null)"
+                       Summary="SpineSummary" />
 
             <!-- ── DEFENDER ───────────────────────────── -->
             <DatasheetPanel Role="Defender" Unit="SelectedDefender" PickerOpen="_defenderPickerOpen"
@@ -210,6 +213,7 @@
     private string? AttackerPlayerFilter;
     private string? DefenderPlayerFilter;
     private bool _attackerPickerOpen;
+    private bool _weaponListOpen;   // stacked layout: show every weapon although one is picked
     private bool _defenderPickerOpen;
 
     private UnitEntry? SelectedAttacker;
@@ -300,6 +304,49 @@
 
         await AddCrusadeUnitsAsync();
         RestoreFromState();
+        _unitsLoaded = true;
+    }
+
+    // The selection lives in a circuit-scoped service, so a page reload or a dropped connection
+    // (a phone that went to sleep mid-game) would lose it. A copy is kept in the browser's
+    // localStorage: restored once when the circuit starts empty, re-saved whenever it changes.
+    private const string StorageKey = "woundcalc_state";
+    private bool _unitsLoaded;
+    private bool _storageChecked;
+    private string? _lastSavedJson;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_unitsLoaded) return;
+        try
+        {
+            if (!_storageChecked)
+            {
+                _storageChecked = true;
+                if (CalcState.IsEmpty)
+                {
+                    var json = await JS.InvokeAsync<string?>("localStorage.getItem", StorageKey);
+                    if (!string.IsNullOrEmpty(json) && CalcState.TryLoadJson(json))
+                    {
+                        _lastSavedJson = json;
+                        RestoreFromState();
+                        StateHasChanged();
+                        return;
+                    }
+                }
+            }
+
+            var current = CalcState.ToJson();
+            if (current != _lastSavedJson)
+            {
+                _lastSavedJson = current;
+                await JS.InvokeVoidAsync("localStorage.setItem", StorageKey, current);
+            }
+        }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or OperationCanceledException or JSDisconnectedException)
+        {
+            // No browser storage (prerender, private mode, tests): the in-memory state still works.
+        }
     }
 
     // Each Order of Battle (SQLite) becomes its own picker group carrying its cards' honour and
@@ -356,6 +403,12 @@
         AttackerPlayerFilter = AllUnits.Any(u => u.Group.Id == CalcState.AttackerFilter) ? CalcState.AttackerFilter : null;
         DefenderPlayerFilter = AllUnits.Any(u => u.Group.Id == CalcState.DefenderFilter) ? CalcState.DefenderFilter : null;
 
+        // Selecting units recalculates and so overwrites the saved toggles: read them first.
+        var savedSituation = CalcState.Situation;
+        var savedInvuln = CalcState.Invuln;
+        var restoredAttacker = false;
+        var restoredDefender = false;
+
         if (SelectedAttacker == null && !string.IsNullOrEmpty(CalcState.AttackerUnitKey))
         {
             var atk = AllUnits.FirstOrDefault(u => u.Key == CalcState.AttackerUnitKey);
@@ -363,6 +416,7 @@
             {
                 var savedWeapon = CalcState.WeaponName;
                 SelectAttackerUnit(atk);
+                restoredAttacker = true;
                 if (!string.IsNullOrEmpty(savedWeapon))
                 {
                     var w = AttackerWeapons.FirstOrDefault(x => x.Name == savedWeapon);
@@ -374,7 +428,27 @@
         if (SelectedDefender == null && !string.IsNullOrEmpty(CalcState.DefenderUnitKey))
         {
             var def = AllUnits.FirstOrDefault(u => u.Key == CalcState.DefenderUnitKey);
-            if (def != null) SelectDefenderUnit(def);
+            if (def != null) { SelectDefenderUnit(def); restoredDefender = true; }
+        }
+
+        // Put the Situation Toggles and the invulnerable save choice back on the sheets they belong to.
+        if (savedSituation is not null && (restoredAttacker || restoredDefender))
+        {
+            _situation = savedSituation with
+            {
+                Stationary = restoredAttacker && savedSituation.Stationary,
+                Charged = restoredAttacker && savedSituation.Charged,
+                NotVisible = restoredAttacker && savedSituation.NotVisible,
+                InEngagementRange = restoredAttacker && SelectedWeapon != null && savedSituation.InEngagementRange,
+                PlusHit = restoredAttacker && savedSituation.PlusHit,
+                PlusWound = restoredAttacker && savedSituation.PlusWound,
+                Cover = restoredDefender && savedSituation.Cover,
+                MinusHit = restoredDefender && savedSituation.MinusHit,
+                MinusWound = restoredDefender && savedSituation.MinusWound,
+                ReduceAp = restoredDefender && savedSituation.ReduceAp
+            };
+            if (restoredDefender && savedInvuln is int inv) _invulnSave = inv;
+            Recalculate();
         }
     }
 
@@ -449,6 +523,7 @@
 
         _selectedWeaponName = w.Name;
         SelectedWeapon = w;
+        _weaponListOpen = false;
 
         var sVal = GetChar(w, "S");
         WeaponStrength = int.TryParse(sVal, out var s) ? s : null;
@@ -651,6 +726,16 @@
         ClearWeapon();
     }
 
+    // Start over: both sheets back to their pickers, every toggle off. Army filters are kept.
+    private void ResetAll()
+    {
+        _situation = Situation.None;
+        _attackerPickerOpen = false;
+        _defenderPickerOpen = false;
+        ClearAttacker();
+        ClearDefender();
+    }
+
     private void ClearWeapon()
     {
         ResetWeaponFields();
@@ -731,6 +816,8 @@
         var result = WoundCalculationService.Calculate(resolution.Input);
 
         _chips = resolution.Chips;
+        CalcState.Situation = _situation;
+        CalcState.Invuln = SelectedDefender != null ? _invulnSave : null;
         EffectiveHitRoll = SelectedWeapon != null ? result.EffectiveHitRoll : null;
         FinalSaveRoll = result.FinalSaveRoll;
 
@@ -786,10 +873,11 @@
     private RenderFragment AttackerWeaponsTable => __builder =>
     {
         if (!AttackerWeapons.Any()) return;
-        <div class="ds-weapons">
+        var collapsed = SelectedWeapon != null && !_weaponListOpen;
+        <div class="ds-weapons @(collapsed ? "ds-weapons-collapsed" : "")">
             @foreach (var group in AttackerWeapons.GroupBy(w => w.TypeName == "Ranged Weapons"))
             {
-                <div class="ds-wgroup">
+                <div class="ds-wgroup @(group.Key ? "" : "ds-wgroup-melee") @(group.Any(w => w.Name == _selectedWeaponName) ? "ds-wgroup-on" : "")">
                     <div class="ds-whead">
                         <span class="ds-wtitle">@(group.Key ? "Ranged weapons" : "Melee weapons")</span>
                         <span>Range</span><span>A</span><span>@(group.Key ? "BS" : "WS")</span><span>S</span><span>AP</span><span>D</span>
@@ -816,6 +904,14 @@
                         </button>
                     }
                 </div>
+            }
+            @* Stacked layout only: once a weapon is picked the rest of the list folds away. *@
+            @if (SelectedWeapon != null && AttackerWeapons.Count > 1)
+            {
+                <button type="button" class="ds-wmore" aria-expanded="@(collapsed ? "false" : "true")"
+                        @onclick="() => _weaponListOpen = !_weaponListOpen">
+                    @(collapsed ? $"Change weapon · {AttackerWeapons.Count - 1} more ▾" : "Hide other weapons ▴")
+                </button>
             }
             @if (SelectedWeapon != null && SelectedWeaponKeywords.Any())
             {
@@ -844,6 +940,37 @@
                 </div>
             }
         </div>
+    };
+
+    // One-glance line under the sticky rolls on the stacked layout: what is being rolled, or the next step.
+    private RenderFragment SpineSummary => __builder =>
+    {
+        if (SelectedAttacker == null)
+        {
+            <span class="ds-sum-step">@(SelectedDefender == null ? "Pick an attacker and a target" : "Pick an attacker")</span>
+        }
+        else if (SelectedWeapon == null)
+        {
+            <span class="ds-sum-step">Pick a weapon for @SelectedAttacker.Label</span>
+        }
+        else
+        {
+            <span class="ds-sum-line">
+                <strong>@GetCleanWeaponName(SelectedWeapon.Name)</strong>
+                <span class="ds-sum-stats">A @WeaponAttacks · S @WeaponStrength · AP @WeaponAp · D @GetChar(SelectedWeapon, "D")</span>
+            </span>
+            @if (SelectedDefender == null)
+            {
+                <span class="ds-sum-step">Pick a target</span>
+            }
+            else
+            {
+                <span class="ds-sum-line">
+                    <span class="ds-sum-vs">vs</span> <strong>@SelectedDefender.Label</strong>
+                    <span class="ds-sum-stats">T @DefenderToughness · Sv @(DefenderSave)+@(_invulnSave > 0 ? $" · Inv {_invulnSave}+" : "")</span>
+                </span>
+            }
+        }
     };
 
     // A weapon stat cell; a Crusade-modified value gets the gold asterisk and names the honours on hover.
@@ -1059,6 +1186,13 @@
 
     .ds-invuln { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; padding: 0 0.9rem 0.8rem; }
     .ds-section { padding: 0.5rem 0.9rem; border-top: 1px solid var(--ds-rule); }
+    @@media (max-width: 640px) {
+        .ds-invuln { gap: 0.4rem; padding: 0 0.6rem 0.8rem; }
+        .ds-invuln .ds-section-label { flex-basis: 100%; }
+        .ds-section { padding: 0.6rem 0.6rem; }
+        .ds-kw { padding: 0.45rem 0.6rem; font-size: 0.85rem; }
+        .ds-wounds { padding: 0.25rem 0.6rem 0.5rem; }
+    }
     .ds-section-label { font: 600 0.75rem/1 var(--ds-font-display); color: var(--ds-ink-2); margin-right: 0.3rem; text-transform: uppercase; letter-spacing: 0.04em; }
     .ds-section-label em { font-style: normal; color: var(--ds-ink); margin-left: 0.3rem; text-transform: none; }
     .ds-section .strat-list { margin-top: 0.35rem; }

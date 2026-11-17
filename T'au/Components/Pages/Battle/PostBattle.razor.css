@@ -55,6 +55,8 @@
 .pb-score-input { font-size: 1.75rem; font-weight: 700; text-align: center; height: 3.5rem; margin-top: .25rem; }
 .pb-score-vs { color: #6c757d; font-weight: 700; padding-bottom: 1rem; }
 .pb-winner-opt { min-width: 0; }
+/* Phones turn every .btn into a flex box (shared CSS); the winner options keep their stacked block layout. */
+@media (max-width: 640px) { .pb-winner-opt { display: block; flex: 1 1 0; padding-left: .3rem; padding-right: .3rem; } }
 
 /* ── Side heading shared by Casualties and Tallies ─────────── */
 .pb-side-head {

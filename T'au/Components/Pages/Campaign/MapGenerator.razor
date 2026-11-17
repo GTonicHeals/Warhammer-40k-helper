@@ -273,7 +273,14 @@
     @@media (max-width: 640px) {
         .mg-root { flex-direction: column; height: auto; overflow: visible; }
         .mg-controls { width: 100%; border-right: none; border-bottom: 1px solid #c8960c; }
-        .mg-canvas-wrap { min-height: 280px; }
+        /* The preview leads and stays in view while the sliders below it are dragged. */
+        .mg-preview { order: -1; position: sticky; top: 0; z-index: 5; background: #060810; padding: 8px; border-bottom: 1px solid #c8960c; }
+        .mg-canvas-wrap { flex: none; height: 210px; min-height: 0; }
+        .mg-preview-hint { display: none; }
+        .mg-label { font-size: 0.75rem; color: #8a8a8a; }
+        .mg-hint { font-size: 0.75rem; }
+        .mg-seed-input { max-width: 140px; }
+        .mg-range { height: 2rem; }
     }
 </style>
 
