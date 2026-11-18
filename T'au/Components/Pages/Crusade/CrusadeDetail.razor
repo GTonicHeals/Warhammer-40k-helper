@@ -113,52 +113,6 @@
                             <button class="btn btn-sm btn-warning flex-shrink-0" data-buy="@req.Id" @onclick="() => PickRequisition(req)">Buy</button>
                         </div>
                     }
-
-                    @if (_buying is { } buying)
-                    {
-                        var affected = RequisitionRules.UnitsAffected(_crusade, buying);
-                        var restores = buying.Kind is RequisitionKind.RepairAll or RequisitionKind.ReinforceAll;
-                        var blocked = _buyCost is { } c ? RequisitionRules.CannotBuy(_crusade, c) : "Enter the cost in Requisition Points.";
-                        <div class="border border-warning rounded p-3 mt-3" id="req-confirm">
-                            <div class="text-white fw-bold mb-2">Buy @buying.Name?</div>
-                            <div class="row g-2 align-items-end">
-                                <div class="col-4 col-md-2">
-                                    <label class="form-label small text-warning mb-0" for="req-cost">Cost</label>
-                                    <input id="req-cost" type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary"
-                                           @bind:get="_buyCost?.ToString()" @bind:set="(string? v) => _buyCost = int.TryParse(v, out var n) ? n : null" />
-                                </div>
-                                <div class="col small text-secondary">
-                                    @if (restores && affected > 0)
-                                    {
-                                        <span>@affected unit@(affected == 1 ? "" : "s") will be restored.</span>
-                                    }
-                                    else if (buying.Kind == RequisitionKind.IncreaseSupplyLimit)
-                                    {
-                                        <span>Supply Limit @_crusade.SupplyLimit → @(_crusade.SupplyLimit + RequisitionRules.SupplyIncrease(buying, _buyCost ?? 0)).</span>
-                                    }
-                                    else if (buying.Kind == RequisitionKind.None)
-                                    {
-                                        <span>Text only: the points are spent and you apply the effect by hand.</span>
-                                    }
-                                </div>
-                            </div>
-                            @if (blocked is not null)
-                            {
-                                <div class="small text-danger mt-2" id="req-warning"><i class="bi bi-exclamation-triangle me-1"></i>@blocked</div>
-                            }
-                            else if (restores && affected == 0)
-                            {
-                                <div class="small text-warning mt-2" id="req-warning"><i class="bi bi-exclamation-circle me-1"></i>No unit needs this right now. Buying it still spends the points.</div>
-                            }
-                            <div class="d-flex gap-2 mt-3">
-                                <button class="btn btn-sm btn-success" id="req-confirm-buy" disabled="@(blocked is not null)" @onclick="BuyAsync">
-                                    <i class="bi bi-check2 me-1"></i>Buy
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary" id="req-cancel" @onclick="() => _buying = null">Cancel</button>
-                            </div>
-                            <div class="small text-secondary mt-2">A purchase cannot be undone here; correct mistakes with the +/− buttons and the card fields.</div>
-                        </div>
-                    }
                 </div>
             </div>
         }
@@ -488,6 +442,67 @@
         }
     }
 </div>
+
+@if (_buying is { } buying && _crusade is not null)
+{
+    var affected = RequisitionRules.UnitsAffected(_crusade, buying);
+    var restores = buying.Kind is RequisitionKind.RepairAll or RequisitionKind.ReinforceAll;
+    var blocked = _buyCost is { } c ? RequisitionRules.CannotBuy(_crusade, c) : "Enter the cost in Requisition Points.";
+    <div class="modal-backdrop fade show" style="cursor:pointer" @onclick="() => _buying = null"></div>
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" @onclick="() => _buying = null">
+        <div class="modal-dialog modal-dialog-centered" @onclick:stopPropagation="true">
+            <div class="modal-content bg-dark border-warning text-light" id="req-confirm">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning"><i class="bi bi-box-seam me-2"></i>Buy @buying.Name?</h5>
+                    <button type="button" class="btn-close btn-close-white" aria-label="Close" @onclick="() => _buying = null"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(buying.Effect))
+                    {
+                        <div class="small mb-3">@buying.Effect</div>
+                    }
+                    <div class="row g-2 align-items-end">
+                        <div class="col-4">
+                            <label class="form-label small text-warning mb-0" for="req-cost">Cost</label>
+                            <input id="req-cost" type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary"
+                                   @bind:get="_buyCost?.ToString()" @bind:set="(string? v) => _buyCost = int.TryParse(v, out var n) ? n : null" />
+                        </div>
+                        <div class="col small text-secondary">
+                            <div>@_crusade.RequisitionPoints RP available</div>
+                            @if (restores && affected > 0)
+                            {
+                                <span>@affected unit@(affected == 1 ? "" : "s") will be restored.</span>
+                            }
+                            else if (buying.Kind == RequisitionKind.IncreaseSupplyLimit)
+                            {
+                                <span>Supply Limit @_crusade.SupplyLimit → @(_crusade.SupplyLimit + RequisitionRules.SupplyIncrease(buying, _buyCost ?? 0)).</span>
+                            }
+                            else if (buying.Kind == RequisitionKind.None)
+                            {
+                                <span>Text only: the points are spent and you apply the effect by hand.</span>
+                            }
+                        </div>
+                    </div>
+                    @if (blocked is not null)
+                    {
+                        <div class="small text-danger mt-2" id="req-warning"><i class="bi bi-exclamation-triangle me-1"></i>@blocked</div>
+                    }
+                    else if (restores && affected == 0)
+                    {
+                        <div class="small text-warning mt-2" id="req-warning"><i class="bi bi-exclamation-circle me-1"></i>No unit needs this right now. Buying it still spends the points.</div>
+                    }
+                    <div class="small text-secondary mt-3">A purchase cannot be undone here; correct mistakes with the +/− buttons and the card fields.</div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-sm btn-outline-secondary" id="req-cancel" @onclick="() => _buying = null">Cancel</button>
+                    <button class="btn btn-sm btn-success" id="req-confirm-buy" disabled="@(blocked is not null)" @onclick="BuyAsync">
+                        <i class="bi bi-check2 me-1"></i>Buy
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @if (_showAddUnitModal && _crusade is not null)
 {

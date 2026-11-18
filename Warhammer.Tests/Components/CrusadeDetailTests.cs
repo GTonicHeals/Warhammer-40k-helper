@@ -253,6 +253,19 @@ public class CrusadeDetailTests : SqliteTestBase, IDisposable
     }
 
     [Fact]
+    public async Task Clicking_outside_the_buy_popup_cancels()
+    {
+        var cut = await PickAsync(Damaged(2), "Reinforce");
+
+        await cut.InvokeAsync(() => cut.Find(".modal-backdrop").Click());
+
+        cut.FindAll("#req-confirm").Should().BeEmpty();
+        var order = await OrderAsync("A");
+        order.RequisitionPoints.Should().Be(2);
+        order.RequisitionLog.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Purchase_log_lists_newest_first()
     {
         var order = Damaged(2);
