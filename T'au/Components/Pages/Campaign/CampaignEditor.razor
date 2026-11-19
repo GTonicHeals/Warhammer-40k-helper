@@ -32,6 +32,14 @@
                    @bind="_campaign.CampaignName"
                    @bind:after="MarkDirty"
                    placeholder="Campaign Name" />
+            <div class="btn-group flex-shrink-0" role="group" aria-label="Editor mode">
+                <button id="ce-mode-prep" class="btn @(_playMode ? "btn-outline-warning" : "btn-warning")"
+                        aria-pressed="@(_playMode ? "false" : "true")" title="Build the map and write notes"
+                        @onclick="() => _playMode = false">Prep</button>
+                <button id="ce-mode-play" class="btn @(_playMode ? "btn-warning" : "btn-outline-warning")"
+                        aria-pressed="@(_playMode ? "true" : "false")" title="Find notes fast during a session"
+                        @onclick="EnterPlayMode">Play</button>
+            </div>
             <button class="btn btn-outline-secondary flex-shrink-0" @onclick="() => _showGmNotes = true"
                     title="GM Notes &amp; Lore">
                 <i class="bi bi-journal-text me-1"></i> GM Notes
@@ -68,6 +76,12 @@
             <RequisitionEditor Campaign="_campaign" OnChanged="MarkRequisitionsDirty" OnClose="() => _showRequisitions = false" />
         }
 
+        @if (_playMode)
+        {
+            <GmTableMode Campaign="_campaign" OnNotesChanged="HandleGmNotesChanged" />
+        }
+        else
+        {
         <div class="row g-4">
             <!-- Left: Map -->
             <div class="col-lg-7">
@@ -413,6 +427,7 @@
                 }
             </div>
         </div>
+        }
     }
 </div>
 
@@ -426,6 +441,7 @@
     private int  _saveToastToken;
     private bool _showGmNotes;
     private bool _showRequisitions;
+    private bool _playMode;
     private string? _gmNotesNoteId;
     private Node?   _selectedNode;
     private GmNote? _selectedMapNote;
@@ -475,6 +491,14 @@
     }
 
     private void MarkDirty() => _hasUnsavedChanges = true;
+
+    // Play has its own map and selection; the Prep selection would point at stale panels on return.
+    private void EnterPlayMode()
+    {
+        _playMode        = true;
+        _selectedNode    = null;
+        _selectedMapNote = null;
+    }
 
     // Requisition edits are only written by the Save button; the GM Notes autosave leaves them out.
     private bool _requisitionsDirty;

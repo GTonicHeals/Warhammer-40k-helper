@@ -1,0 +1,716 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@using Warhammer.Models.Campaign
+@using Warhammer.Helpers
+
+@* GM Table Mode: finding notes fast during a session. Left: search, tags, Session / All / Inbox.
+   Centre: the campaign map. Right: the tapped location's notes, or the open note. *@
+<div class="gt-root">
+    <div class="gt-main">
+        <aside class="gt-rail" aria-label="Find notes">
+            <div class="gt-pad">
+                <div class="gt-search">
+                    <input id="gt-search" type="search" @ref="_searchRef" autocomplete="off"
+                           placeholder="Search notes, places, tags…" aria-label="Search notes"
+                           value="@_query" @oninput="e => _query = e.Value?.ToString() ?? string.Empty" />
+                    <kbd>/</kbd>
+                </div>
+                @if (_tagCounts.Count > 0)
+                {
+                    <div class="gt-chips">
+                        @foreach (var (tag, count) in _tagCounts)
+                        {
+                            var on = _tags.Contains(tag);
+                            <button type="button" class="gt-chip @(on ? "on" : "")" data-tag="@tag" aria-pressed="@(on ? "true" : "false")"
+                                    @onclick="() => ToggleTag(tag)">#@tag <b>@count</b></button>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="gt-tabs" role="tablist">
+                @foreach (var (view, label, count) in Tabs())
+                {
+                    var on = !Filtering && _view == view;
+                    <button type="button" role="tab" id="gt-tab-@view.ToString().ToLowerInvariant()" aria-selected="@(on ? "true" : "false")"
+                            class="@(on ? "on" : "")" @onclick="() => SetView(view)">
+                        @label <span class="gt-count">@count</span>
+                    </button>
+                }
+            </div>
+
+            <div class="gt-list" id="gt-list">
+                @{ var listed = Listed(); }
+                <div class="gt-list-head">
+                    @if (Filtering)
+                    {
+                        <span>@listed.Count result@(listed.Count == 1 ? "" : "s")</span>
+                        <button type="button" @onclick="ClearFilter">Clear</button>
+                    }
+                    else
+                    {
+                        <span>@(_view switch { GmNoteView.Session => "Starred for tonight", GmNoteView.Inbox => "Jotted during play · file them later", _ => "Every note, newest first" })</span>
+                    }
+                </div>
+                @foreach (var item in listed)
+                {
+                    @NoteCard(item)
+                }
+                @if (listed.Count == 0)
+                {
+                    <p class="gt-empty">
+                        @(Filtering ? "Nothing matches. Try fewer tags or a shorter word."
+                          : _view == GmNoteView.Session ? "Star a note with ☆ to keep it here for tonight."
+                          : _view == GmNoteView.Inbox ? "Inbox is empty. Press N during play to jot something down."
+                          : "No notes yet.")
+                    </p>
+                }
+            </div>
+
+            <div class="gt-capture-bar">
+                <button type="button" class="btn btn-warning w-100" id="gt-capture-open" @onclick="() => OpenCapture()">
+                    <i class="bi bi-lightning-charge me-1"></i>Quick note <kbd>N</kbd>
+                </button>
+            </div>
+        </aside>
+
+        <section class="gt-map" aria-label="Campaign map">
+            <CampaignMap Nodes="Campaign.MapNodes"
+                         MapNotes="Campaign.GmNotebook.Where(n => n.X >= 0).ToList()"
+                         MapSeed="Campaign.MapSeed" MapBiome="@Campaign.MapBiome"
+                         MapOctaves="Campaign.MapOctaves" MapLacunarity="Campaign.MapLacunarity"
+                         MapPersistence="Campaign.MapPersistence" MapScale="Campaign.MapScale"
+                         MapOffsetX="Campaign.MapOffsetX" MapOffsetY="Campaign.MapOffsetY"
+                         AllowPan="true"
+                         OnNodeSelected="HandleMapSelected" />
+            <p class="gt-hint">Tap a location to see its notes. Drag to pan, scroll to zoom.</p>
+        </section>
+
+        <aside class="gt-side" id="gt-side" aria-label="Selection">
+            @if (SelectedNote is { } note)
+            {
+                @NotePanel(note)
+            }
+            else if (SelectedNode is { } node)
+            {
+                @NodePanel(node)
+            }
+            else
+            {
+                <div class="gt-pad">
+                    <span class="gt-eyebrow">Nothing selected</span>
+                    <h2 class="gt-title">Tonight at a glance</h2>
+                    <div class="gt-stats">
+                        <div><b>@Campaign.GmNotebook.Count(n => n.IsStarred)</b><span>starred</span></div>
+                        <div><b>@Campaign.GmNotebook.Count(n => n.IsInbox)</b><span>in inbox</span></div>
+                        <div><b>@Campaign.GmNotebook.Count(n => n.IsPublic)</b><span>revealed</span></div>
+                    </div>
+                    <ul class="gt-tips">
+                        <li>Tap a location on the map to see the notes about it.</li>
+                        <li>Press <kbd>/</kbd> to search everything, GM-only text included.</li>
+                        <li>Press <kbd>N</kbd> to jot a note. It lands in the Inbox.</li>
+                    </ul>
+                </div>
+            }
+        </aside>
+    </div>
+
+    @if (_revealNote is not null)
+    {
+        <div class="gt-overlay" id="gt-reveal-overlay" @onclick="() => _revealNote = null">
+            <div class="gt-reveal-card" role="dialog" aria-modal="true" aria-label="@_revealNote.Title" @onclick:stopPropagation="true">
+                <span class="gt-eyebrow">@Campaign.CampaignName · Intelligence report</span>
+                <h2>@_revealNote.Title</h2>
+                @if (!string.IsNullOrWhiteSpace(_revealNote.Summary))
+                {
+                    <p class="gt-lead">@_revealNote.Summary</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(_revealNote.Content))
+                {
+                    <div class="gt-body">@_revealNote.Content</div>
+                }
+                <button type="button" class="btn btn-dark mt-4" @onclick="() => _revealNote = null">Close <kbd>Esc</kbd></button>
+            </div>
+        </div>
+    }
+
+    @if (_capturing)
+    {
+        <form class="gt-capture" id="gt-capture-form" @onsubmit="SaveCaptureAsync" aria-label="Quick note">
+            <input type="text" id="gt-capture-input" @ref="_captureRef" autocomplete="off"
+                   placeholder="What just happened? e.g. P1 bribed the Kroot, follow up"
+                   value="@_captureText" @oninput="e => _captureText = e.Value?.ToString() ?? string.Empty" />
+            <div class="gt-capture-row">
+                @if (_captureNodeId is not null && NodeById(_captureNodeId) is { } linkNode)
+                {
+                    <label><input type="checkbox" id="gt-capture-link" @bind="_captureLink" /> Link to @linkNode.Name</label>
+                }
+                else
+                {
+                    <span>Saved to the Inbox with the time.</span>
+                }
+                <span class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => _capturing = false">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Save</button>
+                </span>
+            </div>
+        </form>
+    }
+
+    @if (_toast is not null)
+    {
+        <div class="gt-toast" role="status">
+            <span>@_toast</span>
+            @if (_undoNote is not null)
+            {
+                <button type="button" id="gt-undo" @onclick="UndoDeleteAsync">Undo</button>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .gt-root {
+        --gt-panel: #1c1e21; --gt-panel-2: #26292d; --gt-line: #3a3d42;
+        --gt-text: #ece6d8; --gt-muted: #a49d8e; --gt-gold: #d9a521;
+        font-family: var(--ds-font-body);
+        color: var(--gt-text);
+    }
+    .gt-root kbd { font: 11px var(--ds-font-body); border: 1px solid var(--gt-line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--gt-muted); background: transparent; }
+    .gt-root mark { background: var(--gt-gold); color: var(--ds-ink); padding: 0 1px; border-radius: 2px; }
+    .gt-main { display: grid; grid-template-columns: 290px minmax(0, 1fr) 340px; gap: 0; border: 1px solid var(--gt-line); border-radius: 6px; overflow: hidden; background: var(--gt-panel); }
+    .gt-rail, .gt-side { max-height: calc(100vh - 13rem); min-height: 520px; overflow-y: auto; background: var(--gt-panel); }
+    .gt-rail { border-right: 1px solid var(--gt-line); display: flex; flex-direction: column; }
+    .gt-side { border-left: 1px solid var(--gt-line); }
+    .gt-pad { padding: 14px 16px; }
+    .gt-map { padding: 12px; min-width: 0; background: #121315; }
+    .gt-hint { color: var(--gt-muted); font-size: 13px; margin: 6px 0 0; }
+
+    .gt-search { position: relative; }
+    .gt-search input { width: 100%; min-height: 46px; padding: 0 40px 0 14px; border-radius: 6px; background: #121315; border: 1px solid var(--gt-line); color: var(--gt-text); font-size: 16px; }
+    .gt-search input:focus { outline: none; border-color: var(--gt-gold); }
+    .gt-search kbd { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); }
+
+    .gt-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .gt-chip { min-height: 32px; padding: 0 10px; border-radius: 16px; border: 1px solid var(--gt-line); background: transparent; color: var(--gt-muted); font-size: 13px; }
+    .gt-chip b { font-weight: 500; opacity: .7; }
+    .gt-chip.on { background: var(--gt-gold); border-color: var(--gt-gold); color: var(--ds-ink); }
+
+    .gt-tabs { display: flex; border-bottom: 1px solid var(--gt-line); padding: 0 8px; }
+    .gt-tabs button { flex: 1; background: none; border: 0; border-bottom: 3px solid transparent; min-height: 44px; color: var(--gt-muted);
+                      font: 600 14px var(--ds-font-display); letter-spacing: .08em; text-transform: uppercase; }
+    .gt-tabs button.on { color: var(--gt-gold); border-bottom-color: var(--gt-gold); }
+    .gt-count { font-size: 12px; background: var(--gt-panel-2); border-radius: 9px; padding: 1px 6px; margin-left: 2px; }
+
+    .gt-list { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; flex: 1; }
+    .gt-list-head { display: flex; justify-content: space-between; align-items: center; color: var(--gt-muted);
+                    font: 500 13px var(--ds-font-display); letter-spacing: .12em; text-transform: uppercase; }
+    .gt-list-head button { background: none; border: 0; color: var(--gt-gold); font-size: 13px; }
+    .gt-empty { color: var(--gt-muted); text-align: center; padding: 20px 4px; font-size: 14px; }
+
+    .gt-card-wrap { position: relative; }
+    .gt-card { display: block; width: 100%; text-align: left; background: var(--ds-card); color: var(--ds-ink); border: 0; border-radius: 3px; padding: 10px 42px 10px 12px; }
+    .gt-card:hover { background: var(--ds-card-2); }
+    .gt-card.sel { box-shadow: 0 0 0 3px var(--gt-gold); }
+    .gt-card h3 { margin: 0; font: 700 18px/1.15 var(--ds-font-display); text-transform: uppercase; letter-spacing: .02em; }
+    .gt-card p { margin: 4px 0 0; font-size: 14px; color: var(--ds-ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .gt-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--ds-ink-2); }
+    .gt-meta .tag { font-weight: 600; }
+    .gt-meta .pub { color: #2c6a2a; font-weight: 600; }
+    .gt-star { position: absolute; top: 4px; right: 4px; width: 38px; height: 38px; border: 0; background: none; font-size: 20px; line-height: 1; color: var(--ds-ink-2); }
+    .gt-star.on { color: #a67708; }
+
+    .gt-capture-bar { padding: 12px 16px; border-top: 1px solid var(--gt-line); position: sticky; bottom: 0; background: var(--gt-panel); }
+    .gt-capture-bar kbd { color: var(--ds-ink); border-color: rgba(0,0,0,.3); margin-left: 6px; }
+
+    .gt-eyebrow { font: 500 12px var(--ds-font-display); letter-spacing: .14em; text-transform: uppercase; color: var(--gt-muted); }
+    .gt-title { margin: 4px 0 8px; font: 700 28px/1.05 var(--ds-font-display); text-transform: uppercase; letter-spacing: .02em; color: var(--gt-text); text-wrap: balance; }
+    .gt-back { background: none; border: 0; color: var(--gt-gold); padding: 12px 16px 0; font: 500 13px var(--ds-font-display); letter-spacing: .1em; text-transform: uppercase; }
+    .gt-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+    .gt-badge { font: 600 12px var(--ds-font-display); letter-spacing: .12em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; border: 1px solid var(--gt-line); color: var(--gt-muted); }
+    .gt-badge.public { border-color: #6fa86a; color: #6fa86a; }
+    .gt-badge.p1 { border-color: #4da6ff; color: #4da6ff; }
+    .gt-badge.p2 { border-color: #ff5555; color: #ff5555; }
+    .gt-sec { margin: 18px 0 8px; font: 500 13px var(--ds-font-display); letter-spacing: .14em; text-transform: uppercase; color: var(--gt-muted); }
+    .gt-mini { display: flex; flex-direction: column; gap: 8px; }
+    .gt-summary { font-size: 19px; line-height: 1.4; margin: 14px 0 0; }
+    .gt-details summary { color: var(--gt-gold); font: 500 13px var(--ds-font-display); letter-spacing: .12em; text-transform: uppercase; min-height: 40px; display: flex; align-items: center; cursor: pointer; }
+    .gt-body { white-space: pre-wrap; font-size: 16px; }
+    .gt-secret { margin-top: 16px; border: 1px dashed #d0584b; border-radius: 6px; padding: 10px 12px; }
+    .gt-secret-head { display: flex; justify-content: space-between; align-items: center; }
+    .gt-secret-head span { color: #d0584b; font: 600 13px var(--ds-font-display); letter-spacing: .14em; text-transform: uppercase; }
+    .gt-secret-head button { background: none; border: 1px solid var(--gt-line); border-radius: 4px; min-height: 36px; padding: 0 10px; color: var(--gt-muted); font-size: 13px; }
+    .gt-veil { margin-top: 8px; height: 36px; border-radius: 4px; background: repeating-linear-gradient(135deg, var(--gt-panel-2) 0 8px, var(--gt-panel) 8px 16px); }
+    .gt-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; }
+    .gt-actions .wide { grid-column: 1 / -1; }
+    .gt-actions .btn { min-height: 44px; }
+    .gt-field { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+    .gt-field label { font: 500 12px var(--ds-font-display); letter-spacing: .14em; text-transform: uppercase; color: var(--gt-muted); }
+    .gt-field input, .gt-field textarea, .gt-field select { background: #121315; color: var(--gt-text); border: 1px solid var(--gt-line); border-radius: 5px; padding: 9px 11px; font-size: 16px; }
+    .gt-field textarea { min-height: 84px; resize: vertical; }
+    .gt-field.secret textarea { border: 1px dashed #d0584b; }
+    .gt-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+    .gt-stats div { background: var(--gt-panel-2); border-radius: 4px; padding: 8px 10px; }
+    .gt-stats b { display: block; font: 700 22px var(--ds-font-display); }
+    .gt-stats span { font-size: 12px; color: var(--gt-muted); }
+    .gt-tips { padding-left: 18px; margin: 14px 0 0; color: var(--gt-muted); }
+    .gt-tips li { margin: 6px 0; }
+
+    .gt-overlay { position: fixed; inset: 0; z-index: 1060; background: rgba(8,7,5,.8); display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+    .gt-reveal-card { background: var(--ds-card); color: var(--ds-ink); border-radius: 3px; max-width: 760px; width: 100%; max-height: 100%; overflow-y: auto; padding: 28px 32px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+    .gt-reveal-card .gt-eyebrow { color: var(--ds-ink-2); }
+    .gt-reveal-card h2 { font: 700 clamp(30px, 5vw, 52px)/1 var(--ds-font-display); text-transform: uppercase; margin: 6px 0 16px; text-wrap: balance; }
+    .gt-lead { font-size: clamp(18px, 2.4vw, 24px); line-height: 1.4; margin: 0; }
+    .gt-reveal-card .gt-body { color: var(--ds-ink-2); font-size: 18px; margin-top: 14px; }
+    .gt-reveal-card kbd { color: inherit; }
+
+    .gt-capture { position: fixed; z-index: 1060; left: 50%; transform: translateX(-50%); bottom: 20px; width: min(560px, calc(100% - 32px)); background: var(--gt-panel-2); border: 1px solid #8a6a1a; border-radius: 8px; padding: 12px; box-shadow: 0 14px 40px rgba(0,0,0,.6); }
+    .gt-capture input[type=text] { width: 100%; min-height: 48px; padding: 0 12px; background: #121315; color: var(--gt-text); border: 1px solid var(--gt-line); border-radius: 5px; font-size: 17px; }
+    .gt-capture-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 10px; font-size: 13px; color: var(--gt-muted); }
+    .gt-capture-row label { display: inline-flex; align-items: center; gap: 6px; }
+
+    .gt-toast { position: fixed; z-index: 1070; left: 50%; transform: translateX(-50%); bottom: 20px; background: var(--ds-card); color: var(--ds-ink); border-radius: 6px; padding: 8px 8px 8px 16px; display: flex; gap: 12px; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,.5); max-width: calc(100% - 32px); }
+    .gt-toast button { background: var(--ds-ink); color: var(--ds-card); border: 0; border-radius: 4px; min-height: 36px; padding: 0 12px; font: 600 14px var(--ds-font-display); letter-spacing: .1em; text-transform: uppercase; }
+
+    @@media (max-width: 1199.98px) { .gt-main { grid-template-columns: 260px minmax(0, 1fr) 300px; } }
+    @@media (max-width: 991.98px) {
+        .gt-main { grid-template-columns: minmax(0, 1fr); }
+        .gt-rail, .gt-side { max-height: none; min-height: 0; border: 0; }
+        .gt-rail { border-bottom: 1px solid var(--gt-line); }
+        .gt-side { border-top: 1px solid var(--gt-line); }
+        .gt-list { max-height: 420px; overflow-y: auto; }
+        .gt-capture-bar { position: static; }
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public Campaign Campaign { get; set; } = default!;
+    // Raised after every note change; the page autosaves the campaign.
+    [Parameter] public EventCallback OnNotesChanged { get; set; }
+
+    private ElementReference _searchRef;
+    private ElementReference _captureRef;
+    private DotNetObjectReference<GmTableMode>? _dotNetRef;
+
+    private string _query = "";
+    private readonly HashSet<string> _tags = new(StringComparer.OrdinalIgnoreCase);
+    private GmNoteView _view = GmNoteView.Session;
+    private IReadOnlyList<(string Tag, int Count)> _tagCounts = [];
+
+    private string? _selectedNodeId;
+    private string? _selectedNoteId;
+    private string? _fromNodeId;      // set when a note was opened from a location's list
+    private bool _secretShown;
+    private bool _editing;
+
+    private bool _capturing;
+    private bool _focusCapture;
+    private string _captureText = "";
+    private string? _captureNodeId;
+    private bool _captureLink = true;
+
+    private GmNote? _revealNote;
+    private string? _toast;
+    private int _toastToken;
+    private GmNote? _undoNote;
+    private int _undoIndex;
+
+    private bool Filtering => GmNoteQuery.IsFiltering(_query, _tags);
+    private GmNote? SelectedNote => _selectedNoteId is null ? null : Campaign.GmNotebook.FirstOrDefault(n => n.Id == _selectedNoteId);
+    private Node? SelectedNode => _selectedNodeId is null ? null : NodeById(_selectedNodeId);
+    private Node? NodeById(string id) => Campaign.MapNodes.FirstOrDefault(n => n.Id == id);
+
+    protected override void OnParametersSet() => _tagCounts = GmNoteQuery.TagCounts(Campaign.GmNotebook);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("gmTableInterop.init", _dotNetRef);
+        }
+        if (_focusCapture)
+        {
+            _focusCapture = false;
+            try { await _captureRef.FocusAsync(); } catch { /* not rendered */ }
+        }
+    }
+
+    private IEnumerable<(GmNoteView, string, int)> Tabs() =>
+    [
+        (GmNoteView.Session, "★ Session", Campaign.GmNotebook.Count(n => n.IsStarred)),
+        (GmNoteView.All,     "All",       Campaign.GmNotebook.Count(n => !n.IsInbox)),
+        (GmNoteView.Inbox,   "Inbox",     Campaign.GmNotebook.Count(n => n.IsInbox)),
+    ];
+
+    private IReadOnlyList<GmNote> Listed() =>
+        GmNoteQuery.Find(Campaign.GmNotebook, Campaign.MapNodes, _query, _tags, _view);
+
+    private RenderFragment Hl(string? text) => __builder =>
+    {
+        foreach (var (run, match) in GmNoteQuery.Highlight(text, _query))
+        {
+            if (match) { <mark>@run</mark> }
+            else { @run }
+        }
+    };
+
+    private RenderFragment NoteCard(GmNote n) => __builder =>
+    {
+        var node = n.NodeId is null ? null : NodeById(n.NodeId);
+        <div class="gt-card-wrap" @key="n.Id">
+            <button type="button" class="gt-card @(n.Id == _selectedNoteId ? "sel" : "")" data-note="@n.Id" @onclick="() => OpenNote(n.Id)">
+                <h3>@Hl(n.Title)</h3>
+                @if (!string.IsNullOrWhiteSpace(n.Summary))
+                {
+                    <p>@Hl(n.Summary)</p>
+                }
+                <div class="gt-meta">
+                    @if (node is not null) { <span>⌖ @Hl(node.Name)</span> }
+                    @if (n.IsPublic) { <span class="pub">Public</span> }
+                    @if (n.IsInbox) { <span>Inbox · @n.CreatedAt.ToLocalTime().ToString("HH:mm")</span> }
+                    @foreach (var t in GmNoteQuery.ParseTags(n.Tags)) { <span class="tag">#@Hl(t)</span> }
+                </div>
+            </button>
+            <button type="button" class="gt-star @(n.IsStarred ? "on" : "")" data-star="@n.Id"
+                    aria-pressed="@(n.IsStarred ? "true" : "false")"
+                    aria-label="@(n.IsStarred ? "Remove from tonight's session" : "Add to tonight's session")"
+                    @onclick="() => ToggleStarAsync(n)">@(n.IsStarred ? "★" : "☆")</button>
+        </div>
+    };
+
+    private RenderFragment NodePanel(Node node) => __builder =>
+    {
+        var notes = Campaign.GmNotebook.Where(n => n.NodeId == node.Id).ToList();
+        var (css, owner) = OwnerOf(node);
+        <div class="gt-pad">
+            <span class="gt-eyebrow">@(node is CampaignEvent ? "Campaign event" : "Location")</span>
+            <h2 class="gt-title">@node.Name</h2>
+            <div class="gt-badges"><span class="gt-badge @css">@owner</span></div>
+            @if (!string.IsNullOrWhiteSpace(node.Description))
+            {
+                <p class="mt-2 mb-0">@node.Description</p>
+            }
+            @if (node is Territory { BuffEffect.Length: > 0 } t)
+            {
+                <p class="mt-1 mb-0 small" style="color:var(--gt-muted)">Buff: @t.BuffEffect</p>
+            }
+            <div class="gt-sec">Notes here · @notes.Count</div>
+            <div class="gt-mini">
+                @foreach (var n in notes)
+                {
+                    @NoteCard(n)
+                }
+                @if (notes.Count == 0)
+                {
+                    <p class="gt-empty">No notes about this location yet.</p>
+                }
+            </div>
+            <div class="gt-actions">
+                <button type="button" class="btn btn-outline-warning wide" @onclick="() => OpenCapture(node.Id)">+ Quick note here</button>
+            </div>
+        </div>
+    };
+
+    private RenderFragment NotePanel(GmNote n) => __builder =>
+    {
+        var node = n.NodeId is null ? null : NodeById(n.NodeId);
+        if (_fromNodeId is not null && NodeById(_fromNodeId) is { } from)
+        {
+            <button type="button" class="gt-back" @onclick="() => SelectNode(from.Id)">← @from.Name</button>
+        }
+        <div class="gt-pad">
+            @if (_editing)
+            {
+                <span class="gt-eyebrow">Editing note · saves as you type</span>
+                <div class="gt-field"><label for="gt-f-title">Title</label>
+                    <input id="gt-f-title" @bind="n.Title" @bind:event="oninput" @bind:after="SaveAsync" /></div>
+                <div class="gt-field"><label for="gt-f-summary">Summary (what you read at the table)</label>
+                    <textarea id="gt-f-summary" style="min-height:64px" @bind="n.Summary" @bind:event="oninput" @bind:after="SaveAsync"></textarea></div>
+                <div class="gt-field"><label for="gt-f-content">Details</label>
+                    <textarea id="gt-f-content" @bind="n.Content" @bind:event="oninput" @bind:after="SaveAsync"></textarea></div>
+                <div class="gt-field secret"><label for="gt-f-secret">GM only (never shown to players)</label>
+                    <textarea id="gt-f-secret" @bind="n.Secret" @bind:event="oninput" @bind:after="SaveAsync"></textarea></div>
+                <div class="gt-field"><label for="gt-f-tags">Tags, separated by commas</label>
+                    <input id="gt-f-tags" @bind="n.Tags" @bind:event="oninput" @bind:after="SaveTagsAsync" /></div>
+                <div class="gt-field"><label for="gt-f-node">Location</label>
+                    <select id="gt-f-node" value="@(n.NodeId ?? "")" @onchange="e => SetNodeAsync(n, e.Value?.ToString())">
+                        <option value="">None</option>
+                        @foreach (var x in Campaign.MapNodes)
+                        {
+                            <option value="@x.Id">@x.Name</option>
+                        }
+                    </select></div>
+                <div class="gt-actions">
+                    @if (n.IsInbox)
+                    {
+                        <button type="button" class="btn btn-warning wide" id="gt-file" @onclick="() => FileAsync(n)">File it (move out of the Inbox)</button>
+                    }
+                    <button type="button" class="btn btn-outline-light" @onclick="() => _editing = false">Done</button>
+                    <button type="button" class="btn btn-outline-danger" id="gt-delete" @onclick="() => DeleteAsync(n)">Delete</button>
+                </div>
+            }
+            else
+            {
+                <div class="gt-badges">
+                    @if (n.IsPublic)
+                    {
+                        <span class="gt-badge public">Public@(n.RevealedAt is { } r ? $" · revealed {r.ToLocalTime():HH:mm}" : "")</span>
+                    }
+                    else
+                    {
+                        <span class="gt-badge">GM only</span>
+                    }
+                    @if (node is not null) { <span class="gt-badge @OwnerOf(node).Css">⌖ @node.Name</span> }
+                    @if (n.IsInbox) { <span class="gt-badge">Inbox</span> }
+                    @foreach (var t in GmNoteQuery.ParseTags(n.Tags)) { <span class="gt-badge">#@t</span> }
+                </div>
+                <h2 class="gt-title mt-3">@n.Title</h2>
+                @if (!string.IsNullOrWhiteSpace(n.Summary))
+                {
+                    <p class="gt-summary">@n.Summary</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(n.Content))
+                {
+                    <details class="gt-details mt-2">
+                        <summary>Details</summary>
+                        <div class="gt-body">@n.Content</div>
+                    </details>
+                }
+                @if (!string.IsNullOrWhiteSpace(n.Secret))
+                {
+                    <div class="gt-secret">
+                        <div class="gt-secret-head">
+                            <span>GM only</span>
+                            <button type="button" id="gt-secret-toggle" aria-expanded="@(_secretShown ? "true" : "false")"
+                                    @onclick="() => _secretShown = !_secretShown">@(_secretShown ? "Hide" : "Show")</button>
+                        </div>
+                        @if (_secretShown)
+                        {
+                            <div class="gt-body mt-2">@n.Secret</div>
+                        }
+                        else
+                        {
+                            <div class="gt-veil" aria-hidden="true"></div>
+                        }
+                    </div>
+                }
+                <div class="gt-actions">
+                    @if (n.IsPublic)
+                    {
+                        <button type="button" class="btn btn-warning wide" id="gt-show" @onclick="() => _revealNote = n">Show to players</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-warning wide" id="gt-reveal" @onclick="() => RevealAsync(n)">Reveal to players</button>
+                    }
+                    <button type="button" class="btn btn-outline-warning" @onclick="() => ToggleStarAsync(n)">@(n.IsStarred ? "★ Starred" : "☆ Star")</button>
+                    @if (n.IsPublic)
+                    {
+                        <button type="button" class="btn btn-outline-secondary" id="gt-hide" @onclick="() => HideAsync(n)">Make GM only</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-outline-secondary" id="gt-edit" @onclick="() => _editing = true">Edit</button>
+                    }
+                </div>
+                @if (n.IsPublic)
+                {
+                    <button type="button" class="btn btn-link btn-sm px-0 mt-2" id="gt-edit" style="color:var(--gt-muted)" @onclick="() => _editing = true">Edit</button>
+                }
+            }
+        </div>
+    };
+
+    private (string Css, string Label) OwnerOf(Node node)
+    {
+        if (node is not Territory { ControllingPlayerId: { } pid }) return ("", node is CampaignEvent ? "Event" : "Unclaimed");
+        var name = Campaign.Players.FirstOrDefault(p => p.Id == pid)?.Name;
+        var label = string.IsNullOrWhiteSpace(name) ? (pid == "p1" ? "Player 1" : pid == "p2" ? "Player 2" : pid) : name;
+        return (pid is "p1" or "p2" ? pid : "", label);
+    }
+
+    // ── Finding ─────────────────────────────────────────────────────────
+    private void ToggleTag(string tag)
+    {
+        if (!_tags.Remove(tag)) _tags.Add(tag);
+    }
+
+    private void SetView(GmNoteView view)
+    {
+        _view = view;
+        ClearFilter();
+    }
+
+    private void ClearFilter()
+    {
+        _query = "";
+        _tags.Clear();
+    }
+
+    // ── Selection ───────────────────────────────────────────────────────
+    private void HandleMapSelected(string id)
+    {
+        if (Campaign.MapNodes.Any(n => n.Id == id)) SelectNode(id);
+        else if (Campaign.GmNotebook.Any(n => n.Id == id)) OpenNote(id, fromNode: null);
+    }
+
+    private void SelectNode(string id)
+    {
+        _selectedNodeId = id;
+        _selectedNoteId = null;
+        _fromNodeId = null;
+        _editing = false;
+    }
+
+    private void OpenNote(string id) =>
+        // A card inside a location's panel keeps the way back to that location.
+        OpenNote(id, _selectedNoteId is null ? _selectedNodeId : _fromNodeId);
+
+    private void OpenNote(string id, string? fromNode)
+    {
+        if (_selectedNoteId != id) { _secretShown = false; _editing = false; }
+        _selectedNoteId = id;
+        _fromNodeId = fromNode;
+        _selectedNodeId = fromNode;
+    }
+
+    // ── Changing notes ──────────────────────────────────────────────────
+    private async Task SaveAsync()
+    {
+        _tagCounts = GmNoteQuery.TagCounts(Campaign.GmNotebook);
+        await OnNotesChanged.InvokeAsync();
+    }
+
+    private Task SaveTagsAsync() => SaveAsync();
+
+    private async Task ToggleStarAsync(GmNote n)
+    {
+        n.IsStarred = !n.IsStarred;
+        await SaveAsync();
+    }
+
+    private async Task RevealAsync(GmNote n)
+    {
+        n.IsPublic = true;
+        n.RevealedAt = DateTime.UtcNow;
+        _revealNote = n;
+        await SaveAsync();
+    }
+
+    private async Task HideAsync(GmNote n)
+    {
+        n.IsPublic = false;
+        n.RevealedAt = null;
+        await SaveAsync();
+    }
+
+    private async Task SetNodeAsync(GmNote n, string? nodeId)
+    {
+        n.NodeId = string.IsNullOrEmpty(nodeId) ? null : nodeId;
+        await SaveAsync();
+    }
+
+    private async Task FileAsync(GmNote n)
+    {
+        n.IsInbox = false;
+        await SaveAsync();
+        ShowToast("Moved out of the Inbox.");
+    }
+
+    private async Task DeleteAsync(GmNote n)
+    {
+        _undoIndex = Campaign.GmNotebook.IndexOf(n);
+        Campaign.GmNotebook.Remove(n);
+        _undoNote = n;
+        _selectedNoteId = null;
+        _selectedNodeId = _fromNodeId;
+        _fromNodeId = null;
+        _editing = false;
+        await SaveAsync();
+        ShowToast($"Deleted \"{n.Title}\".", keepUndo: true);
+    }
+
+    private async Task UndoDeleteAsync()
+    {
+        if (_undoNote is null) return;
+        var note = _undoNote;
+        Campaign.GmNotebook.Insert(Math.Clamp(_undoIndex, 0, Campaign.GmNotebook.Count), note);
+        _undoNote = null;
+        _toast = null;
+        _toastToken++;
+        OpenNote(note.Id, fromNode: null);
+        await SaveAsync();
+    }
+
+    private async void ShowToast(string text, bool keepUndo = false)
+    {
+        if (!keepUndo) _undoNote = null;
+        _toast = text;
+        var token = ++_toastToken;
+        StateHasChanged();
+        await Task.Delay(6000);
+        if (token != _toastToken) return;
+        _toast = null;
+        _undoNote = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // ── Quick note ──────────────────────────────────────────────────────
+    private void OpenCapture(string? nodeId = null)
+    {
+        _captureNodeId = nodeId ?? _selectedNodeId;
+        _captureLink = true;
+        _captureText = "";
+        _capturing = true;
+        _focusCapture = true;
+    }
+
+    private async Task SaveCaptureAsync()
+    {
+        var text = _captureText.Trim();
+        if (text.Length == 0) return;
+        var note = new GmNote
+        {
+            Title   = text,
+            IsInbox = true,
+            NodeId  = _captureLink ? _captureNodeId : null,
+        };
+        Campaign.GmNotebook.Insert(0, note);
+        _capturing = false;
+        await SaveAsync();
+        ShowToast($"Saved to the Inbox at {note.CreatedAt.ToLocalTime():HH:mm}.");
+    }
+
+    // ── Keyboard ────────────────────────────────────────────────────────
+    [JSInvokable]
+    public async Task OnHotkey(string key)
+    {
+        switch (key)
+        {
+            case "search":
+                await _searchRef.FocusAsync();
+                return;
+            case "capture" when !_capturing:
+                OpenCapture();
+                break;
+            case "escape":
+                if (_revealNote is not null) _revealNote = null;
+                else if (_capturing) _capturing = false;
+                else if (Filtering) ClearFilter();
+                else if (_editing) _editing = false;
+                else { _selectedNoteId = null; _selectedNodeId = null; _fromNodeId = null; }
+                break;
+            default:
+                return;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("gmTableInterop.dispose"); }
+        catch { /* circuit gone */ }
+        _dotNetRef?.Dispose();
+    }
+}

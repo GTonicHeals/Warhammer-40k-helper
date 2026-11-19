@@ -24,4 +24,21 @@ public class GmNote
     public double Y { get; set; } = -1;
 
     public bool IsPublic { get; set; }
+
+    // Table Mode: the line read aloud at the table, and a part players never see,
+    // even once the note is public.
+    public string Summary { get; set; } = "";
+    public string Secret  { get; set; } = "";
+
+    // The map location this note is about (a Node Id); null when it is about nothing on the map.
+    public string? NodeId { get; set; }
+
+    // Starred notes form the short list for tonight's session.
+    public bool IsStarred { get; set; }
+
+    // Jotted down mid-session with Quick note; filed out of the Inbox after the session.
+    public bool IsInbox { get; set; }
+
+    // When the note was last revealed to the players; null while it is GM-only.
+    public DateTime? RevealedAt { get; set; }
 }

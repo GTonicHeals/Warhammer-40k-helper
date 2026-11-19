@@ -180,8 +180,28 @@ namespace Warhammer.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsInbox")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsPublic")
                         .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsStarred")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("NodeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("RevealedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Secret")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Tags")
                         .IsRequired()
