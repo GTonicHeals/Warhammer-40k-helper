@@ -115,6 +115,17 @@
         </aside>
     </div>
 
+    @if (PeekNote is { } peek)
+    {
+        @* Esc goes through OnHotkey here, so the peek leaves it alone. *@
+        <GmNotePeek Note="peek"
+                    LocationName="@(peek.NodeId is null ? null : NodeById(peek.NodeId)?.Name)"
+                    HandleEscape="false"
+                    OnClose="() => _peekNoteId = null"
+                    OnEdit="() => { _peekNoteId = null; OpenNote(peek.Id, fromNode: null); _editing = true; }"
+                    OnReveal="() => RevealFromPeekAsync(peek)" />
+    }
+
     @if (_revealNote is not null)
     {
         <div class="gt-overlay" id="gt-reveal-overlay" @onclick="() => _revealNote = null">
@@ -310,6 +321,7 @@
     private bool _captureLink = true;
 
     private GmNote? _revealNote;
+    private string? _peekNoteId;      // note pin tapped on the map: GM-only pop-up
     private string? _toast;
     private int _toastToken;
     private GmNote? _undoNote;
@@ -318,6 +330,7 @@
     private bool Filtering => GmNoteQuery.IsFiltering(_query, _tags);
     private GmNote? SelectedNote => _selectedNoteId is null ? null : Campaign.GmNotebook.FirstOrDefault(n => n.Id == _selectedNoteId);
     private Node? SelectedNode => _selectedNodeId is null ? null : NodeById(_selectedNodeId);
+    private GmNote? PeekNote => _peekNoteId is null ? null : Campaign.GmNotebook.FirstOrDefault(n => n.Id == _peekNoteId);
     private Node? NodeById(string id) => Campaign.MapNodes.FirstOrDefault(n => n.Id == id);
 
     protected override void OnParametersSet() => _tagCounts = GmNoteQuery.TagCounts(Campaign.GmNotebook);
@@ -552,7 +565,11 @@
     private void HandleMapSelected(string id)
     {
         if (Campaign.MapNodes.Any(n => n.Id == id)) SelectNode(id);
-        else if (Campaign.GmNotebook.Any(n => n.Id == id)) OpenNote(id, fromNode: null);
+        else if (Campaign.GmNotebook.Any(n => n.Id == id))
+        {
+            OpenNote(id, fromNode: null);
+            _peekNoteId = id;
+        }
     }
 
     private void SelectNode(string id)
@@ -596,6 +613,13 @@
         n.RevealedAt = DateTime.UtcNow;
         _revealNote = n;
         await SaveAsync();
+    }
+
+    private async Task RevealFromPeekAsync(GmNote n)
+    {
+        _peekNoteId = null;
+        if (n.IsPublic) _revealNote = n;   // already public: just show it again
+        else await RevealAsync(n);
     }
 
     private async Task HideAsync(GmNote n)
@@ -695,7 +719,8 @@
                 OpenCapture();
                 break;
             case "escape":
-                if (_revealNote is not null) _revealNote = null;
+                if (_peekNoteId is not null) _peekNoteId = null;
+                else if (_revealNote is not null) _revealNote = null;
                 else if (_capturing) _capturing = false;
                 else if (Filtering) ClearFilter();
                 else if (_editing) _editing = false;

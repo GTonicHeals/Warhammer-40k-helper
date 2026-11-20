@@ -76,6 +76,14 @@
             <RequisitionEditor Campaign="_campaign" OnChanged="MarkRequisitionsDirty" OnClose="() => _showRequisitions = false" />
         }
 
+        @if (!_playMode && _peekMapNote is { } peek)
+        {
+            <GmNotePeek Note="peek"
+                        LocationName="@(peek.NodeId is null ? null : _campaign.MapNodes.FirstOrDefault(n => n.Id == peek.NodeId)?.Name)"
+                        OnClose="() => _peekMapNote = null"
+                        OnEdit="() => _peekMapNote = null" />
+        }
+
         @if (_playMode)
         {
             <GmTableMode Campaign="_campaign" OnNotesChanged="HandleGmNotesChanged" />
@@ -445,8 +453,9 @@
     private string? _gmNotesNoteId;
     private Node?   _selectedNode;
     private GmNote? _selectedMapNote;
+    private GmNote? _peekMapNote;     // note pin clicked: GM-only read view over the editor
 
-    private bool       _newNodeIsEvent          = false;
+    private bool       _newNodeIsEvent         = false;
     private string     _newNodeName             = "";
     private string     _newNodeDescription      = "";
     // Territory-specific
@@ -537,6 +546,7 @@
         _selectedMapNote = _selectedNode is null
             ? _campaign?.GmNotebook.FirstOrDefault(n => n.Id == nodeId && n.X >= 0)
             : null;
+        _peekMapNote = _selectedMapNote;
         StateHasChanged();
     }
 

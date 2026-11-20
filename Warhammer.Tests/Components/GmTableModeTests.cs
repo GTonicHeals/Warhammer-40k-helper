@@ -135,6 +135,64 @@ public class GmTableModeTests : IDisposable
         _saves.Should().Be(2);
     }
 
+    private static CampaignModel CampaignWithPin()
+    {
+        var c = Campaign();
+        c.GmNotebook[0].X = 0.5;
+        c.GmNotebook[0].Y = 0.5;
+        return c;
+    }
+
+    [Fact]
+    public void Tapping_a_note_pin_opens_the_peek_with_the_secret_and_reveals_nothing()
+    {
+        var c = CampaignWithPin();
+        var cut = Render(c);
+        cut.Find(".map-note-pin[data-node-id='a']").Click();
+
+        var peek = cut.Find("#gnp-overlay");
+        peek.TextContent.Should().Contain("Paid by an Inquisitor").And.Contain("Kroot Encampment");
+        c.GmNotebook[0].IsPublic.Should().BeFalse();
+        _saves.Should().Be(0);
+        cut.Find("#gt-side .gt-title").TextContent.Should().Be("Kroot switch sides", "the side panel follows the pin");
+    }
+
+    [Fact]
+    public async Task Escape_closes_the_peek_but_keeps_the_note_selected()
+    {
+        var cut = Render(CampaignWithPin());
+        cut.Find(".map-note-pin[data-node-id='a']").Click();
+
+        await cut.InvokeAsync(() => cut.Instance.OnHotkey("escape"));
+
+        cut.FindAll("#gnp-overlay").Should().BeEmpty();
+        cut.Find("#gt-side .gt-title").TextContent.Should().Be("Kroot switch sides");
+    }
+
+    [Fact]
+    public void Reveal_from_the_peek_swaps_it_for_the_reveal_card()
+    {
+        var c = CampaignWithPin();
+        var cut = Render(c);
+        cut.Find(".map-note-pin[data-node-id='a']").Click();
+        cut.Find("#gnp-reveal").Click();
+
+        cut.FindAll("#gnp-overlay").Should().BeEmpty();
+        cut.Find("#gt-reveal-overlay").TextContent.Should().NotContain("Paid by an Inquisitor");
+        c.GmNotebook[0].IsPublic.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Edit_from_the_peek_opens_the_note_editor()
+    {
+        var cut = Render(CampaignWithPin());
+        cut.Find(".map-note-pin[data-node-id='a']").Click();
+        cut.Find("#gnp-edit").Click();
+
+        cut.FindAll("#gnp-overlay").Should().BeEmpty();
+        cut.FindAll("#gt-f-title").Should().HaveCount(1);
+    }
+
     [Fact]
     public void Star_toggles_session_membership()
     {

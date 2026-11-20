@@ -44,6 +44,31 @@ public class CampaignEditorTableModeTests : SqliteTestBase, IDisposable
         cut.FindAll(".ce-form-panel").Should().HaveCount(1);
     }
 
+    [Fact]
+    public async Task Prep_note_pin_opens_the_peek_and_Edit_leaves_the_edit_card()
+    {
+        var svc = Fresh();
+        var campaign = await svc.LoadCampaignAsync();
+        campaign.GmNotebook.Add(new Warhammer.Models.Campaign.GmNote
+        {
+            Title = "Vault of Tarsus", Summary = "Sealed since M39", Secret = "Holds a C'tan shard", X = 0.4, Y = 0.4,
+        });
+        await svc.SaveCampaignAsync(campaign);
+        var noteId = campaign.GmNotebook.Single().Id;
+
+        var cut = _ctx.RenderComponent<CampaignEditor>();
+        cut.WaitForElement($".map-note-pin[data-node-id='{noteId}']");
+        await cut.Find($".map-note-pin[data-node-id='{noteId}']").ClickAsync(new MouseEventArgs());
+
+        var peek = cut.Find("#gnp-overlay");
+        peek.TextContent.Should().Contain("Sealed since M39").And.Contain("Holds a C'tan shard");
+        cut.FindAll("#gnp-reveal").Should().BeEmpty("Prep has no reveal flow");
+
+        await cut.Find("#gnp-edit").ClickAsync(new MouseEventArgs());
+        cut.FindAll("#gnp-overlay").Should().BeEmpty();
+        cut.Find(".ce-editor-title-input").GetAttribute("value").Should().Be("Vault of Tarsus");
+    }
+
     void IDisposable.Dispose()
     {
         _ctx.Dispose();
