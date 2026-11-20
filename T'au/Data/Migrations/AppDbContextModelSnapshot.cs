@@ -103,8 +103,15 @@ namespace Warhammer.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<double>("MapFeatures")
+                        .HasColumnType("REAL");
+
                     b.Property<double>("MapLacunarity")
                         .HasColumnType("REAL");
+
+                    b.Property<string>("MapLandmass")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("MapOctaves")
                         .HasColumnType("INTEGER");
@@ -118,7 +125,16 @@ namespace Warhammer.Data.Migrations
                     b.Property<double>("MapPersistence")
                         .HasColumnType("REAL");
 
+                    b.Property<int>("MapRivers")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("MapRuggedness")
+                        .HasColumnType("REAL");
+
                     b.Property<double>("MapScale")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("MapSeaLevel")
                         .HasColumnType("REAL");
 
                     b.Property<int>("MapSeed")

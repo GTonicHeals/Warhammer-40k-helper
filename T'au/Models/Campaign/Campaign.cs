@@ -17,6 +17,13 @@ public class Campaign
     public double MapOffsetX     { get; set; } = 0.0;
     public double MapOffsetY     { get; set; } = 0.0;
 
+    // World Surface controls; see WorldSurfaceSettings. Landmass is one of continent|archipelago|pangea|random.
+    public double MapSeaLevel    { get; set; } = 0.35;
+    public string MapLandmass    { get; set; } = "continent";
+    public int    MapRivers      { get; set; } = 4;
+    public double MapRuggedness  { get; set; } = 0.5;
+    public double MapFeatures    { get; set; } = 0.5;
+
     public List<CampaignPlayer> Players       { get; set; } = new();
     public List<Node>           MapNodes      { get; set; } = new();
     public List<BattleRecord>   BattleHistory { get; set; } = new();

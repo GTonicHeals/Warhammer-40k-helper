@@ -107,6 +107,28 @@ public class DbBootstrapTests : IDisposable
     }
 
     [Fact]
+    public async Task Campaigns_from_before_world_surface_controls_get_the_defaults()
+    {
+        await using (var ctx = Ctx())
+        {
+            await ctx.GetService<IMigrator>().MigrateAsync("20261119020149_AddGmNoteTableMode");
+            await ctx.Database.ExecuteSqlRawAsync(
+                "INSERT INTO Campaigns (CampaignName, MapSeed, MapBiome, MapOctaves, MapLacunarity, MapPersistence, MapScale, MapOffsetX, MapOffsetY, Requisitions, RequisitionsSeeded) " +
+                "VALUES ('Live', 1, 'agri', 4, 2.0, 0.5, 2.0, 0.0, 0.0, '[]', 1)");
+        }
+        await using (var ctx = Ctx())
+        {
+            await DbBootstrap.MigrateAsync(ctx);
+            var live = await ctx.Campaigns.SingleAsync();
+            live.MapSeaLevel.Should().Be(0.35);
+            live.MapLandmass.Should().Be("continent");
+            live.MapRivers.Should().Be(4);
+            live.MapRuggedness.Should().Be(0.5);
+            live.MapFeatures.Should().Be(0.5);
+        }
+    }
+
+    [Fact]
     public async Task Bootstrap_is_idempotent()
     {
         await using var ctx = Ctx();
