@@ -1,0 +1,105 @@
+@using Warhammer.Models.Campaign
+@using Warhammer.Helpers
+
+@* GM-only pop-up showing a whole note, secret included. Opening it never reveals the note:
+   the Campaign Editor is the GM's screen, not the one on the TV. *@
+<div class="gnp-overlay" id="gnp-overlay" @onclick="OnClose">
+    <div class="gnp-card" role="dialog" aria-modal="true" aria-label="@TitleText" tabindex="-1" @ref="_card"
+         @onclick:stopPropagation="true" @onkeydown="HandleKeyDown">
+        <div class="gnp-badges">
+            @if (Note.IsPublic)
+            {
+                <span class="gnp-badge public">Public</span>
+            }
+            else
+            {
+                <span class="gnp-badge">GM only</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(LocationName))
+            {
+                <span class="gnp-badge">⌖ @LocationName</span>
+            }
+            @foreach (var t in GmNoteQuery.ParseTags(Note.Tags))
+            {
+                <span class="gnp-badge">#@t</span>
+            }
+        </div>
+        <h2>@TitleText</h2>
+        @if (!string.IsNullOrWhiteSpace(Note.Summary))
+        {
+            <p class="gnp-lead">@Note.Summary</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(Note.Content))
+        {
+            <div class="gnp-body">@Note.Content</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Note.Secret))
+        {
+            <div class="gnp-secret">
+                <span class="gnp-secret-head">GM only · never shown to players</span>
+                <div class="gnp-body mt-1">@Note.Secret</div>
+            </div>
+        }
+        @if (string.IsNullOrWhiteSpace(Note.Summary) && string.IsNullOrWhiteSpace(Note.Content) && string.IsNullOrWhiteSpace(Note.Secret))
+        {
+            <p class="gnp-empty">This note is empty. Press Edit to write it.</p>
+        }
+        <div class="gnp-actions">
+            <button type="button" class="btn btn-outline-dark" id="gnp-edit" @onclick="OnEdit">Edit</button>
+            @if (OnReveal.HasDelegate)
+            {
+                <button type="button" class="btn btn-warning" id="gnp-reveal" @onclick="OnReveal">
+                    @(Note.IsPublic ? "Show to players" : "Reveal to players")
+                </button>
+            }
+            <button type="button" class="btn btn-dark ms-auto" id="gnp-close" @onclick="OnClose">Close <kbd>Esc</kbd></button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .gnp-overlay { position: fixed; inset: 0; z-index: 1060; background: rgba(8,7,5,.8); display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+    .gnp-card { background: var(--ds-card); color: var(--ds-ink); border-radius: 3px; max-width: 760px; width: 100%; max-height: 100%; overflow-y: auto; padding: 28px 32px; box-shadow: 0 20px 60px rgba(0,0,0,.6); outline: none; font-family: var(--ds-font-body); }
+    .gnp-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+    .gnp-badge { font: 600 12px var(--ds-font-display); letter-spacing: .12em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; border: 1px solid currentColor; color: var(--ds-ink-2); }
+    .gnp-badge.public { color: #2c6a2a; }
+    .gnp-card h2 { font: 700 clamp(28px, 4.5vw, 46px)/1 var(--ds-font-display); text-transform: uppercase; margin: 12px 0 14px; text-wrap: balance; }
+    .gnp-lead { font-size: clamp(18px, 2.2vw, 22px); line-height: 1.4; margin: 0; }
+    .gnp-body { white-space: pre-wrap; font-size: 17px; line-height: 1.5; color: var(--ds-ink-2); margin-top: 12px; }
+    .gnp-secret { margin-top: 18px; border: 1px dashed #b0392c; border-radius: 6px; padding: 10px 14px; }
+    .gnp-secret-head { color: #b0392c; font: 600 13px var(--ds-font-display); letter-spacing: .14em; text-transform: uppercase; }
+    .gnp-secret .gnp-body { color: var(--ds-ink); margin-top: 4px; }
+    .gnp-empty { color: var(--ds-ink-2); font-style: italic; margin: 0; }
+    .gnp-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+    .gnp-actions .btn { min-height: 44px; }
+    .gnp-actions kbd { font: 11px var(--ds-font-body); border: 1px solid rgba(255,255,255,.4); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: transparent; color: inherit; margin-left: 4px; }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public GmNote Note { get; set; } = default!;
+    [Parameter] public string? LocationName { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnEdit { get; set; }
+    // The Reveal / Show button appears only when the host passes this.
+    [Parameter] public EventCallback OnReveal { get; set; }
+    // False when the host already listens for Esc (GM Table Mode's hotkeys); otherwise both would fire.
+    [Parameter] public bool HandleEscape { get; set; } = true;
+
+    private ElementReference _card;
+
+    private string TitleText => string.IsNullOrWhiteSpace(Note.Title) ? "Untitled note" : Note.Title;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Focus the card so Esc reaches it straight away.
+        if (firstRender)
+        {
+            try { await _card.FocusAsync(); } catch { /* not attached */ }
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (HandleEscape && e.Key == "Escape") await OnClose.InvokeAsync();
+    }
+}
