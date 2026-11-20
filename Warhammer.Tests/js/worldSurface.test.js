@@ -42,7 +42,12 @@ test('sea level 0 has no sea cells', () => {
 test('water classes: below-threshold cells are sea or lake, others land', () => {
     const w = buildWorld(S);
     for (let i = 0; i < w.height.length; i++) {
-        assert.equal(w.water[i] !== 0, w.height[i] < w.seaLevel);
+        if (w.height[i] < w.seaLevel) assert.notEqual(w.water[i], 0);
+        // extra water above sea level is a river-pooling lake sitting in a filled depression
+        else if (w.water[i] !== 0) {
+            assert.equal(w.water[i], 2);
+            assert.ok(w.filled[i] - w.height[i] > 0.004);
+        }
     }
 });
 
@@ -65,7 +70,10 @@ test('world shape: size, arrays and empty feature lists', () => {
     assert.ok(w.height instanceof Float32Array);
     assert.ok(w.water instanceof Uint8Array);
     assert.equal(w.height.length, 256 * 256);
-    assert.deepEqual([w.rivers, w.features, w.roads], [[], [], []]);
+    assert.ok(Array.isArray(w.rivers));
+    assert.ok(w.filled instanceof Float32Array);
+    assert.equal(w.filled.length, 256 * 256);
+    assert.deepEqual([w.features, w.roads], [[], []]);
 });
 
 test('sampleHeight matches the grid at cell positions', () => {
@@ -138,5 +146,96 @@ test('buildWorld completes under 300 ms', () => {
         const ms = Number(process.hrtime.bigint() - t0) / 1e6;
         console.log(`# buildWorld ${landmass}: ${ms.toFixed(1)} ms`);
         assert.ok(ms < 300, `${landmass} took ${ms} ms`);
+    }
+});
+
+// ── Rivers and lakes ──────────────────────────────────────────────────────
+const cellOf = (w, p) => Math.round(p[1] * (w.size - 1)) * w.size + Math.round(p[0] * (w.size - 1));
+
+test('rivers: 0 gives none', () => assert.equal(buildWorld({ ...S, rivers: 0 }).rivers.length, 0));
+
+test('rivers: never more than asked, at least one when asked on a normal map', () => {
+    for (const n of [1, 4, 12]) {
+        const w = buildWorld({ ...S, rivers: n });
+        assert.ok(w.rivers.length <= n, `${w.rivers.length} > ${n}`);
+        assert.ok(w.rivers.length >= 1);
+    }
+});
+
+test('rivers: shape, width range, points inside the map, deterministic', () => {
+    const w = buildWorld({ ...S, rivers: 8 });
+    for (const r of w.rivers) {
+        assert.ok(r.points.length >= 12);
+        assert.ok(r.width >= 1 && r.width <= 4, `width ${r.width}`);
+        for (const [x, y] of r.points) assert.ok(x >= 0 && x <= 1 && y >= 0 && y <= 1);
+    }
+    assert.deepEqual(buildWorld({ ...S, rivers: 8 }).rivers, w.rivers);
+});
+
+test('every river ends in water, the border, or another river', () => {
+    for (const seed of [42, 7, 99]) {
+        const w = buildWorld({ ...S, seed, rivers: 12 });
+        const n = w.size;
+        const own = w.rivers.map(r => new Set(r.points.map(p => cellOf(w, p))));
+        w.rivers.forEach((r, k) => {
+            const last = cellOf(w, r.points[r.points.length - 1]);
+            const x = last % n, y = (last - x) / n;
+            const border = x === 0 || y === 0 || x === n - 1 || y === n - 1;
+            const onEarlier = own.slice(0, k).some(set => set.has(last));
+            assert.ok(w.water[last] !== 0 || border || onEarlier, `river ${k} (seed ${seed}) dangles`);
+        });
+    }
+});
+
+test('every river runs downhill or flat on the filled surface', () => {
+    const w = buildWorld({ ...S, rivers: 12 });
+    for (const r of w.rivers) {
+        for (let i = 1; i < r.points.length; i++) {
+            const a = w.filled[cellOf(w, r.points[i - 1])];
+            const b = w.filled[cellOf(w, r.points[i])];
+            assert.ok(b <= a + 0.002, `rises ${a} -> ${b}`);
+        }
+    }
+});
+
+test('rivers start on land and no river visits a cell twice', () => {
+    const w = buildWorld({ ...S, rivers: 12 });
+    for (const r of w.rivers) {
+        assert.equal(w.water[cellOf(w, r.points[0])], 0);
+        const cells = r.points.map(p => cellOf(w, p));
+        assert.equal(new Set(cells).size, cells.length);
+    }
+});
+
+test('filled is never below height', () => {
+    const w = buildWorld(S);
+    for (let i = 0; i < w.height.length; i++) assert.ok(w.filled[i] >= w.height[i]);
+});
+
+test('sea level 0 still terminates rivers', () => {
+    const w = buildWorld({ ...S, seaLevel: 0, rivers: 12 });
+    assert.equal(w.water.filter(v => v === 1).length, 0);
+    for (const r of w.rivers) assert.ok(r.points.length < w.size * w.size);
+});
+
+test('sea level 0.85 archipelago: no crash, river starts are distinct', () => {
+    for (const landmass of ['archipelago', 'random']) {
+        const w = buildWorld({ ...S, seaLevel: 0.85, landmass, rivers: 12 });
+        const starts = w.rivers.map(r => cellOf(w, r.points[0]));
+        assert.equal(new Set(starts).size, starts.length);
+        assert.ok(w.rivers.length <= 12);
+    }
+});
+
+test('still under 300 ms with 12 rivers', () => {
+    buildWorld({ ...S, rivers: 12 }); // warm up
+    for (const landmass of ['continent', 'archipelago', 'pangea', 'random']) {
+        for (const seaLevel of [0, 0.35, 0.85]) {
+            const t0 = process.hrtime.bigint();
+            buildWorld({ ...S, landmass, seaLevel, rivers: 12 });
+            const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+            console.log(`# buildWorld ${landmass} sea ${seaLevel} 12 rivers: ${ms.toFixed(1)} ms`);
+            assert.ok(ms < 300, `${landmass} took ${ms} ms`);
+        }
     }
 });

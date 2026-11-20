@@ -197,17 +197,158 @@
         return water;
     }
 
+    // Stage 4: priority-flood depression fill, seeded from the grid border and sea cells.
+    // Cells pop lowest-first; each cell's drain is the neighbour that flooded it, so every
+    // cell (flats and filled basins included) has a loop-free path to the border or sea.
+    // Returns { filled, drain (-1 for outlets), order (pop order, parents before children) }.
+    function fillDepressions(height, water) {
+        var n = GRID, total = n * n;
+        var filled = new Float32Array(total);
+        var drain = new Int32Array(total).fill(-1);
+        var seen = new Uint8Array(total);
+        var order = new Int32Array(total);
+        var heap = new Int32Array(total), size = 0, popped = 0;
+
+        function push(idx) {
+            var k = size++;
+            while (k > 0) {
+                var up = (k - 1) >> 1;
+                if (filled[heap[up]] <= filled[idx]) break;
+                heap[k] = heap[up]; k = up;
+            }
+            heap[k] = idx;
+        }
+        function pop() {
+            var top = heap[0], last = heap[--size];
+            var k = 0, half = size >> 1;
+            while (k < half) {
+                var c = 2 * k + 1;
+                if (c + 1 < size && filled[heap[c + 1]] < filled[heap[c]]) c++;
+                if (filled[last] <= filled[heap[c]]) break;
+                heap[k] = heap[c]; k = c;
+            }
+            heap[k] = last;
+            return top;
+        }
+
+        var i, x, y;
+        for (i = 0; i < total; i++) {
+            x = i % n; y = (i - x) / n;
+            if (water[i] === 1 || x === 0 || y === 0 || x === n - 1 || y === n - 1) {
+                seen[i] = 1; filled[i] = height[i]; push(i);
+            }
+        }
+        var DX = [-1, 1, 0, 0, -1, 1, -1, 1], DY = [0, 0, -1, 1, -1, -1, 1, 1];
+        while (size > 0) {
+            var c = pop();
+            order[popped++] = c;
+            x = c % n; y = (c - x) / n;
+            for (var d = 0; d < 8; d++) {
+                var nx = x + DX[d], ny = y + DY[d];
+                if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+                var nb = ny * n + nx;
+                if (seen[nb]) continue;
+                seen[nb] = 1;
+                drain[nb] = c;
+                filled[nb] = height[nb] > filled[c] ? height[nb] : filled[c];
+                push(nb);
+            }
+        }
+        return { filled: filled, drain: drain, order: order };
+    }
+
+    // Flow accumulation: cells draining through each cell (itself included).
+    function accumulateFlow(drain, order) {
+        var acc = new Float32Array(drain.length).fill(1);
+        for (var k = order.length - 1; k >= 0; k--) {
+            var c = order[k];
+            if (drain[c] >= 0) acc[drain[c]] += acc[c];
+        }
+        return acc;
+    }
+
+    var LAKE_DEPTH = 0.004;     // filled - height needed for a depression to hold water
+    var LAKE_FLOW = 25;         // ...and this much flow must pool into it
+    var RIVER_MIN_CELLS = 12;
+    var SOURCE_SPACING = 20;
+
+    // Depressions that collect enough flow become lakes (2). Sea cells stay 1.
+    function markLakes(water, height, filled, acc) {
+        for (var i = 0; i < water.length; i++) {
+            if (water[i] === 0 && filled[i] - height[i] > LAKE_DEPTH && acc[i] > LAKE_FLOW) water[i] = 2;
+        }
+    }
+
+    // Stage 5: trace rivers downstream from seeded high-land sources.
+    function traceRivers(s, height, water, drain, acc) {
+        var n = GRID, total = n * n;
+        var rivers = [];
+        if (s.rivers === 0) return rivers;
+
+        var landHeights = [];
+        var i;
+        for (i = 0; i < total; i++) if (water[i] === 0) landHeights.push(height[i]);
+        if (!landHeights.length) return rivers;
+        var sorted = Float32Array.from(landHeights).sort();
+        var highland = sorted[Math.floor(sorted.length * 0.7)];
+
+        var candidates = [];
+        for (i = 0; i < total; i++) if (water[i] === 0 && height[i] >= highland) candidates.push(i);
+        var rng = mulberry32(s.seed * 104729 + 7);       // independent of the noise streams
+        for (i = candidates.length - 1; i > 0; i--) {
+            var j = (rng() * (i + 1)) | 0;
+            var tmp = candidates[i]; candidates[i] = candidates[j]; candidates[j] = tmp;
+        }
+
+        var onRiver = new Uint8Array(total);
+        var sources = [];
+        for (var k = 0; k < candidates.length && rivers.length < s.rivers; k++) {
+            var src = candidates[k];
+            if (onRiver[src]) continue;
+            var sx = src % n, sy = (src - sx) / n, near = false;
+            for (var q = 0; q < sources.length; q++) {
+                var dx = sources[q][0] - sx, dy = sources[q][1] - sy;
+                if (dx * dx + dy * dy < SOURCE_SPACING * SOURCE_SPACING) { near = true; break; }
+            }
+            if (near) continue;
+            sources.push([sx, sy]);
+
+            // Follow the drain until water, the border (no drain) or an earlier river.
+            var cells = [src], c = src;
+            while (water[c] === 0 && drain[c] >= 0 && !(cells.length > 1 && onRiver[c])) {
+                c = drain[c];
+                cells.push(c);
+            }
+            if (cells.length < RIVER_MIN_CELLS) continue;
+
+            var points = [];
+            for (var m = 0; m < cells.length; m++) {
+                onRiver[cells[m]] = 1;
+                var cx = cells[m] % n;
+                points.push([cx / (n - 1), (cells[m] - cx) / n / (n - 1)]);
+            }
+            var mouthFlow = acc[cells[Math.max(0, cells.length - 2)]];
+            var width = 1 + 3 * clamp(Math.log(mouthFlow) / Math.log(4000), 0, 1);
+            rivers.push({ points: points, width: width });
+        }
+        return rivers;
+    }
+
     function buildWorld(settings) {
         var s = normalise(settings);
         var height = buildHeights(s);
         var seaLevel = seaThreshold(height, s.seaLevel);
         var water = classifyWater(height, seaLevel);
+        var flood = fillDepressions(height, water);
+        var acc = accumulateFlow(flood.drain, flood.order);
+        markLakes(water, height, flood.filled, acc);
         return {
             size: GRID,
             height: height,
+            filled: flood.filled,
             seaLevel: seaLevel,
             water: water,
-            rivers: [],     // Task 3
+            rivers: traceRivers(s, height, water, flood.drain, acc),
             features: [],   // Task 4
             roads: []
         };
