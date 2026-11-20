@@ -5,6 +5,13 @@
 
 @inject CampaignManagerService CampaignSvc
 
+@if (!_isGm)
+{
+    <PageTitle>GM only</PageTitle>
+    <GmOnlyNotice />
+}
+else
+{
 <UnsavedChangesGuard IsDirty="_hasUnsavedChanges" OnSaveAndLeave="SaveAsync" />
 
 <PageTitle>Campaign Map Editor</PageTitle>
@@ -438,8 +445,19 @@
         }
     }
 </div>
+}
 
 @code {
+    // Only the GM (see Services/Auth/GmIdentity.cs) gets the editor; guests get a notice and the
+    // campaign is never loaded for them.
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+    private bool _isGm;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isGm = AuthState is not null && (await AuthState).User.IsInRole(GmIdentity.Role);
+    }
+
     private Campaign? _campaign;
     private CampaignMap? _mapComponent;
     private bool _loaded;
@@ -520,7 +538,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || _loaded) return;
+        if (!firstRender || _loaded || !_isGm) return;
         _loaded   = true;
         _campaign = await CampaignSvc.LoadCampaignAsync();
 
