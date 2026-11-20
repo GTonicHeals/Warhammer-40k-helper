@@ -3,6 +3,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Warhammer.Components.UI;
+using Warhammer.Helpers;
 using Warhammer.Models.Campaign;
 using CampaignModel = Warhammer.Models.Campaign.Campaign;
 using TestContext = Bunit.TestContext;
@@ -191,6 +192,60 @@ public class GmTableModeTests : IDisposable
 
         cut.FindAll("#gnp-overlay").Should().BeEmpty();
         cut.FindAll("#gt-f-title").Should().HaveCount(1);
+    }
+
+    private static CampaignModel CampaignWithDetails()
+    {
+        var c = Campaign();
+        var t1 = (Territory)c.MapNodes[0];
+        t1.Description = "Bone fetishes on every tree";
+        t1.BuffEffect = "+1 CP per round";
+        t1.VictoryPointValue = 3;
+        t1.TerrainType = TerrainType.Forest;
+        t1.IsPublic = true;
+        t1.ConnectedNodeIds.Add("t2");
+        c.MapNodes[1].ConnectedNodeIds.Add("t1");
+        c.MapNodes.Add(new CampaignEvent
+        {
+            Id = "e1", Name = "Ambush at the ford", Description = "Shots from the treeline",
+            SecretEventText = "The Kroot set it up", AttachedToNodeId = "t1", X = 0.35, Y = 0.45,
+        });
+        return c;
+    }
+
+    [Fact]
+    public void Territory_panel_shows_every_field_and_its_links()
+    {
+        var cut = Render(CampaignWithDetails());
+        cut.Find(".map-node[data-node-id='t1']").Click();
+
+        var side = cut.Find("#gt-side").TextContent;
+        side.Should().Contain("Bone fetishes on every tree")
+            .And.Contain("+1 CP per round")
+            .And.Contain("3 VP")
+            .And.Contain(TerrainHelpers.Label(TerrainType.Forest))
+            .And.Contain("Revealed")
+            .And.Contain("Hive Tarsus")
+            .And.Contain("Ambush at the ford");
+
+        cut.Find("#gt-side [data-goto='t2']").Click();
+        cut.Find("#gt-side h2").TextContent.Should().Contain("Hive Tarsus");
+    }
+
+    [Fact]
+    public void Event_panel_shows_the_secret_text_and_where_it_is_attached()
+    {
+        var cut = Render(CampaignWithDetails());
+        cut.Find(".map-node[data-node-id='e1']").Click();
+
+        var side = cut.Find("#gt-side").TextContent;
+        side.Should().Contain("Shots from the treeline")
+            .And.Contain("The Kroot set it up")
+            .And.Contain("Not revealed")
+            .And.Contain("Kroot Encampment");
+
+        cut.Find("#gt-side [data-goto='t1']").Click();
+        cut.Find("#gt-side h2").TextContent.Should().Contain("Kroot Encampment");
     }
 
     [Fact]
