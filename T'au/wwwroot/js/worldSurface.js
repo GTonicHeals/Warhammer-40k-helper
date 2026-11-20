@@ -146,12 +146,14 @@
         };
     }
 
-    var fieldCache = { key: null, field: null };
+    // Build once per draw, then call per pixel: makeSampler(settings)(nx, ny) -> height.
+    function makeSampler(settings) {
+        return makeField(normalise(settings));
+    }
+
+    // Convenience for one-off lookups; use makeSampler in loops.
     function sampleHeight(settings, nx, ny) {
-        var s = normalise(settings);
-        var key = JSON.stringify(s);
-        if (fieldCache.key !== key) fieldCache = { key: key, field: makeField(s) };
-        return fieldCache.field(nx, ny);
+        return makeSampler(settings)(nx, ny);
     }
 
     // ── World ─────────────────────────────────────────────────────────────────
@@ -214,8 +216,10 @@
     var api = {
         GRID: GRID,
         normalise: normalise,
+        makeSampler: makeSampler,
         sampleHeight: sampleHeight,
-        buildWorld: buildWorld
+        buildWorld: buildWorld,
+        _classifyWater: classifyWater
     };
     if (typeof module !== 'undefined') module.exports = api; else window.worldSurface = api;
 })();

@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 
-const { GRID, normalise, sampleHeight, buildWorld } =
+const { GRID, normalise, makeSampler, sampleHeight, buildWorld, _classifyWater } =
     require(path.join(__dirname, '..', '..', "T'au", 'wwwroot', 'js', 'worldSurface.js'));
 
 const S = { seed: 42, biome: 'agri', seaLevel: 0.35, landmass: 'continent', rivers: 4, ruggedness: 0.5, features: 0.5 };
@@ -75,6 +75,35 @@ test('sampleHeight matches the grid at cell positions', () => {
         const h = sampleHeight(S, x / (n - 1), y / (n - 1));
         assert.ok(Math.abs(h - w.height[y * n + x]) < 1e-5);
     }
+});
+
+test('makeSampler equals sampleHeight and the grid', () => {
+    const w = buildWorld(S);
+    const n = w.size;
+    const sampler = makeSampler(S);
+    for (const [x, y] of [[0, 0], [10, 20], [128, 128], [200, 50]]) {
+        const h = sampler(x / (n - 1), y / (n - 1));
+        assert.equal(h, sampleHeight(S, x / (n - 1), y / (n - 1)));
+        assert.ok(Math.abs(h - w.height[y * n + x]) < 1e-5);
+    }
+});
+
+test('classifyWater: border-connected basin is sea, enclosed basin is lake', () => {
+    const n = GRID;
+    const h = new Float32Array(n * n).fill(1);
+    const at = (x, y) => y * n + x;
+    // sea: a notch reaching the left border
+    for (let x = 0; x < 10; x++) for (let y = 100; y < 105; y++) h[at(x, y)] = 0;
+    // lake: enclosed pool, ringed by land
+    for (let x = 100; x < 105; x++) for (let y = 100; y < 105; y++) h[at(x, y)] = 0;
+    // diagonal-only neighbour of the sea notch must not join it (4-connected)
+    h[at(10, 105)] = 0;
+    const w = _classifyWater(h, 0.5);
+    assert.equal(w[at(0, 100)], 1);
+    assert.equal(w[at(9, 104)], 1);
+    assert.equal(w[at(102, 102)], 2);
+    assert.equal(w[at(10, 105)], 2);
+    assert.equal(w[at(50, 50)], 0);
 });
 
 test('normalise: unknown biome and landmass fall back', () => {
