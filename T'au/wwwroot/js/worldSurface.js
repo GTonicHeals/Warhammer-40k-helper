@@ -334,6 +334,154 @@
         return rivers;
     }
 
+    // ── Biome styles ──────────────────────────────────────────────────────────
+    // bands: [maxLandHeight01, r, g, b], first match wins; 0 = shoreline, 1 = highest peak,
+    // so colours track the sea level. sea/shallows/lake colour the water classes.
+    // river: how a river is painted. features: scatter kinds. roads: join settlements.
+    var BIOME_STYLES = {
+        agri: {
+            bands: [[0.04, 180, 160, 80], [0.30, 55, 120, 40], [0.55, 90, 150, 30], [0.80, 110, 80, 40], [1, 130, 120, 110]],
+            sea: [15, 55, 120], shallows: [40, 100, 160], lake: [50, 110, 170], river: 'water',
+            features: ['forest', 'ruins', 'crater'], roads: true
+        },
+        death: {
+            bands: [[0.05, 120, 10, 80], [0.35, 40, 110, 20], [0.60, 130, 150, 20], [0.82, 80, 80, 75], [1, 100, 100, 90]],
+            sea: [30, 5, 50], shallows: [55, 10, 80], lake: [70, 20, 90], river: 'sludge',
+            features: ['forest', 'crater', 'ruins'], roads: false
+        },
+        ice: {
+            bands: [[0.08, 160, 200, 220], [0.35, 190, 220, 240], [0.60, 150, 190, 230], [0.85, 220, 235, 245], [1, 245, 250, 255]],
+            sea: [10, 30, 70], shallows: [30, 70, 130], lake: [60, 110, 170], river: 'frozen',
+            features: ['crater', 'ruins'], roads: true
+        },
+        ash: {
+            bands: [[0.15, 30, 25, 20], [0.35, 55, 45, 40], [0.55, 90, 30, 15], [0.75, 140, 55, 10], [0.90, 160, 120, 80], [1, 200, 190, 170]],
+            sea: [10, 10, 10], shallows: [30, 25, 20], lake: [45, 20, 10], river: 'lava',
+            features: ['crater', 'ruins', 'fissure'], roads: false
+        },
+        desert: {
+            bands: [[0.06, 225, 215, 190], [0.30, 215, 180, 110], [0.60, 200, 150, 80], [0.85, 170, 110, 60], [1, 140, 90, 60]],
+            sea: [235, 230, 215], shallows: [225, 210, 175], lake: [70, 140, 150], river: 'dry',
+            features: ['dune', 'oasis', 'ruins', 'crater'], roads: false
+        },
+        jungle: {
+            bands: [[0.06, 90, 80, 50], [0.30, 25, 85, 35], [0.60, 15, 65, 30], [0.85, 30, 50, 25], [1, 70, 85, 60]],
+            sea: [20, 60, 70], shallows: [50, 90, 80], lake: [75, 90, 50], river: 'water',
+            features: ['forest', 'swamp', 'ruins'], roads: false
+        },
+        hive: {
+            bands: [[0.06, 85, 85, 80], [0.35, 105, 105, 105], [0.65, 125, 120, 115], [0.88, 90, 90, 95], [1, 150, 150, 155]],
+            sea: [55, 60, 30], shallows: [85, 90, 40], lake: [80, 85, 45], river: 'sludge',
+            features: ['spire', 'ruins'], roads: true
+        },
+        sept: {
+            bands: [[0.05, 230, 200, 130], [0.35, 200, 150, 70], [0.65, 170, 120, 55], [0.88, 150, 100, 70], [1, 190, 170, 150]],
+            sea: [15, 100, 110], shallows: [50, 160, 160], lake: [60, 150, 160], river: 'water',
+            features: ['settlement', 'forest'], roads: true
+        },
+        tomb: {
+            bands: [[0.06, 35, 40, 35], [0.35, 20, 28, 22], [0.65, 28, 40, 30], [0.88, 40, 52, 42], [1, 60, 75, 62]],
+            sea: [12, 16, 14], shallows: [25, 32, 28], lake: [20, 60, 35], river: 'dry',
+            features: ['pyramid', 'fissure', 'crater'], roads: false
+        }
+    };
+
+    // ── Features and roads ────────────────────────────────────────────────────
+    var FEATURE_SPACING = 8;      // grid cells
+    var ROAD_REACH = 0.3;         // map units
+    var WET_KINDS = { oasis: 1, swamp: 1 };
+    var HUB_KINDS = { ruins: 1, spire: 1, settlement: 1 };
+
+    // Land cells (0) touching water (8-neighbourhood): where oases and swamps may sit.
+    function shoreCells(water) {
+        var n = GRID, out = [];
+        for (var y = 0; y < n; y++) {
+            for (var x = 0; x < n; x++) {
+                if (water[y * n + x] !== 0) continue;
+                var wet = false;
+                for (var dy = -1; dy <= 1 && !wet; dy++) {
+                    for (var dx = -1; dx <= 1; dx++) {
+                        var nx = x + dx, ny = y + dy;
+                        if (nx >= 0 && ny >= 0 && nx < n && ny < n && water[ny * n + nx] !== 0) { wet = true; break; }
+                    }
+                }
+                if (wet) out.push(y * n + x);
+            }
+        }
+        return out;
+    }
+
+    // Seeded rejection sampling on land, min spacing FEATURE_SPACING cells.
+    function scatterFeatures(s, water) {
+        var out = [];
+        var want = Math.round(s.features * 60);
+        if (want === 0) return out;
+        var n = GRID;
+        var shore = shoreCells(water);
+        var kinds = BIOME_STYLES[s.biome].features.filter(function (k) { return !WET_KINDS[k] || shore.length > 0; });
+        var rng = mulberry32(s.seed * 15485863 + 31);          // independent of noise and river streams
+        var cells = [];
+        for (var tries = 0; out.length < want && tries < want * 60; tries++) {
+            var kind = kinds[(rng() * kinds.length) | 0];
+            var c;
+            if (WET_KINDS[kind]) {
+                c = shore[(rng() * shore.length) | 0];
+            } else {
+                c = ((rng() * n) | 0) * n + ((rng() * n) | 0);
+                if (water[c] !== 0) continue;
+            }
+            var x = c % n, y = (c - x) / n, near = false;
+            for (var q = 0; q < cells.length; q++) {
+                var dx = cells[q][0] - x, dy = cells[q][1] - y;
+                if (dx * dx + dy * dy < FEATURE_SPACING * FEATURE_SPACING) { near = true; break; }
+            }
+            if (near) continue;
+            cells.push([x, y]);
+            out.push({ kind: kind, x: x / (n - 1), y: y / (n - 1), size: 0.5 + rng() });
+        }
+        return out;
+    }
+
+    // True when the straight segment a->b, sampled at grid resolution, touches no sea.
+    function segmentClear(water, a, b) {
+        var n = GRID;
+        var steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) * (n - 1)));
+        for (var i = 0; i <= steps; i++) {
+            var t = i / steps;
+            var cx = Math.round((a.x + (b.x - a.x) * t) * (n - 1));
+            var cy = Math.round((a.y + (b.y - a.y) * t) * (n - 1));
+            if (water[cy * n + cx] === 1) return false;
+        }
+        return true;
+    }
+
+    // Each hub links to its nearest unconnected neighbour within reach, if the way is dry of sea.
+    function buildRoads(s, features, water) {
+        var roads = [];
+        if (!BIOME_STYLES[s.biome].roads) return roads;
+        var cap = Math.round(s.features * 8);
+        var hubs = features.filter(function (f) { return HUB_KINDS[f.kind]; });
+        var linked = new Uint8Array(hubs.length);
+        for (var i = 0; i < hubs.length && roads.length < cap; i++) {
+            if (linked[i]) continue;
+            var best = [];
+            for (var j = 0; j < hubs.length; j++) {
+                if (j === i || linked[j]) continue;
+                var d = Math.hypot(hubs[i].x - hubs[j].x, hubs[i].y - hubs[j].y);
+                if (d <= ROAD_REACH) best.push([d, j]);
+            }
+            best.sort(function (p, q) { return p[0] - q[0] || p[1] - q[1]; });
+            for (var k = 0; k < best.length; k++) {
+                var other = hubs[best[k][1]];
+                if (!segmentClear(water, hubs[i], other)) continue;
+                linked[i] = 1; linked[best[k][1]] = 1;
+                roads.push([[hubs[i].x, hubs[i].y], [other.x, other.y]]);
+                break;
+            }
+        }
+        return roads;
+    }
+
     function buildWorld(settings) {
         var s = normalise(settings);
         var height = buildHeights(s);
@@ -342,6 +490,7 @@
         var flood = fillDepressions(height, water);
         var acc = accumulateFlow(flood.drain, flood.order);
         markLakes(water, height, flood.filled, acc);
+        var features = scatterFeatures(s, water);
         return {
             size: GRID,
             height: height,
@@ -349,8 +498,8 @@
             seaLevel: seaLevel,
             water: water,
             rivers: traceRivers(s, height, water, flood.drain, acc),
-            features: [],   // Task 4
-            roads: []
+            features: features,
+            roads: buildRoads(s, features, water)
         };
     }
 
@@ -360,6 +509,7 @@
         makeSampler: makeSampler,
         sampleHeight: sampleHeight,
         buildWorld: buildWorld,
+        BIOME_STYLES: BIOME_STYLES,
         _classifyWater: classifyWater
     };
     if (typeof module !== 'undefined') module.exports = api; else window.worldSurface = api;
