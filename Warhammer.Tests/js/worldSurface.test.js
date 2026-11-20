@@ -239,3 +239,48 @@ test('still under 300 ms with 12 rivers', () => {
         }
     }
 });
+
+test('lakes form: above-sea-level lake cells exist and sit in filled depressions', () => {
+    const w = buildWorld({ ...S, landmass: 'pangea', rivers: 12 });
+    let lakes = 0;
+    for (let i = 0; i < w.height.length; i++) {
+        if (w.height[i] >= w.seaLevel && w.water[i] === 2) {
+            lakes++;
+            assert.ok(w.filled[i] - w.height[i] > 0.004);
+        }
+    }
+    assert.ok(lakes >= 1, 'no pooled lake cells');
+});
+
+test('river sources are at least 20 grid cells apart', () => {
+    for (const seed of [42, 7, 99]) {
+        const w = buildWorld({ ...S, seed, rivers: 12 });
+        const n = w.size - 1;
+        const starts = w.rivers.map(r => r.points[0]);
+        for (let a = 0; a < starts.length; a++) {
+            for (let b = a + 1; b < starts.length; b++) {
+                const d = Math.hypot((starts[a][0] - starts[b][0]) * n, (starts[a][1] - starts[b][1]) * n);
+                assert.ok(d >= 20 - 1e-6, `sources ${a},${b} only ${d} apart (seed ${seed})`);
+            }
+        }
+    }
+});
+
+test('a river stops at a junction: only its last point lies on an earlier river', () => {
+    let junctions = 0;
+    for (const seed of [42, 7, 99, 5, 123]) {
+        const w = buildWorld({ ...S, seed, rivers: 12 });
+        const earlier = new Set();
+        for (const r of w.rivers) {
+            const cells = r.points.map(p => cellOf(w, p));
+            cells.forEach((c, i) => {
+                if (earlier.has(c)) {
+                    assert.equal(i, cells.length - 1, `river runs through an earlier river (seed ${seed})`);
+                    junctions++;
+                }
+            });
+            cells.forEach(c => earlier.add(c));
+        }
+    }
+    console.log(`# junctions checked: ${junctions}`);
+});
