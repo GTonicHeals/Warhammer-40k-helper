@@ -9,13 +9,11 @@ public sealed record WorldSurfaceSettings(
     int Octaves, double Lacunarity, double Persistence, double Scale,
     double OffsetX, double OffsetY)
 {
-    private static readonly string[] LandmassKeys = { "continent", "archipelago", "pangea", "random" };
-
     public static WorldSurfaceSettings From(Campaign c) => new(
         c.MapSeed,
         BiomeCatalog.Get(c.MapBiome).Key,
         c.MapSeaLevel,
-        LandmassKeys.Contains(c.MapLandmass) ? c.MapLandmass : "continent",
+        LandmassCatalog.Get(c.MapLandmass).Key,
         c.MapRivers,
         c.MapRuggedness,
         c.MapFeatures,

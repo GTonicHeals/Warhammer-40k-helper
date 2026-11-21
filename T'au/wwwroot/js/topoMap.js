@@ -600,9 +600,9 @@ window.topoMapInterop = (function () {
 
     // Fissures and pyramids glow where the Biome has something hot or eldritch underneath.
     var FISSURE_GLOW = { ash: [255, 120, 30], tomb: [70, 255, 140] };
-    // Canopy colour per Biome (forest glyphs).
     // A lit window on hive spires.
     var SPIRE_LIGHT = [255, 190, 90];
+    // Canopy colour per Biome (forest glyphs).
     var TREE_COLOUR = { agri: [20, 46, 18], death: [44, 70, 10], jungle: [8, 34, 14], sept: [48, 62, 24] };
 
     // Glyph radius in pixels: grows with the canvas but less than linearly, so features
@@ -640,7 +640,7 @@ window.topoMapInterop = (function () {
     }
 
     // ── Public draw function ──────────────────────────────────────────────────
-    function draw(canvasEl, settings) {
+    function paint(canvasEl, settings) {
         if (!canvasEl || !canvasEl.getContext) return;
         var ws = window.worldSurface;
         if (!ws) { console.warn('[topoMap] worldSurface.js is not loaded'); return; }
@@ -653,19 +653,36 @@ window.topoMapInterop = (function () {
         var H   = canvasEl.height = Math.round(rawH * scale);
         var ctx = canvasEl.getContext('2d');
 
-        var world = ws.buildWorld(settings);
-        var biome = ws.normalise(settings).biome;
-        var style = ws.BIOME_STYLES[biome];
-        var texture = ws.createNoise(ws.normalise(settings).seed * 7 + 9001);
-        var blocks = sampleBlocks(world, ws.makeSampler(settings), texture, ws.mulberry32(ws.normalise(settings).seed * 13 + 4001), W, H);
+        var s = ws.normalise(settings);
+        var world = ws.buildWorld(s);
+        var style = ws.BIOME_STYLES[s.biome];
+        var texture = ws.createNoise(s.seed * 7 + 9001);
+        var blocks = sampleBlocks(world, world.sample, texture, ws.mulberry32(s.seed * 13 + 4001), W, H);
         var colours = colourBlocks(blocks, world, style);
         applyHillShade(colours, blocks, W, H);
         blitBlocks(ctx, colours, blocks, W, H);
         strokeCoastline(ctx, blocks, W);
         drawRivers(ctx, world, style, texture, W, H);
         drawRoads(ctx, world, style, W, H);
-        drawFeatures(ctx, world, style, biome, ws.mulberry32(ws.normalise(settings).seed * 29 + 7), W, H);
+        drawFeatures(ctx, world, style, s.biome, ws.mulberry32(s.seed * 29 + 7), W, H);
         drawVignette(ctx, W, H);
+    }
+
+    // Draw requests coalesce per canvas: only the latest settings are kept and painted on
+    // the next animation frame, so a slider drag never queues a backlog of full draws.
+    var pending = new WeakMap();    // canvas element -> { settings, frame }
+
+    function draw(canvasEl, settings) {
+        if (!canvasEl || !canvasEl.getContext) return;
+        if (typeof window.requestAnimationFrame !== 'function') { paint(canvasEl, settings); return; }
+        var entry = pending.get(canvasEl);
+        if (entry) { entry.settings = settings; return; }
+        entry = { settings: settings };
+        pending.set(canvasEl, entry);
+        window.requestAnimationFrame(function () {
+            pending.delete(canvasEl);
+            paint(canvasEl, entry.settings);
+        });
     }
 
     function drawById(canvasId, settings) {

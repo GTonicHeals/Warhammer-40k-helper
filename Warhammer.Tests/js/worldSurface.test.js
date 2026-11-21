@@ -387,6 +387,7 @@ test('a river stops at a junction: only its last point lies on an earlier river'
             cells.forEach(c => earlier.add(c));
         }
     }
+    assert.ok(junctions >= 1, 'the sampled seeds should produce at least one junction');
 });
 
 // ── Biome styles, features and roads ──────────────────────────────────────
@@ -546,5 +547,27 @@ test('features at 1 still build under 300 ms', () => {
         buildWorld({ ...F1, biome, rivers: 12 });
         const ms = Number(process.hrtime.bigint() - t0) / 1e6;
         assert.ok(ms < 300, `${ms} ms`);
+    }
+});
+
+test('noise parameters are clamped to the slider ranges', () => {
+    const n = normalise({ lacunarity: 99, persistence: -1, scale: 0, octaves: 4 });
+    assert.deepEqual([n.lacunarity, n.persistence, n.scale], [4, 0.1, 0.5]);
+    const m = normalise({ lacunarity: 0.1, persistence: 5, scale: 100, octaves: 99 });
+    assert.deepEqual([m.lacunarity, m.persistence, m.scale, m.octaves], [1, 0.95, 8, 8]);
+});
+
+test('a negative persistence still yields finite heights', () => {
+    const w = buildWorld({ ...S, persistence: -1, octaves: 4 });
+    for (const h of w.height) assert.ok(Number.isFinite(h));
+});
+
+test('the world exposes the sampler it was built with, identical to a fresh makeSampler', () => {
+    for (const landmass of ['continent', 'archipelago', 'random']) {
+        const cfg = { ...S, landmass };
+        const w = buildWorld(cfg), fresh = makeSampler(cfg);
+        for (const [x, y] of [[0, 0], [0.3, 0.7], [0.5, 0.5], [1, 1], [0.123, 0.987]]) {
+            assert.equal(w.sample(x, y), fresh(x, y), landmass);
+        }
     }
 });

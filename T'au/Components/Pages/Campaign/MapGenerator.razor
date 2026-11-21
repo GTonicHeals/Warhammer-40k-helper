@@ -59,12 +59,12 @@
             <div class="mg-section">
                 <div class="mg-param-header">
                     <label class="mg-label">SEA LEVEL</label>
-                    <span class="mg-val">@_seaLevel.ToString("P0", CultureInfo.InvariantCulture)</span>
+                    <span class="mg-val">@((int)Math.Round(_seaLevel * 100))%</span>
                 </div>
                 <input id="mg-sea" type="range" class="form-range mg-range" min="0" max="0.85" step="0.01"
                        value="@Inv(_seaLevel)"
                        @oninput="e => { _seaLevel = ParseD(e.Value, _seaLevel); OnParamChanged(); }" />
-                <p class="mg-hint">How much of the World Surface is water</p>
+                <p class="mg-hint">How much of the World Surface is sea (lakes come on top)</p>
             </div>
 
             <!-- Landmass -->
@@ -73,10 +73,10 @@
                 <select id="mg-landmass" class="form-select form-select-sm bg-dark text-warning border-secondary mt-1"
                         value="@_landmass"
                         @onchange="e => { _landmass = e.Value?.ToString() ?? _landmass; OnParamChanged(); }">
-                    <option value="continent">Continent</option>
-                    <option value="archipelago">Archipelago</option>
-                    <option value="pangea">Pangea</option>
-                    <option value="random">Random</option>
+                    @foreach (var l in LandmassCatalog.All)
+                    {
+                        <option value="@l.Key" selected="@(l.Key == _landmass)">@l.Label</option>
+                    }
                 </select>
             </div>
 

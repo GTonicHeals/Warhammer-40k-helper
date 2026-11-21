@@ -74,9 +74,9 @@
             ruggedness:  clamp(num(s.ruggedness, 0.5), 0, 1),
             features:    clamp(num(s.features, 0.5), 0, 1),
             octaves:     Math.round(clamp(num(s.octaves, 4), 1, 8)),
-            lacunarity:  num(s.lacunarity, 2.0) || 2.0,
-            persistence: num(s.persistence, 0.5) || 0.5,
-            scale:       num(s.scale, 2.0) || 2.0,
+            lacunarity:  clamp(num(s.lacunarity, 2.0), 1, 4),
+            persistence: clamp(num(s.persistence, 0.5), 0.1, 0.95),
+            scale:       clamp(num(s.scale, 2.0), 0.5, 8),
             offsetX:     num(s.offsetX, 0),
             offsetY:     num(s.offsetY, 0)
         };
@@ -204,8 +204,7 @@
 
     // ── World ─────────────────────────────────────────────────────────────────
     // Stage 1: heights over the fixed grid.
-    function buildHeights(s) {
-        var field = makeField(s);
+    function buildHeights(field) {
         var height = new Float32Array(GRID * GRID);
         for (var y = 0; y < GRID; y++) {
             for (var x = 0; x < GRID; x++) {
@@ -556,7 +555,8 @@
 
     function buildWorld(settings) {
         var s = normalise(settings);
-        var height = buildHeights(s);
+        var field = makeField(s);        // built once: the renderer reuses it as world.sample
+        var height = buildHeights(field);
         var seaLevel = seaThreshold(height, s.seaLevel);
         var water = classifyWater(height, seaLevel);
         var flood = fillDepressions(height, water);
@@ -566,6 +566,7 @@
         return {
             size: GRID,
             height: height,
+            sample: field,
             filled: flood.filled,
             seaLevel: seaLevel,
             water: water,
