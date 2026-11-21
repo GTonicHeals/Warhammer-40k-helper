@@ -582,6 +582,8 @@
         sampleHeight: sampleHeight,
         buildWorld: buildWorld,
         BIOME_STYLES: BIOME_STYLES,
+        createNoise: createNoise,        // seeded gradient noise and PRNG, for renderer-only texture
+        mulberry32: mulberry32,
         _classifyWater: classifyWater
     };
     if (typeof module !== 'undefined') module.exports = api; else window.worldSurface = api;

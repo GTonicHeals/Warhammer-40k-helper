@@ -6,7 +6,15 @@ window.topoMapInterop = (function () {
 
     var RES = 2;                    // pixel block size for the height pass
     var MAX = 4800;                 // cap on the canvas pixel buffer width
-    var BAND_BLEND = 0.02;          // soft edge between Biome colour bands (relative land height)
+    var LUT_SIZE = 512;             // relative land height -> colour table entries
+    var PATCH_FREQ = 9;             // texture: patchy colour shifts (cycles per map height)
+    var GRAIN_TILE = 256;           // texture: grain tile size in blocks (repeats every 512 px)
+    var COARSE = 2;                 // height lattice step in blocks (interpolated in between)
+    var PATCH_SHIFT = 0.06;         // how far patches move along the Biome colour ramp
+    var GRAIN_LIGHT = 0.14;         // grain: max +/- brightness change
+    var MICRO_RELIEF = 0.012;       // grain added to the shading height (not to land/water)
+    var MEANDER = 3.5;              // river meander amplitude, in grid cells (256 per map height)
+    var MEANDER_LENGTH = 9;         // river meander wavelength-ish, in river points
     var SHADE_STRENGTH = 0.22;      // hill-shade: max +/- brightness change
     var SHADE_GAIN = 0.3;           // hill-shade: slope (height per map unit) -> shade; median slope ~0.9
     var LAKE_EDGE = 0.004;          // lake depth given to non-lake grid cells (negated) for lake outlines
@@ -26,23 +34,23 @@ window.topoMapInterop = (function () {
         return luminance([mid[1], mid[2], mid[3]]) > 125 ? DARK_INK : LIGHT_INK;
     }
 
-    // 256-entry relative-land-height -> colour table from the Biome bands (first match wins,
-    // with a short blend across each band edge so the bands don't step harshly).
+    // LUT_SIZE-entry relative-land-height -> colour table from the Biome bands. The band
+    // colours are anchors: the shore colour holds over the lower half of its (narrow) band
+    // and hands over to the next colour just past it; every other band colour sits at its
+    // band's centre, and colours blend smoothly in between, so relief reads as a
+    // continuous surface instead of contour rings.
     function bandTable(bands) {
-        var lut = new Uint8Array(256 * 3);
-        for (var i = 0; i < 256; i++) {
-            var rel = i / 255, k = 0, j;
-            while (k < bands.length - 1 && rel > bands[k][0]) k++;
-            var r = bands[k][1], g = bands[k][2], b = bands[k][3];
-            for (j = 0; j < bands.length - 1; j++) {
-                var edge = bands[j][0];
-                if (Math.abs(rel - edge) < BAND_BLEND) {
-                    var t = (rel - edge + BAND_BLEND) / (2 * BAND_BLEND), lo = bands[j], hi = bands[j + 1];
-                    r = lo[1] + (hi[1] - lo[1]) * t; g = lo[2] + (hi[2] - lo[2]) * t; b = lo[3] + (hi[3] - lo[3]) * t;
-                    break;
-                }
-            }
-            lut[i * 3] = r; lut[i * 3 + 1] = g; lut[i * 3 + 2] = b;
+        var shore = bands[0][0], centre1 = (bands[0][0] + bands[1][0]) / 2;
+        var stops = [[0, bands[0]], [shore * 0.5, bands[0]], [Math.min(shore * 1.5, centre1), bands[1]]];
+        for (var k = 1; k < bands.length; k++) stops.push([(bands[k - 1][0] + bands[k][0]) / 2, bands[k]]);
+        var lut = new Uint8Array(LUT_SIZE * 3), s = 0;
+        for (var i = 0; i < LUT_SIZE; i++) {
+            var rel = i / (LUT_SIZE - 1);
+            while (s < stops.length - 2 && rel > stops[s + 1][0]) s++;
+            var lo = stops[s], hi = stops[Math.min(s + 1, stops.length - 1)];
+            var t = hi[0] > lo[0] ? clamp((rel - lo[0]) / (hi[0] - lo[0]), 0, 1) : 1;
+            t = t * t * (3 - 2 * t);
+            for (var c = 1; c <= 3; c++) lut[i * 3 + c - 1] = lo[1][c] + (hi[1][c] - lo[1][c]) * t;
         }
         return lut;
     }
@@ -76,27 +84,77 @@ window.topoMapInterop = (function () {
         return depth;
     }
 
-    function sampleBlocks(world, sampler, W, H) {
+    // Grain: a GRAIN_TILE x GRAIN_TILE block tile of periodic value noise (octaves of
+    // 16, 8, 4 and 2 blocks), repeated across the canvas. It lives in pixel space, so it
+    // stays crisp at every canvas size; it only textures colour and shading, never the World.
+    function grainTile(rng) {
+        var T = GRAIN_TILE, tile = new Float32Array(T * T);
+        var octaves = [[16, 0.4], [8, 0.3], [4, 0.2], [2, 0.1]];
+        for (var o = 0; o < octaves.length; o++) {
+            var cell = octaves[o][0], amp = octaves[o][1], p = T / cell;
+            var lat = new Float32Array(p * p);
+            for (var i = 0; i < lat.length; i++) lat[i] = rng() * 2 - 1;
+            for (var y = 0; y < T; y++) {
+                var gy = y / cell, y0 = Math.floor(gy), v = gy - y0, y1 = (y0 + 1) % p;
+                v = v * v * (3 - 2 * v);
+                for (var x = 0; x < T; x++) {
+                    var gx = x / cell, x0 = Math.floor(gx), u = gx - x0, x1 = (x0 + 1) % p;
+                    u = u * u * (3 - 2 * u);
+                    var a = lat[y0 * p + x0], b = lat[y0 * p + x1], c = lat[y1 * p + x0], d = lat[y1 * p + x1];
+                    tile[y * T + x] += amp * (a + (b - a) * u + (c - a + (a - b + d - c) * u) * v);
+                }
+            }
+        }
+        return tile;
+    }
+
+    // The height and the patch texture are smooth at block scale, so they are sampled on
+    // a lattice every COARSE blocks and interpolated bilinearly in between.
+    // texture(x, y) is seeded noise; x and y are in map heights so patches stay round.
+    function sampleBlocks(world, sampler, texture, rng, W, H) {
         var cols = Math.ceil(W / RES), rows = Math.ceil(H / RES);
         var total = cols * rows;
         var height = new Float32Array(total);
         var cls = new Uint8Array(total);
         var shore = new Float32Array(total);    // signed distance-like value, negative = water
         var depth = new Float32Array(total);    // water depth, for shading sea and lakes
+        var patch = new Float32Array(total);    // low-frequency texture, colour patches
+        var grain = new Float32Array(total);    // high-frequency texture, grain and micro-relief
         var n = world.size, last = n - 1;
         var sea = world.seaLevel, water = world.water, lakeDepth = lakeDepthGrid(world);
+        var aspect = W / H, tile = grainTile(rng), T = GRAIN_TILE;
+
+        var ccols = Math.ceil((cols - 1) / COARSE) + 1, crows = Math.ceil((rows - 1) / COARSE) + 1;
+        var ch = new Float32Array(ccols * crows), cp = new Float32Array(ccols * crows);
+        for (var rr = 0; rr < crows; rr++) {
+            var cny = Math.min(1, (rr * COARSE * RES + RES * 0.5) / H);
+            for (var cc = 0; cc < ccols; cc++) {
+                var cnx = Math.min(1, (cc * COARSE * RES + RES * 0.5) / W);
+                ch[rr * ccols + cc] = sampler(cnx, cny);
+                cp[rr * ccols + cc] = texture(cnx * aspect * PATCH_FREQ, cny * PATCH_FREQ);
+            }
+        }
 
         for (var r = 0; r < rows; r++) {
             var ny = Math.min(1, (r * RES + RES * 0.5) / H);
             var gyf = ny * last;
             var gy = Math.round(gyf), y0 = Math.min(Math.floor(gyf), last - 1), ty = gyf - y0;
+            var cr = (r / COARSE) | 0, cv = (r - cr * COARSE) / COARSE, crow = cr * ccols;
+            var crow2 = Math.min(cr + 1, crows - 1) * ccols, trow = (r % T) * T;
             for (var c = 0; c < cols; c++) {
                 var b = r * cols + c;
                 var nx = Math.min(1, (c * RES + RES * 0.5) / W);
                 var gxf = nx * last;
                 var gx = Math.round(gxf), x0 = Math.min(Math.floor(gxf), last - 1), tx = gxf - x0;
-                var h = Math.fround(sampler(nx, ny));
+                var ci = (c / COARSE) | 0, cu = (c - ci * COARSE) / COARSE, ci2 = Math.min(ci + 1, ccols - 1);
+                var h0 = ch[crow + ci] + (ch[crow + ci2] - ch[crow + ci]) * cu;
+                var h1 = ch[crow2 + ci] + (ch[crow2 + ci2] - ch[crow2 + ci]) * cu;
+                var h = Math.fround(h0 + (h1 - h0) * cv);
                 height[b] = h;
+                var p0 = cp[crow + ci] + (cp[crow + ci2] - cp[crow + ci]) * cu;
+                var p1 = cp[crow2 + ci] + (cp[crow2 + ci2] - cp[crow2 + ci]) * cu;
+                patch[b] = p0 + (p1 - p0) * cv;
+                grain[b] = tile[trow + (c % T)];
 
                 var i = y0 * n + x0;
                 var top = lakeDepth[i] + (lakeDepth[i + 1] - lakeDepth[i]) * tx;
@@ -107,7 +165,9 @@ window.topoMapInterop = (function () {
                     var wc = water[gy * n + gx];
                     cls[b] = wc !== 0 ? wc : nearbyWater(world, gx, gy);
                     shore[b] = h - sea;
-                    depth[b] = sea - h;
+                    // a below-sea pocket inside a pooled lake takes the lake's depth too, so
+                    // the lake shades as one body instead of showing the pocket's outline
+                    depth[b] = cls[b] === 2 ? Math.max(sea - h, lake) : sea - h;
                 } else if (lake > 0) {
                     cls[b] = 2;
                     shore[b] = -lake;
@@ -117,7 +177,7 @@ window.topoMapInterop = (function () {
                 }
             }
         }
-        return { cols: cols, rows: rows, height: height, cls: cls, shore: shore, depth: depth };
+        return { cols: cols, rows: rows, height: height, cls: cls, shore: shore, depth: depth, patch: patch, grain: grain };
     }
 
     // Colour every block: land from the Biome bands, sea shading from shallows to deep,
@@ -136,19 +196,25 @@ window.topoMapInterop = (function () {
         var shelf = Math.max((sea - minH) * 0.6, 1e-4);
         var deep = style.sea, shallow = style.shallows, lake = style.lake;
 
+        var top = LUT_SIZE - 1, patch = blocks.patch, grain = blocks.grain;
         for (var b = 0; b < total; b++) {
-            var h = blocks.height[b], o = b * 3, t;
+            var h = blocks.height[b], o = b * 3, t, light;
             if (blocks.cls[b] === 0) {
-                var k = Math.min(255, Math.max(0, ((h - sea) / landSpan * 255) | 0)) * 3;
-                out[o] = lut[k]; out[o + 1] = lut[k + 1]; out[o + 2] = lut[k + 2];
+                // patches nudge the colour along the ramp (fade out at the shore so beaches stay put)
+                var rel = (h - sea) / landSpan;
+                rel += PATCH_SHIFT * patch[b] * clamp(rel * 8, 0, 1);
+                var k = clamp((rel * top) | 0, 0, top) * 3;
+                light = 1 + GRAIN_LIGHT * grain[b];
+                out[o] = lut[k] * light; out[o + 1] = lut[k + 1] * light; out[o + 2] = lut[k + 2] * light;
             } else if (blocks.cls[b] === 1) {
-                t = clamp(blocks.depth[b] / shelf, 0, 1);
+                t = clamp(blocks.depth[b] / shelf + 0.12 * patch[b], 0, 1);
                 t = t * t * (3 - 2 * t);
-                out[o]     = shallow[0] + (deep[0] - shallow[0]) * t;
-                out[o + 1] = shallow[1] + (deep[1] - shallow[1]) * t;
-                out[o + 2] = shallow[2] + (deep[2] - shallow[2]) * t;
+                light = 1 + 0.5 * GRAIN_LIGHT * grain[b];
+                out[o]     = (shallow[0] + (deep[0] - shallow[0]) * t) * light;
+                out[o + 1] = (shallow[1] + (deep[1] - shallow[1]) * t) * light;
+                out[o + 2] = (shallow[2] + (deep[2] - shallow[2]) * t) * light;
             } else {
-                t = 1 - 0.25 * clamp(blocks.depth[b] / 0.05, 0, 1);
+                t = (1 - 0.25 * clamp(blocks.depth[b] / 0.05, 0, 1)) * (1 + 0.5 * GRAIN_LIGHT * grain[b]);
                 out[o] = lake[0] * t; out[o + 1] = lake[1] * t; out[o + 2] = lake[2] * t;
             }
         }
@@ -158,7 +224,9 @@ window.topoMapInterop = (function () {
     // ── (2) Hill-shade ────────────────────────────────────────────────────────
     // Light from the north-west: slopes facing NW brighten, slopes facing SE darken. Land only.
     function applyHillShade(colours, blocks, W, H) {
-        var cols = blocks.cols, rows = blocks.rows, h = blocks.height, cls = blocks.cls;
+        var cols = blocks.cols, rows = blocks.rows, cls = blocks.cls;
+        var h = new Float32Array(blocks.height.length);       // height plus fine micro-relief
+        for (var i = 0; i < h.length; i++) h[i] = blocks.height[i] + MICRO_RELIEF * blocks.grain[i];
         var sx = W / (2 * RES), sy = H / (2 * RES);     // height difference -> per map unit
         for (var r = 0; r < rows; r++) {
             var up = Math.max(r - 1, 0) * cols, down = Math.min(r + 1, rows - 1) * cols, row = r * cols;
@@ -244,9 +312,19 @@ window.topoMapInterop = (function () {
         dry:    function ()   { return [[[40, 25, 12], 0.5, 0.8, true]]; }
     };
 
-    // Two [1,2,1] smoothing passes on interior points (ends kept so mouths still meet water).
-    function smoothPoints(points, W, H) {
+    // Seeded meander, then two [1,2,1] smoothing passes on interior points. Each interior
+    // point is pushed sideways (perpendicular to the flow) by smooth 1-D noise along the
+    // river, tapering to nothing at both ends so sources, mouths and junctions stay put.
+    // Drawing only: the grid path in the model (downhill on `filled`) is unchanged.
+    function smoothPoints(points, W, H, wiggle, phase) {
         var p = points.map(function (q) { return [q[0] * W, q[1] * H]; });
+        var amp = MEANDER * Math.min(W, H) / 255, last = p.length - 1;
+        for (var i = 1; i < last; i++) {
+            var dx = p[i + 1][0] - p[i - 1][0], dy = p[i + 1][1] - p[i - 1][1], len = Math.hypot(dx, dy) || 1;
+            var off = amp * Math.min(1, i / 4, (last - i) / 4) * wiggle(i / MEANDER_LENGTH + phase, phase * 0.37);
+            p[i][0] += -dy / len * off;
+            p[i][1] += dx / len * off;
+        }
         for (var pass = 0; pass < 2; pass++) {
             var next = p.map(function (q) { return [q[0], q[1]]; });
             for (var i = 1; i < p.length - 1; i++) {
@@ -276,9 +354,12 @@ window.topoMapInterop = (function () {
         for (var i = from; i < to; i++) ctx.quadraticCurveTo(pieces[i][1][0], pieces[i][1][1], pieces[i][2][0], pieces[i][2][1]);
     }
 
-    function drawRivers(ctx, world, style, W, H) {
+    function drawRivers(ctx, world, style, wiggle, W, H) {
         var layers = (RIVER_LAYERS[style.river] || RIVER_LAYERS.water)(style);
         var unit = W / 1000, CHUNK = 6;
+        var paths = world.rivers.map(function (river, k) {
+            return quadPieces(smoothPoints(river.points, W, H, wiggle, 17.3 * (k + 1)));
+        });
         ctx.save();
         ctx.lineJoin = 'round';
         for (var l = 0; l < layers.length; l++) {
@@ -286,7 +367,7 @@ window.topoMapInterop = (function () {
             ctx.strokeStyle = rgba(colour, alpha);
             for (var k = 0; k < world.rivers.length; k++) {
                 var river = world.rivers[k];
-                var pieces = quadPieces(smoothPoints(river.points, W, H));
+                var pieces = paths[k];
                 var full = river.width * unit * mul;
                 if (dashed) {
                     // dry bed: one dashed path, no taper (dashes would restart per chunk)
@@ -465,13 +546,13 @@ window.topoMapInterop = (function () {
         var world = ws.buildWorld(settings);
         var biome = ws.normalise(settings).biome;
         var style = ws.BIOME_STYLES[biome];
-        var blocks = sampleBlocks(world, ws.makeSampler(settings), W, H);
-
+        var texture = ws.createNoise(ws.normalise(settings).seed * 7 + 9001);
+        var blocks = sampleBlocks(world, ws.makeSampler(settings), texture, ws.mulberry32(ws.normalise(settings).seed * 13 + 4001), W, H);
         var colours = colourBlocks(blocks, world, style);
         applyHillShade(colours, blocks, W, H);
         blitBlocks(ctx, colours, blocks, W, H);
         strokeCoastline(ctx, blocks, W);
-        drawRivers(ctx, world, style, W, H);
+        drawRivers(ctx, world, style, texture, W, H);
         drawRoads(ctx, world, style, W, H);
         drawFeatures(ctx, world, style, biome, W, H);
         drawVignette(ctx, W, H);
