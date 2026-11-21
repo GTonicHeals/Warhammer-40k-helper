@@ -88,51 +88,97 @@
         return t * t * (3 - 2 * t);
     }
 
-    // Landmass mask in (0, 1]; never exactly 0 so the sea-level quantile has no big ties.
-    function makeMask(s) {
-        var floor = 0.02;
-        if (s.landmass === 'random') return function () { return 1; };
+    var BIAS_WEIGHT = 0.3;      // Landmass bias weight next to the noise (height = (noise + w*bias) / (1 + w))
+    var WARP = 0.18;            // domain-warp amplitude of the bias, in map units
+    var EDGE_SINK = 0.1;        // continent: how far the bias dips along the map border...
+    var EDGE_WIDTH = 0.12;      // ...and over what width (map units)
 
+    // Landmass bias, about [0, 1] (a continent dips a little below 0 along the map border):
+    // where land *tends* to be. It is added to the noise, never
+    // multiplied, so the noise still shapes every coast (bays, peninsulas, offshore islets)
+    // and no flat floor forms where the bias is 0. Its coordinates are domain-warped by
+    // low-frequency noise so the outline is not a circle. null for 'random' (noise only).
+    function makeBias(s) {
+        if (s.landmass === 'random') return null;
+        var warpX = createNoise(s.seed + 211), warpY = createNoise(s.seed + 307);
+        var rng = mulberry32(s.seed * 7919 + 13);
+        function shape(d, inner, outer) { return 1 - smoothstep(inner, outer, d); }
+
+        var radial;
         if (s.landmass === 'archipelago') {
-            var rng = mulberry32(s.seed * 7919 + 13);
+            // one island per cell of a jittered 4x4 grid (some cells left empty): spread out,
+            // never stacked into one blob.
             var blobs = [];
-            for (var b = 0; b < 8; b++) {
-                blobs.push({ x: 0.12 + rng() * 0.76, y: 0.12 + rng() * 0.76, r: 0.07 + rng() * 0.11 });
+            for (var gy = 0; gy < 4; gy++) {
+                for (var gx = 0; gx < 4; gx++) {
+                    var keep = rng() < 0.75, bx = (gx + 0.2 + rng() * 0.6) / 4, by = (gy + 0.2 + rng() * 0.6) / 4;
+                    var br = 0.06 + rng() * 0.07, amp = 0.55 + rng() * 0.45;
+                    if (keep) blobs.push([bx, by, br, amp]);
+                }
             }
-            var detail = createNoise(s.seed + 101);
-            return function (nx, ny) {
+            radial = function (x, y) {
                 var m = 0;
                 for (var i = 0; i < blobs.length; i++) {
-                    var dx = nx - blobs[i].x, dy = ny - blobs[i].y;
-                    var d = Math.sqrt(dx * dx + dy * dy) / blobs[i].r;
-                    var v = 1 - smoothstep(0.5, 1.3, d);
+                    var dx = x - blobs[i][0], dy = y - blobs[i][1];
+                    var v = blobs[i][3] * shape(Math.sqrt(dx * dx + dy * dy) / blobs[i][2], 0.25, 1.3);
                     if (v > m) m = v;
                 }
-                var n = (detail(nx * 9 + 3.1, ny * 9 + 7.7) + 1) / 2;   // higher-frequency breakup
-                return floor + (1 - floor) * m * (0.55 + 0.9 * n);
+                return m;
+            };
+        } else {
+            // continent: one landmass, centre nudged per seed; pangea: covers most of the map.
+            var cx = 0.5 + (rng() - 0.5) * 0.12, cy = 0.5 + (rng() - 0.5) * 0.12;
+            var inner = s.landmass === 'pangea' ? 0.30 : 0.12;
+            var outer = s.landmass === 'pangea' ? 0.75 : 0.55;
+            radial = function (x, y) {
+                var dx = x - cx, dy = y - cy;
+                return shape(Math.sqrt(dx * dx + dy * dy), inner, outer);
             };
         }
-
-        // continent: one radial falloff; pangea: broad falloff covering most of the map.
-        var inner = s.landmass === 'pangea' ? 0.38 : 0.18;
-        var outer = s.landmass === 'pangea' ? 0.72 : 0.50;
+        // The bias is smooth and costly (warp noise, blob loop), so it is evaluated once per
+        // grid cell and interpolated bilinearly: exact at cell centres, cheap per pixel.
+        // A continent also sinks a strip along the map border, so it sits in open sea
+        // instead of running off the edge.
+        var edgeSink = s.landmass === 'continent' ? EDGE_SINK : 0;
+        var n = GRID, last = n - 1, grid = new Float32Array(n * n);
+        for (var y = 0; y < n; y++) {
+            for (var x = 0; x < n; x++) {
+                var nx = x / last, ny = y / last;
+                var wx = nx + WARP * (warpX(nx * 2.3 + 5.3, ny * 2.3 + 1.9) + 0.6 * warpX(nx * 6.1 + 2.2, ny * 6.1 + 8.4) + 0.3 * warpX(nx * 13.7 + 4.1, ny * 13.7 + 0.6));
+                var wy = ny + WARP * (warpY(nx * 2.3 + 3.7, ny * 2.3 + 7.1) + 0.6 * warpY(nx * 6.1 + 9.6, ny * 6.1 + 4.8) + 0.3 * warpY(nx * 13.7 + 7.7, ny * 13.7 + 3.3));
+                var edge = Math.min(nx, 1 - nx, ny, 1 - ny);
+                grid[y * n + x] = radial(wx, wy) - edgeSink * (1 - smoothstep(0, EDGE_WIDTH, edge));
+            }
+        }
         return function (nx, ny) {
-            var dx = nx - 0.5, dy = ny - 0.5;
-            var d = Math.sqrt(dx * dx + dy * dy);
-            return floor + (1 - floor) * (1 - smoothstep(inner, outer, d));
+            var gx = clamp(nx, 0, 1) * last, gy = clamp(ny, 0, 1) * last;
+            var x0 = Math.min(Math.floor(gx), last - 1), y0 = Math.min(Math.floor(gy), last - 1);
+            var tx = gx - x0, ty = gy - y0, i = y0 * n + x0;
+            var top = grid[i] + (grid[i + 1] - grid[i]) * tx;
+            var bot = grid[i + n] + (grid[i + n + 1] - grid[i + n]) * tx;
+            return top + (bot - top) * ty;
         };
     }
 
     // Returns field(nx, ny) -> height in roughly [0, 1] for already-normalised settings.
     function makeField(s) {
         var noise = createNoise(s.seed);
-        var mask = makeMask(s);
+        var bias = makeBias(s);
         var rug = s.ruggedness;
+        // Per-octave shift and rotation so the octaves' lattices don't line up: unshifted they
+        // all cross zero at the map centre and stack a peak there, and axis-aligned lattice
+        // lines show as faint straight seams in the hill-shade.
+        var oct = [], rng = mulberry32(s.seed * 31337 + 5);
+        for (var o = 0; o < s.octaves; o++) {
+            var angle = 0.5 + o * 2.4;
+            oct.push([rng() * 64, rng() * 64, Math.cos(angle), Math.sin(angle)]);
+        }
         return function (nx, ny) {
             var fx = nx - 0.5, fy = ny - 0.5;      // same centring as topoMap.js
             var smooth = 0, ridged = 0, amp = 1.0, freq = s.scale, total = 0;
             for (var i = 0; i < s.octaves; i++) {
-                var n = noise(fx * freq + s.offsetX, fy * freq + s.offsetY);
+                var q = oct[i], px = fx * freq + s.offsetX, py = fy * freq + s.offsetY;
+                var n = noise(px * q[2] - py * q[3] + q[0], px * q[3] + py * q[2] + q[1]);
                 smooth += amp * n;
                 ridged += amp * (1 - Math.abs(n) * 2);   // sharp crests where noise crosses 0
                 total  += amp;
@@ -142,7 +188,7 @@
             var f = (smooth / total + 1) / 2;
             var r = clamp((ridged / total + 1) / 2, 0, 1);
             var base = f + (r - f) * rug;
-            return base * mask(nx, ny);
+            return bias ? (base + BIAS_WEIGHT * bias(nx, ny)) / (1 + BIAS_WEIGHT) : base;
         };
     }
 
@@ -360,8 +406,9 @@
     }
 
     // ── Biome styles ──────────────────────────────────────────────────────────
-    // bands: [maxLandHeight01, r, g, b], first match wins; 0 = shoreline, 1 = highest peak,
-    // so colours track the sea level. sea/shallows/lake colour the water classes.
+    // bands: [maxLandHeight01, r, g, b] in ascending order; 0 = shoreline, 1 = highest peak,
+    // so colours track the sea level. The renderer uses the band colours as anchors and
+    // blends smoothly between them. sea/shallows/lake colour the water classes.
     // river: how a river is painted. features: scatter kinds. roads: join settlements.
     var BIOME_STYLES = {
         agri: {

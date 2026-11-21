@@ -64,6 +64,66 @@ test('continent: the grid border is mostly sea at sea level 0.35', () => {
     assert.ok(sea / total >= 0.8, `sea share ${sea / total}`);
 });
 
+// ── Landmass shape: the mask biases, the noise shapes ─────────────────────
+// Land-sea 4-neighbour edges per sqrt(land area). A digital disc scores ~4.5 and the old
+// bullseye continent scored 4.5 on every seed; bays, peninsulas and islets push it up.
+function coastRatio(w) {
+    const n = w.size, land = i => w.water[i] !== 1;
+    let edges = 0, area = 0;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        const i = y * n + x;
+        if (!land(i)) continue;
+        area++;
+        if (x > 0 && !land(i - 1)) edges++;
+        if (x < n - 1 && !land(i + 1)) edges++;
+        if (y > 0 && !land(i - n)) edges++;
+        if (y < n - 1 && !land(i + n)) edges++;
+    }
+    return edges / Math.sqrt(area);
+}
+
+test('continent: the coastline is irregular, not an ellipse', () => {
+    const ratios = [42, 7, 99, 4242, 777].map(seed => coastRatio(buildWorld({ ...S, seed })));
+    const mean = ratios.reduce((a, b) => a + b) / ratios.length;
+    for (const r of ratios) assert.ok(r > 5.5, `ratio ${r.toFixed(2)}`);
+    assert.ok(mean > 6.5, `mean ratio ${mean.toFixed(2)}`);
+});
+
+test('no flat plateau at the sea threshold', () => {
+    // A flat floor (e.g. a multiplied mask hitting its minimum) piles heights up at one value;
+    // the sea threshold then lands inside it and paints a huge shore band.
+    for (const landmass of ['continent', 'archipelago', 'pangea', 'random']) for (const seed of [42, 777]) {
+        const w = buildWorld({ ...S, landmass, seed });
+        const sorted = Float32Array.from(w.height).sort();
+        const spread = sorted[Math.floor(0.95 * sorted.length)] - sorted[Math.floor(0.05 * sorted.length)];
+        const near = w.height.filter(h => Math.abs(h - w.seaLevel) < spread * 0.02).length / w.height.length;
+        assert.ok(near < 0.2, `${landmass} seed ${seed}: ${near.toFixed(3)} of cells within 2% of the threshold`);
+    }
+});
+
+test('archipelago: many separate islands at sea level 0.6', () => {
+    for (const seed of [42, 7, 99]) {
+        const w = buildWorld({ ...S, seed, landmass: 'archipelago', seaLevel: 0.6 });
+        const n = w.size, seen = new Uint8Array(n * n);
+        let islands = 0;
+        for (let s = 0; s < n * n; s++) {
+            if (seen[s] || w.water[s] === 1) continue;
+            let size = 0;
+            const stack = [s];
+            seen[s] = 1;
+            while (stack.length) {
+                const c = stack.pop(), x = c % n;
+                size++;
+                for (const m of [x > 0 ? c - 1 : -1, x < n - 1 ? c + 1 : -1, c - n, c + n]) {
+                    if (m >= 0 && m < n * n && !seen[m] && w.water[m] !== 1) { seen[m] = 1; stack.push(m); }
+                }
+            }
+            if (size >= 50) islands++;
+        }
+        assert.ok(islands >= 6, `seed ${seed}: ${islands} islands`);
+    }
+});
+
 test('world shape: size, arrays and feature lists', () => {
     const w = buildWorld(S);
     assert.equal(w.size, 256);
