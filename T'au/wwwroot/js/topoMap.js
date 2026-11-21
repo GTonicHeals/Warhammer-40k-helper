@@ -414,96 +414,206 @@ window.topoMapInterop = (function () {
     }
 
     // ── (6) Features ──────────────────────────────────────────────────────────
-    // Small vector glyphs centred on (0,0), radius r; ctx is already translated.
+    // Vector glyphs centred on (0,0) with radius r; ctx is already translated. Each draws a
+    // dark shadow and a light, north-west-lit edge so it reads on pale and dark Biomes
+    // alike. look: { dark, light, lake, glow, tree }; rnd: a PRNG seeded per draw, for
+    // per-feature variation (tree layout, rubble, crack shape).
+    var TAU = Math.PI * 2;
+
+    function circle(ctx, x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); }
+
+    // Soft tinted patch: colour at the centre fading to transparent at radius r.
+    function patchFill(ctx, r, colour, alpha) {
+        var g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+        g.addColorStop(0, rgba(colour, alpha));
+        g.addColorStop(0.6, rgba(colour, alpha * 0.6));
+        g.addColorStop(1, rgba(colour, 0));
+        ctx.fillStyle = g;
+        circle(ctx, 0, 0, r);
+        ctx.fill();
+    }
+
     var GLYPHS = {
-        crater: function (ctx, r, ink) {
-            ctx.strokeStyle = rgb(ink); ctx.lineWidth = Math.max(1, r * 0.28);
-            ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
-            ctx.beginPath(); ctx.arc(r * 0.15, r * 0.15, r * 0.55, Math.PI * 0.9, Math.PI * 1.9); ctx.stroke();
+        // bowl with a shadowed floor, a lit south-east inner wall and a raised rim
+        crater: function (ctx, r, look) {
+            circle(ctx, 0, 0, r * 1.15); ctx.fillStyle = rgba(look.dark, 0.35); ctx.fill();
+            circle(ctx, 0, 0, r * 0.8); ctx.fillStyle = rgba(look.dark, 0.55); ctx.fill();
+            ctx.lineWidth = Math.max(1, r * 0.22);
+            ctx.strokeStyle = rgb(look.light);
+            ctx.beginPath(); ctx.arc(0, 0, r * 0.8, -0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke();       // lit inner wall
+            ctx.beginPath(); ctx.arc(0, 0, r * 1.05, 0.85 * Math.PI, 1.65 * Math.PI); ctx.stroke();     // lit outer rim
+            ctx.strokeStyle = rgb(look.dark); ctx.lineWidth = Math.max(0.75, r * 0.14);
+            ctx.beginPath(); ctx.arc(0, 0, r * 1.15, -0.25 * Math.PI, 0.75 * Math.PI); ctx.stroke();    // rim shadow
         },
-        forest: function (ctx, r, ink) {
-            ctx.fillStyle = 'rgb(16,42,18)'; ctx.strokeStyle = rgb(ink); ctx.lineWidth = Math.max(0.75, r * 0.12);
-            var trees = [[-0.55, 0.25], [0.55, 0.3], [0, -0.25]];
-            for (var i = 0; i < trees.length; i++) {
-                var x = trees[i][0] * r, y = trees[i][1] * r;
-                ctx.beginPath();
-                ctx.moveTo(x, y - r * 0.7); ctx.lineTo(x + r * 0.45, y + r * 0.45); ctx.lineTo(x - r * 0.45, y + r * 0.45);
-                ctx.closePath(); ctx.fill(); ctx.stroke();
+        // a clump of round canopies, back to front, each with a lit top-left
+        forest: function (ctx, r, look, rnd) {
+            var trees = [], count = 7 + ((rnd() * 5) | 0), i;
+            r *= 1.3;                                                            // an area, wider than a point feature
+            for (i = 0; i < count; i++) {
+                var a = rnd() * TAU, d = Math.sqrt(rnd()) * r;
+                trees.push([Math.cos(a) * d * 1.25, Math.sin(a) * d * 0.85, r * (0.28 + rnd() * 0.14)]);
+            }
+            trees.sort(function (p, q) { return p[1] - q[1]; });
+            for (i = 0; i < trees.length; i++) {
+                var t = trees[i];
+                circle(ctx, t[0] + t[2] * 0.25, t[1] + t[2] * 0.3, t[2]); ctx.fillStyle = rgba(look.dark, 0.7); ctx.fill();
+                circle(ctx, t[0], t[1], t[2]); ctx.fillStyle = rgb(look.tree); ctx.fill();
+                circle(ctx, t[0] - t[2] * 0.3, t[1] - t[2] * 0.3, t[2] * 0.45); ctx.fillStyle = rgba(look.light, 0.5); ctx.fill();
             }
         },
-        ruins: function (ctx, r, ink) {
-            ctx.strokeStyle = rgb(ink); ctx.lineWidth = Math.max(1, r * 0.22);
-            ctx.beginPath();
-            ctx.moveTo(-r, -r * 0.2); ctx.lineTo(-r, r * 0.8); ctx.lineTo(r * 0.3, r * 0.8);
-            ctx.moveTo(r * 0.8, r * 0.4); ctx.lineTo(r * 0.8, -r * 0.8); ctx.lineTo(-r * 0.3, -r * 0.8);
-            ctx.stroke();
-            ctx.fillStyle = rgb(ink); ctx.fillRect(-r * 0.2, -r * 0.1, r * 0.35, r * 0.35);
-        },
-        spire: function (ctx, r, ink) {
-            ctx.fillStyle = rgb(ink); ctx.strokeStyle = rgb(ink); ctx.lineWidth = Math.max(1, r * 0.18);
-            ctx.beginPath(); ctx.moveTo(0, -r * 1.4); ctx.lineTo(r * 0.3, r * 0.7); ctx.lineTo(-r * 0.3, r * 0.7); ctx.closePath(); ctx.fill();
-            ctx.beginPath(); ctx.moveTo(-r * 0.75, r * 0.7); ctx.lineTo(r * 0.75, r * 0.7); ctx.stroke();
-        },
-        oasis: function (ctx, r, ink, look) {
-            ctx.fillStyle = rgb(look.lake);
-            ctx.beginPath(); ctx.ellipse(0, r * 0.25, r * 0.8, r * 0.45, 0, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = 'rgb(40,90,30)'; ctx.lineWidth = Math.max(1, r * 0.18);
-            ctx.beginPath();
-            ctx.moveTo(-r * 0.5, 0); ctx.lineTo(-r * 0.6, -r * 0.9);
-            ctx.moveTo(-r * 0.6, -r * 0.9); ctx.lineTo(-r, -r * 0.6);
-            ctx.moveTo(-r * 0.6, -r * 0.9); ctx.lineTo(-r * 0.2, -r * 0.7);
-            ctx.stroke();
-        },
-        swamp: function (ctx, r, ink) {
-            ctx.strokeStyle = rgb(ink); ctx.lineWidth = Math.max(0.75, r * 0.15);
-            ctx.beginPath();
-            for (var i = -1; i <= 1; i++) {
-                var x = i * r * 0.7, y = (i === 0 ? -0.2 : 0.3) * r;
-                ctx.moveTo(x - r * 0.35, y); ctx.lineTo(x + r * 0.35, y);
-                ctx.moveTo(x, y); ctx.lineTo(x - r * 0.15, y - r * 0.45);
-                ctx.moveTo(x, y); ctx.lineTo(x + r * 0.15, y - r * 0.45);
+        // broken walls and scattered blocks of rubble
+        ruins: function (ctx, r, look, rnd) {
+            ctx.lineCap = 'butt';
+            var walls = [[-1, -0.7, 0.9, -0.7], [-1, -0.7, -1, 0.5], [0.9, -0.1, 0.9, 0.7], [-0.4, 0.7, 0.9, 0.7]], i;
+            for (i = 0; i < walls.length; i++) {
+                if (rnd() < 0.3) continue;                                      // a wall gone entirely
+                var w = walls[i], cut = 0.45 + rnd() * 0.4;                      // and the rest broken short
+                var x2 = w[0] + (w[2] - w[0]) * cut, y2 = w[1] + (w[3] - w[1]) * cut;
+                ctx.lineWidth = Math.max(2, r * 0.4);
+                ctx.strokeStyle = rgb(look.dark);
+                ctx.beginPath(); ctx.moveTo(w[0] * r + r * 0.12, w[1] * r + r * 0.12); ctx.lineTo(x2 * r + r * 0.12, y2 * r + r * 0.12); ctx.stroke();
+                ctx.lineWidth = Math.max(1.25, r * 0.26);
+                ctx.strokeStyle = rgb(look.light);
+                ctx.beginPath(); ctx.moveTo(w[0] * r, w[1] * r); ctx.lineTo(x2 * r, y2 * r); ctx.stroke();
             }
-            ctx.stroke();
-        },
-        settlement: function (ctx, r) {
-            ctx.fillStyle = rgb(LIGHT_INK); ctx.strokeStyle = rgb(DARK_INK); ctx.lineWidth = Math.max(0.75, r * 0.14);
-            var domes = [[-0.55, 0.45, 0.42], [0.25, 0.45, 0.6], [0.85, 0.45, 0.3]];
-            for (var i = 0; i < domes.length; i++) {
-                ctx.beginPath(); ctx.arc(domes[i][0] * r, domes[i][1] * r, domes[i][2] * r, Math.PI, 0); ctx.closePath();
-                ctx.fill(); ctx.stroke();
+            for (i = 0; i < 4; i++) {
+                var bx = (rnd() - 0.5) * r * 1.4, by = (rnd() - 0.5) * r * 1.2, bs = r * (0.18 + rnd() * 0.2);
+                ctx.fillStyle = rgb(look.dark); ctx.fillRect(bx + bs * 0.3, by + bs * 0.3, bs, bs);
+                ctx.fillStyle = rgb(look.light); ctx.fillRect(bx, by, bs, bs);
             }
         },
-        pyramid: function (ctx, r, ink) {
-            ctx.strokeStyle = rgb(ink); ctx.fillStyle = rgb(ink); ctx.lineWidth = Math.max(1, r * 0.16);
-            ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r * 0.2, r * 0.7); ctx.lineTo(r, r * 0.7); ctx.closePath(); ctx.fill();
-            ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r, r * 0.7); ctx.lineTo(-r, r * 0.7); ctx.closePath(); ctx.stroke();
+        // a tall needle with a lit west face, plus a smaller one beside it
+        spire: function (ctx, r, look, rnd) {
+            var towers = [[0, 1.0], [(rnd() < 0.5 ? -1 : 1) * r * 0.6, 0.6]];
+            for (var i = towers.length - 1; i >= 0; i--) {
+                var x = towers[i][0], hgt = r * 2.4 * towers[i][1], w = r * 0.42 * towers[i][1], base = r * 0.8;
+                ctx.fillStyle = rgba(look.dark, 0.6);                               // cast shadow to the south-east
+                ctx.beginPath(); ctx.moveTo(x - w, base); ctx.lineTo(x + hgt * 0.45, base + hgt * 0.2); ctx.lineTo(x + w, base); ctx.fill();
+                ctx.fillStyle = rgb(look.dark);
+                ctx.beginPath(); ctx.moveTo(x, base - hgt); ctx.lineTo(x + w, base); ctx.lineTo(x - w, base); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = rgb(look.light);
+                ctx.beginPath(); ctx.moveTo(x, base - hgt); ctx.lineTo(x, base); ctx.lineTo(x - w, base); ctx.closePath(); ctx.fill();
+                circle(ctx, x, base - hgt * 0.55, Math.max(0.75, w * 0.3)); ctx.fillStyle = rgb(SPIRE_LIGHT); ctx.fill();   // a lit window
+            }
         },
-        fissure: function (ctx, r, ink, look) {
-            ctx.strokeStyle = rgb(look.glow || ink); ctx.lineWidth = Math.max(1, r * 0.25);
+        // a stepped triangle, lit west face, shadowed east face, glowing apex where the Biome has a glow
+        pyramid: function (ctx, r, look) {
+            var top = -r * 1.1, base = r * 0.75;
+            ctx.fillStyle = rgba(look.dark, 0.6);
+            ctx.beginPath(); ctx.moveTo(-r, base); ctx.lineTo(r * 1.9, base + r * 0.35); ctx.lineTo(r, base); ctx.fill();
+            ctx.fillStyle = rgb(look.light);
+            ctx.beginPath(); ctx.moveTo(0, top); ctx.lineTo(r * 0.15, base); ctx.lineTo(-r, base); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = rgb(look.dark);
+            ctx.beginPath(); ctx.moveTo(0, top); ctx.lineTo(r, base); ctx.lineTo(r * 0.15, base); ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = rgba(look.dark, 0.8); ctx.lineWidth = Math.max(0.75, r * 0.08);
             ctx.beginPath();
-            ctx.moveTo(-r * 1.2, -r * 0.3); ctx.lineTo(-r * 0.5, r * 0.2); ctx.lineTo(0, -r * 0.2);
-            ctx.lineTo(r * 0.5, r * 0.35); ctx.lineTo(r * 1.2, 0);
+            for (var k = 1; k <= 2; k++) {                                         // steps
+                var y = top + (base - top) * k / 3, half = r * k / 3;
+                ctx.moveTo(-half, y); ctx.lineTo(half, y);
+            }
             ctx.stroke();
+            if (look.glow) {
+                ctx.save(); ctx.translate(0, top + r * 0.15);
+                patchFill(ctx, r * 0.8, look.glow, 0.5);
+                circle(ctx, 0, 0, Math.max(1, r * 0.14)); ctx.fillStyle = rgb(look.glow); ctx.fill();
+                ctx.restore();
+            }
         },
-        dune: function (ctx, r, ink) {
-            ctx.strokeStyle = rgb(ink); ctx.lineWidth = Math.max(0.75, r * 0.16);
-            ctx.beginPath();
+        // a jagged crack with a branch: dark cut, wide soft glow, bright core
+        fissure: function (ctx, r, look, rnd) {
+            var pts = [], n = 6, ang = rnd() * Math.PI;
+            var ca = Math.cos(ang), sa = Math.sin(ang);
+            for (var i = 0; i <= n; i++) {
+                var u = (i / n - 0.5) * 2.6 * r, v = (rnd() - 0.5) * r * 0.7;
+                pts.push([u * ca - v * sa, u * sa + v * ca]);
+            }
+            var mid = pts[3], bx = mid[0] - sa * r * 0.9 + ca * r * 0.4, by = mid[1] + ca * r * 0.9 + sa * r * 0.4;
+            function crack() {
+                ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+                for (var j = 1; j < pts.length; j++) ctx.lineTo(pts[j][0], pts[j][1]);
+                ctx.moveTo(mid[0], mid[1]); ctx.lineTo(bx, by);
+            }
+            var glow = look.glow || look.light;
+            ctx.strokeStyle = rgb(look.dark); ctx.lineWidth = Math.max(2, r * 0.55); crack(); ctx.stroke();
+            ctx.strokeStyle = rgba(glow, 0.45); ctx.lineWidth = Math.max(2, r * 0.45); crack(); ctx.stroke();
+            ctx.strokeStyle = rgb(glow); ctx.lineWidth = Math.max(1, r * 0.14); crack(); ctx.stroke();
+        },
+        // three crescent dunes: lit crest over a shadowed lee side
+        dune: function (ctx, r, look, rnd) {
             for (var i = 0; i < 3; i++) {
-                var y = (i - 1) * r * 0.5;
-                ctx.moveTo(-r, y + r * 0.2); ctx.quadraticCurveTo(0, y - r * 0.35, r, y + r * 0.2);
+                var x = (i - 1) * r * 0.8 + (rnd() - 0.5) * r * 0.3, y = (i % 2 ? -0.35 : 0.3) * r, w = r * (0.55 + rnd() * 0.25);
+                ctx.lineWidth = Math.max(2, r * 0.34); ctx.strokeStyle = rgb(look.dark);
+                ctx.beginPath(); ctx.arc(x, y + w * 0.35, w, 1.15 * Math.PI, 1.85 * Math.PI); ctx.stroke();
+                ctx.lineWidth = Math.max(1, r * 0.17); ctx.strokeStyle = rgb(look.light);
+                ctx.beginPath(); ctx.arc(x, y + w * 0.2, w, 1.15 * Math.PI, 1.85 * Math.PI); ctx.stroke();
+            }
+        },
+        // a pool in the lake colour, ringed by green, with two palms
+        oasis: function (ctx, r, look) {
+            patchFill(ctx, r * 1.5, [60, 110, 40], 0.6);
+            ctx.fillStyle = rgb(look.lake);
+            ctx.beginPath(); ctx.ellipse(0, r * 0.15, r * 0.7, r * 0.42, 0, 0, TAU); ctx.fill();
+            ctx.strokeStyle = rgb(look.dark); ctx.lineWidth = Math.max(1, r * 0.14);
+            ctx.beginPath();
+            for (var i = 0; i < 2; i++) {
+                var x = (i ? 0.75 : -0.8) * r, y = -0.1 * r, top = y - r * 0.8;
+                ctx.moveTo(x, y); ctx.lineTo(x + r * 0.08, top);
+                ctx.moveTo(x + r * 0.08, top); ctx.lineTo(x - r * 0.35, top + r * 0.25);
+                ctx.moveTo(x + r * 0.08, top); ctx.lineTo(x + r * 0.5, top + r * 0.22);
+                ctx.moveTo(x + r * 0.08, top); ctx.lineTo(x + r * 0.05, top - r * 0.25);
             }
             ctx.stroke();
+        },
+        // a murky green patch with dark pools and reeds
+        swamp: function (ctx, r, look, rnd) {
+            patchFill(ctx, r * 1.6, [70, 85, 35], 0.6);
+            var i;
+            for (i = 0; i < 3; i++) {
+                ctx.fillStyle = rgba(look.lake, 0.9);
+                ctx.beginPath(); ctx.ellipse((rnd() - 0.5) * r * 1.4, (rnd() - 0.5) * r * 0.9, r * (0.25 + rnd() * 0.2), r * 0.16, 0, 0, TAU); ctx.fill();
+            }
+            ctx.strokeStyle = rgb(look.dark); ctx.lineWidth = Math.max(0.75, r * 0.1);
+            ctx.beginPath();
+            for (i = 0; i < 5; i++) {
+                var x = (rnd() - 0.5) * r * 1.6, y = (rnd() - 0.2) * r * 0.8;
+                ctx.moveTo(x, y); ctx.lineTo(x - r * 0.12, y - r * 0.5);
+                ctx.moveTo(x, y); ctx.lineTo(x + r * 0.1, y - r * 0.45);
+            }
+            ctx.stroke();
+        },
+        // a cluster of pale domes on a dark footing
+        settlement: function (ctx, r, look) {
+            var domes = [[-0.6, 0.45, 0.45], [0.2, 0.45, 0.68], [0.95, 0.45, 0.33]];
+            ctx.fillStyle = rgba(look.dark, 0.7);
+            ctx.beginPath(); ctx.ellipse(r * 0.25, r * 0.55, r * 1.45, r * 0.3, 0, 0, TAU); ctx.fill();
+            ctx.lineWidth = Math.max(0.75, r * 0.12);
+            for (var i = 0; i < domes.length; i++) {
+                var x = domes[i][0] * r, y = domes[i][1] * r, dr = domes[i][2] * r;
+                ctx.beginPath(); ctx.arc(x, y, dr, Math.PI, 0); ctx.closePath();
+                ctx.fillStyle = rgb(look.light); ctx.fill();
+                ctx.strokeStyle = rgb(look.dark); ctx.stroke();
+                ctx.beginPath(); ctx.arc(x, y, dr * 0.6, 1.15 * Math.PI, 1.45 * Math.PI);
+                ctx.strokeStyle = 'rgb(255,250,235)'; ctx.stroke();
+            }
         }
     };
 
-    // Fissures glow where the Biome has something hot or eldritch underneath.
+    // Fissures and pyramids glow where the Biome has something hot or eldritch underneath.
     var FISSURE_GLOW = { ash: [255, 120, 30], tomb: [70, 255, 140] };
+    // Canopy colour per Biome (forest glyphs).
+    // A lit window on hive spires.
+    var SPIRE_LIGHT = [255, 190, 90];
+    var TREE_COLOUR = { agri: [20, 46, 18], death: [44, 70, 10], jungle: [8, 34, 14], sept: [48, 62, 24] };
 
-    function drawFeatures(ctx, world, style, biome, W, H) {
+    // Glyph radius in pixels: grows with the canvas but less than linearly, so features
+    // read on the small Map Generator preview and stay below node size on the 200% Campaign Map.
+    function featureRadius(W) { return clamp(3 + 3.2 * W / 1000, 4, 13); }
+
+    function drawFeatures(ctx, world, style, biome, rng, W, H) {
         if (!world.features.length) return;
-        var ink = inkFor(style);
-        var look = { lake: style.lake, glow: FISSURE_GLOW[biome] || null };
-        var unit = clamp(W / 1000, 0.6, 1.4);       // glyphs stay smaller than the 14 px node pips
+        var look = { dark: DARK_INK, light: LIGHT_INK, lake: style.lake, glow: FISSURE_GLOW[biome] || null,
+            tree: TREE_COLOUR[biome] || TREE_COLOUR.agri };
+        var base = featureRadius(W);
         ctx.save();
         ctx.globalAlpha = FEATURE_ALPHA;
         ctx.lineCap = 'round';
@@ -513,7 +623,7 @@ window.topoMapInterop = (function () {
             if (!glyph) continue;
             ctx.save();
             ctx.translate(f.x * W, f.y * H);
-            glyph(ctx, 2.8 * f.size * unit, ink, look);
+            glyph(ctx, base * (0.75 + 0.25 * f.size), look, rng);
             ctx.restore();
         }
         ctx.restore();
@@ -554,7 +664,7 @@ window.topoMapInterop = (function () {
         strokeCoastline(ctx, blocks, W);
         drawRivers(ctx, world, style, texture, W, H);
         drawRoads(ctx, world, style, W, H);
-        drawFeatures(ctx, world, style, biome, W, H);
+        drawFeatures(ctx, world, style, biome, ws.mulberry32(ws.normalise(settings).seed * 29 + 7), W, H);
         drawVignette(ctx, W, H);
     }
 
