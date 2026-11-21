@@ -1,4 +1,6 @@
 using Bunit;
+using Bunit.TestDoubles;
+using Warhammer.Services.Auth;
 using FluentAssertions;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +18,7 @@ public class CampaignEditorTableModeTests : SqliteTestBase, IDisposable
     public CampaignEditorTableModeTests()
     {
         _ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        _ctx.AddTestAuthorization().SetAuthorized("gm").SetRoles(GmIdentity.Role);
         _ctx.Services.AddSingleton(new CampaignManagerService(CreateFactory(), NullLogger<CampaignManagerService>.Instance));
     }
 

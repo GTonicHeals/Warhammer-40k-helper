@@ -14,6 +14,14 @@ _Avoid_: campaign of crusade, narrative campaign (as a distinct thing)
 The territory and event layer of a Crusade Campaign, including GM notes. Territories are captured and held by players.
 _Avoid_: campaign (on its own, when the map is meant), war map
 
+**World Surface**:
+The generated backdrop of land, water and features drawn beneath the Campaign Map. Decorative only: nothing on the Campaign Map reads it.
+_Avoid_: terrain (a territory's type is its terrain), topo map, background
+
+**Biome**:
+The kind of planet a World Surface depicts. It sets the palette, the water and the features drawn.
+_Avoid_: world type, planet type
+
 **Battle**:
 One played game inside the Crusade Campaign. A Battle is recorded once and feeds both the Campaign Map and every Crusade Card that took part.
 _Avoid_: match, game, battle record (the record is just how a Battle is stored)

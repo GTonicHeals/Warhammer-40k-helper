@@ -106,6 +106,32 @@ The app will be available at `https://localhost:7000` (or the port shown in term
 
 ---
 
+## GM access
+
+The Campaign Editor (map, GM notes, table mode) is for the Game Master only. There is no password:
+the app is served through `tailscale serve`, which adds the visitor's Tailscale login as the
+`Tailscale-User-Login` request header. A login listed in `Gm:TailscaleLogins` is the GM; everyone
+else is a guest, who doesn't see the editor link and gets a "GM only" notice at `/campaign-editor`.
+
+- **Development** (`dotnet run`): everyone is GM, since Tailscale isn't in front.
+- **Production with no header** (e.g. opening `localhost:7200` on the host): guest.
+- The header is trusted because the app only listens on localhost. It identifies the device's
+  Tailscale account, not the person holding it.
+
+The committed `appsettings.json` leaves the list empty. Set your login on the hosted service once
+(admin PowerShell). `AppEnvironmentExtra` **replaces** the whole list, so read it first and re-set
+every existing entry along with the new one:
+
+```powershell
+C:\Tools\nssm-2.24\win64\nssm.exe get WarhammerHelper AppEnvironmentExtra
+C:\Tools\nssm-2.24\win64\nssm.exe set WarhammerHelper AppEnvironmentExtra <existing entries...> Gm__TailscaleLogins__0=<your-tailscale-login>
+C:\Tools\nssm-2.24\win64\nssm.exe restart WarhammerHelper
+```
+
+A co-GM is `Gm__TailscaleLogins__1=<their-login>`.
+
+---
+
 ## Roster Format
 
 Rosters are New Recruit JSON exports.

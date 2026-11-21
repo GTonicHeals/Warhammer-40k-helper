@@ -77,10 +77,7 @@
         <section class="gt-map" aria-label="Campaign map">
             <CampaignMap Nodes="Campaign.MapNodes"
                          MapNotes="Campaign.GmNotebook.Where(n => n.X >= 0).ToList()"
-                         MapSeed="Campaign.MapSeed" MapBiome="@Campaign.MapBiome"
-                         MapOctaves="Campaign.MapOctaves" MapLacunarity="Campaign.MapLacunarity"
-                         MapPersistence="Campaign.MapPersistence" MapScale="Campaign.MapScale"
-                         MapOffsetX="Campaign.MapOffsetX" MapOffsetY="Campaign.MapOffsetY"
+                         Surface="WorldSurfaceSettings.From(Campaign)"
                          AllowPan="true"
                          OnNodeSelected="HandleMapSelected" />
             <p class="gt-hint">Tap a location to see its notes. Drag to pan, scroll to zoom.</p>

@@ -1,5 +1,7 @@
 @page "/map-generator"
 @rendermode InteractiveServer
+@using System.Globalization
+@using Warhammer.Helpers
 @using Warhammer.Models.Campaign
 @using Warhammer.Services
 @inject CampaignManagerService CampaignSvc
@@ -42,85 +44,147 @@
             <!-- Biome -->
             <div class="mg-section">
                 <label class="mg-label">BIOME</label>
-                <select class="form-select form-select-sm bg-dark text-warning border-secondary mt-1"
+                <select id="mg-biome" class="form-select form-select-sm bg-dark text-warning border-secondary mt-1"
                         value="@_biome"
-                        @onchange="e => { _biome = e.Value?.ToString() ?? _biome; OnParamChanged(); }">
-                    <option value="agri">Agri World</option>
-                    <option value="death">Death World</option>
-                    <option value="ice">Ice World</option>
-                    <option value="ash">Ash Wastes</option>
+                        @onchange="OnBiomeChanged">
+                    @foreach (var biome in BiomeCatalog.All)
+                    {
+                        <option value="@biome.Key">@biome.Label</option>
+                    }
+                </select>
+                <p class="mg-hint">Picking a Biome resets Sea level and Rivers to its defaults</p>
+            </div>
+
+            <!-- Sea level -->
+            <div class="mg-section">
+                <div class="mg-param-header">
+                    <label class="mg-label">SEA LEVEL</label>
+                    <span class="mg-val">@((int)Math.Round(_seaLevel * 100))%</span>
+                </div>
+                <input id="mg-sea" type="range" class="form-range mg-range" min="0" max="0.85" step="0.01"
+                       value="@Inv(_seaLevel)"
+                       @oninput="e => { _seaLevel = ParseD(e.Value, _seaLevel); OnParamChanged(); }" />
+                <p class="mg-hint">How much of the World Surface is sea (lakes come on top)</p>
+            </div>
+
+            <!-- Landmass -->
+            <div class="mg-section">
+                <label class="mg-label">LANDMASS</label>
+                <select id="mg-landmass" class="form-select form-select-sm bg-dark text-warning border-secondary mt-1"
+                        value="@_landmass"
+                        @onchange="e => { _landmass = e.Value?.ToString() ?? _landmass; OnParamChanged(); }">
+                    @foreach (var l in LandmassCatalog.All)
+                    {
+                        <option value="@l.Key" selected="@(l.Key == _landmass)">@l.Label</option>
+                    }
                 </select>
             </div>
 
-            <!-- Scale -->
+            <!-- Rivers -->
             <div class="mg-section">
                 <div class="mg-param-header">
-                    <label class="mg-label">SCALE</label>
-                    <span class="mg-val">@_scale.ToString("F1")</span>
+                    <label class="mg-label">RIVERS</label>
+                    <span class="mg-val">@_rivers</span>
                 </div>
-                <input type="range" class="form-range mg-range" min="0.5" max="8.0" step="0.1"
-                       value="@_scale"
-                       @oninput="e => { _scale = double.TryParse(e.Value?.ToString(), out var v) ? v : _scale; OnParamChanged(); }" />
-                <p class="mg-hint">Higher = more, smaller features</p>
+                <input id="mg-rivers" type="range" class="form-range mg-range" min="0" max="12" step="1"
+                       value="@_rivers"
+                       @oninput="e => { _rivers = int.TryParse(e.Value?.ToString(), out var v) ? v : _rivers; OnParamChanged(); }" />
             </div>
 
-            <!-- Octaves -->
+            <!-- Ruggedness -->
             <div class="mg-section">
                 <div class="mg-param-header">
-                    <label class="mg-label">OCTAVES</label>
-                    <span class="mg-val">@_octaves</span>
+                    <label class="mg-label">RUGGEDNESS</label>
+                    <span class="mg-val">@_ruggedness.ToString("F2", CultureInfo.InvariantCulture)</span>
                 </div>
-                <input type="range" class="form-range mg-range" min="1" max="8" step="1"
-                       value="@_octaves"
-                       @oninput="e => { _octaves = int.TryParse(e.Value?.ToString(), out var v) ? v : _octaves; OnParamChanged(); }" />
-                <p class="mg-hint">More octaves → finer detail layers</p>
+                <input id="mg-ruggedness" type="range" class="form-range mg-range" min="0" max="1" step="0.05"
+                       value="@Inv(_ruggedness)"
+                       @oninput="e => { _ruggedness = ParseD(e.Value, _ruggedness); OnParamChanged(); }" />
+                <p class="mg-hint">Relief shading and ridge strength</p>
             </div>
 
-            <!-- Lacunarity -->
+            <!-- Features -->
             <div class="mg-section">
                 <div class="mg-param-header">
-                    <label class="mg-label">LACUNARITY</label>
-                    <span class="mg-val">@_lacunarity.ToString("F2")</span>
+                    <label class="mg-label">FEATURES</label>
+                    <span class="mg-val">@_features.ToString("F2", CultureInfo.InvariantCulture)</span>
                 </div>
-                <input type="range" class="form-range mg-range" min="1.0" max="4.0" step="0.05"
-                       value="@_lacunarity"
-                       @oninput="e => { _lacunarity = double.TryParse(e.Value?.ToString(), out var v) ? v : _lacunarity; OnParamChanged(); }" />
-                <p class="mg-hint">Frequency multiplier per octave</p>
-            </div>
-
-            <!-- Persistence -->
-            <div class="mg-section">
-                <div class="mg-param-header">
-                    <label class="mg-label">PERSISTENCE</label>
-                    <span class="mg-val">@_persistence.ToString("F2")</span>
-                </div>
-                <input type="range" class="form-range mg-range" min="0.1" max="0.95" step="0.05"
-                       value="@_persistence"
-                       @oninput="e => { _persistence = double.TryParse(e.Value?.ToString(), out var v) ? v : _persistence; OnParamChanged(); }" />
-                <p class="mg-hint">Amplitude decay per octave</p>
+                <input id="mg-features" type="range" class="form-range mg-range" min="0" max="1" step="0.05"
+                       value="@Inv(_features)"
+                       @oninput="e => { _features = ParseD(e.Value, _features); OnParamChanged(); }" />
+                <p class="mg-hint">Density of scattered Biome features</p>
             </div>
 
             <!-- Offset X -->
             <div class="mg-section">
                 <div class="mg-param-header">
                     <label class="mg-label">OFFSET X</label>
-                    <span class="mg-val">@_offsetX.ToString("F1")</span>
+                    <span class="mg-val">@_offsetX.ToString("F1", CultureInfo.InvariantCulture)</span>
                 </div>
                 <input type="range" class="form-range mg-range" min="-5.0" max="5.0" step="0.1"
-                       value="@_offsetX"
-                       @oninput="e => { _offsetX = double.TryParse(e.Value?.ToString(), out var v) ? v : _offsetX; OnParamChanged(); }" />
+                       value="@Inv(_offsetX)"
+                       @oninput="e => { _offsetX = ParseD(e.Value, _offsetX); OnParamChanged(); }" />
             </div>
 
             <!-- Offset Y -->
             <div class="mg-section">
                 <div class="mg-param-header">
                     <label class="mg-label">OFFSET Y</label>
-                    <span class="mg-val">@_offsetY.ToString("F1")</span>
+                    <span class="mg-val">@_offsetY.ToString("F1", CultureInfo.InvariantCulture)</span>
                 </div>
                 <input type="range" class="form-range mg-range" min="-5.0" max="5.0" step="0.1"
-                       value="@_offsetY"
-                       @oninput="e => { _offsetY = double.TryParse(e.Value?.ToString(), out var v) ? v : _offsetY; OnParamChanged(); }" />
+                       value="@Inv(_offsetY)"
+                       @oninput="e => { _offsetY = ParseD(e.Value, _offsetY); OnParamChanged(); }" />
             </div>
+
+            <!-- Advanced noise parameters -->
+            <details class="mg-advanced">
+                <summary>ADVANCED</summary>
+
+                <div class="mg-section">
+                    <div class="mg-param-header">
+                        <label class="mg-label">SCALE</label>
+                        <span class="mg-val">@_scale.ToString("F1", CultureInfo.InvariantCulture)</span>
+                    </div>
+                    <input type="range" class="form-range mg-range" min="0.5" max="8.0" step="0.1"
+                           value="@Inv(_scale)"
+                           @oninput="e => { _scale = ParseD(e.Value, _scale); OnParamChanged(); }" />
+                    <p class="mg-hint">Higher = more, smaller features</p>
+                </div>
+
+                <div class="mg-section">
+                    <div class="mg-param-header">
+                        <label class="mg-label">OCTAVES</label>
+                        <span class="mg-val">@_octaves</span>
+                    </div>
+                    <input type="range" class="form-range mg-range" min="1" max="8" step="1"
+                           value="@_octaves"
+                           @oninput="e => { _octaves = int.TryParse(e.Value?.ToString(), out var v) ? v : _octaves; OnParamChanged(); }" />
+                    <p class="mg-hint">More octaves → finer detail layers</p>
+                </div>
+
+                <div class="mg-section">
+                    <div class="mg-param-header">
+                        <label class="mg-label">LACUNARITY</label>
+                        <span class="mg-val">@_lacunarity.ToString("F2", CultureInfo.InvariantCulture)</span>
+                    </div>
+                    <input type="range" class="form-range mg-range" min="1.0" max="4.0" step="0.05"
+                           value="@Inv(_lacunarity)"
+                           @oninput="e => { _lacunarity = ParseD(e.Value, _lacunarity); OnParamChanged(); }" />
+                    <p class="mg-hint">Frequency multiplier per octave</p>
+                </div>
+
+                <div class="mg-section">
+                    <div class="mg-param-header">
+                        <label class="mg-label">PERSISTENCE</label>
+                        <span class="mg-val">@_persistence.ToString("F2", CultureInfo.InvariantCulture)</span>
+                    </div>
+                    <input type="range" class="form-range mg-range" min="0.1" max="0.95" step="0.05"
+                           value="@Inv(_persistence)"
+                           @oninput="e => { _persistence = ParseD(e.Value, _persistence); OnParamChanged(); }" />
+                    <p class="mg-hint">Amplitude decay per octave</p>
+                </div>
+            </details>
 
             <!-- Actions -->
             <div class="mg-actions">
@@ -225,6 +289,15 @@
         font-size: 0.82rem;
         max-width: 100px;
     }
+    .mg-advanced { border-top: 1px solid #1a1a1a; padding: 10px 0 0; }
+    .mg-advanced > summary {
+        font-family: 'Courier New', monospace;
+        font-size: 0.65rem;
+        letter-spacing: 1.5px;
+        color: #c8960c;
+        cursor: pointer;
+        padding-bottom: 6px;
+    }
     .mg-row { display: flex; align-items: center; gap: 6px; }
     .mg-actions { margin-top: auto; padding-top: 16px; border-top: 1px solid #1a1a1a; }
 
@@ -241,12 +314,17 @@
         position: relative;
         flex: 1;
         min-height: 0;
+        container-type: size;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
+    /* Always the Campaign Map's 16:9, letterboxed in the wrap; the renderer stretches the world to the canvas. */
     .mg-canvas {
-        width: 100%;
-        height: 100%;
+        width: min(100cqw, 100cqh * 16 / 9);
+        aspect-ratio: 16 / 9;
+        height: auto;
         display: block;
-        object-fit: contain;
     }
     .mg-overlay {
         position: absolute;
@@ -281,6 +359,7 @@
         .mg-hint { font-size: 0.75rem; }
         .mg-seed-input { max-width: 140px; }
         .mg-range { height: 2rem; }
+        .mg-advanced > summary { font-size: 0.75rem; padding: 6px 0; }
     }
 </style>
 
@@ -292,6 +371,11 @@
 
     private int    _seed        = 1;
     private string _biome       = "agri";
+    private double _seaLevel    = 0.35;
+    private string _landmass    = "continent";
+    private int    _rivers      = 4;
+    private double _ruggedness  = 0.5;
+    private double _features    = 0.5;
     private int    _octaves     = 4;
     private double _lacunarity  = 2.0;
     private double _persistence = 0.5;
@@ -304,8 +388,14 @@
         if (firstRender)
         {
             _campaign    = await CampaignSvc.LoadCampaignAsync();
+            var surface  = WorldSurfaceSettings.From(_campaign); // normalises legacy Biome / Landmass keys
             _seed        = _campaign.MapSeed;
-            _biome       = _campaign.MapBiome;
+            _biome       = surface.Biome;
+            _landmass    = surface.Landmass;
+            _seaLevel    = _campaign.MapSeaLevel;
+            _rivers      = _campaign.MapRivers;
+            _ruggedness  = _campaign.MapRuggedness;
+            _features    = _campaign.MapFeatures;
             _octaves     = _campaign.MapOctaves;
             _lacunarity  = _campaign.MapLacunarity;
             _persistence = _campaign.MapPersistence;
@@ -327,17 +417,34 @@
 
     private void OnParamChanged() => _needsRedraw = true;
 
+    private static string Inv(double v) => v.ToString(CultureInfo.InvariantCulture);
+
+    private static double ParseD(object? raw, double fallback) =>
+        double.TryParse(raw?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : fallback;
+
+    // Only the Map Generator applies Biome defaults; nothing is saved until Apply.
+    private void OnBiomeChanged(ChangeEventArgs e)
+    {
+        var biome = BiomeCatalog.Get(e.Value?.ToString());
+        _biome    = biome.Key;
+        _seaLevel = biome.DefaultSeaLevel;
+        _rivers   = biome.DefaultRivers;
+        OnParamChanged();
+    }
+
     private void Randomize()
     {
         _seed = Random.Shared.Next(1, 999_999);
         OnParamChanged();
     }
 
+    private WorldSurfaceSettings CurrentSettings() => new(
+        _seed, _biome, _seaLevel, _landmass, _rivers, _ruggedness, _features,
+        _octaves, _lacunarity, _persistence, _scale, _offsetX, _offsetY);
+
     private async Task PreviewAsync()
     {
-        await JS.InvokeVoidAsync("topoMapInterop.drawById", "map-gen-canvas", _seed, _biome,
-            new { octaves = _octaves, lacunarity = _lacunarity, persistence = _persistence,
-                  scale = _scale, offsetX = _offsetX, offsetY = _offsetY });
+        await JS.InvokeVoidAsync("topoMapInterop.drawById", "map-gen-canvas", CurrentSettings());
     }
 
     private async Task ApplyAsync()
@@ -346,6 +453,11 @@
         _saving = true;
         _campaign.MapSeed        = _seed;
         _campaign.MapBiome       = _biome;
+        _campaign.MapSeaLevel    = _seaLevel;
+        _campaign.MapLandmass    = _landmass;
+        _campaign.MapRivers      = _rivers;
+        _campaign.MapRuggedness  = _ruggedness;
+        _campaign.MapFeatures    = _features;
         _campaign.MapOctaves     = _octaves;
         _campaign.MapLacunarity  = _lacunarity;
         _campaign.MapPersistence = _persistence;
