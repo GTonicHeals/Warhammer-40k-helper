@@ -272,10 +272,35 @@
     var RIVER_MIN_CELLS = 12;
     var SOURCE_SPACING = 20;
 
-    // Depressions that collect enough flow become lakes (2). Sea cells stay 1.
+    // Depressions (4-connected land cells with filled - height > LAKE_DEPTH) whose
+    // peak flow accumulation exceeds LAKE_FLOW become lakes (2) as a whole basin.
+    // A depression already holding below-sea inland water (2) is a lake too. Other
+    // depressions stay land. Sea cells stay 1.
     function markLakes(water, height, filled, acc) {
-        for (var i = 0; i < water.length; i++) {
-            if (water[i] === 0 && filled[i] - height[i] > LAKE_DEPTH && acc[i] > LAKE_FLOW) water[i] = 2;
+        var n = GRID, total = n * n;
+        var seen = new Uint8Array(total);
+        var stack = [];
+        function inDep(c) { return water[c] !== 1 && filled[c] - height[c] > LAKE_DEPTH; }
+        for (var s = 0; s < total; s++) {
+            if (seen[s] || !inDep(s)) continue;
+            var cells = [s], peak = acc[s], pocket = water[s] === 2;
+            seen[s] = 1;
+            stack.length = 0;
+            stack.push(s);
+            while (stack.length) {
+                var c = stack.pop(), x = c % n;
+                var nb = [x > 0 ? c - 1 : -1, x < n - 1 ? c + 1 : -1, c >= n ? c - n : -1, c < total - n ? c + n : -1];
+                for (var k = 0; k < 4; k++) {
+                    var m = nb[k];
+                    if (m < 0 || seen[m] || !inDep(m)) continue;
+                    seen[m] = 1;
+                    cells.push(m);
+                    stack.push(m);
+                    if (acc[m] > peak) peak = acc[m];
+                    if (water[m] === 2) pocket = true;
+                }
+            }
+            if (pocket || peak > LAKE_FLOW) for (var j = 0; j < cells.length; j++) water[cells[j]] = 2;
         }
     }
 

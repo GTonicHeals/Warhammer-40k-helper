@@ -250,6 +250,53 @@ test('lakes form: above-sea-level lake cells exist and sit in filled depressions
     assert.ok(lakes >= 1, 'no pooled lake cells');
 });
 
+// Label depressions (4-connected cells above sea with filled - height > LAKE_DEPTH, 0.004).
+function labelDepressions(w) {
+    const n = w.size, label = new Int32Array(n * n).fill(-1);
+    const groups = [];
+    const inDep = i => w.water[i] !== 1 && w.filled[i] - w.height[i] > 0.004;
+    for (let s = 0; s < n * n; s++) {
+        if (label[s] >= 0 || !inDep(s)) continue;
+        const cells = [s], id = groups.length;
+        label[s] = id;
+        for (let k = 0; k < cells.length; k++) {
+            const c = cells[k], x = c % n, y = (c - x) / n;
+            const nb = [x > 0 ? c - 1 : -1, x < n - 1 ? c + 1 : -1, y > 0 ? c - n : -1, y < n - 1 ? c + n : -1];
+            for (const m of nb) if (m >= 0 && label[m] < 0 && inDep(m)) { label[m] = id; cells.push(m); }
+        }
+        groups.push(cells);
+    }
+    return { label, groups };
+}
+
+test('lake basins are whole: every depression cell is either all-lake or all-land per depression', () => {
+    let lakeDeps = 0;
+    for (const seed of [42, 7, 99]) {
+        for (const landmass of ['pangea', 'continent']) {
+            const w = buildWorld({ ...S, seed, landmass, rivers: 12 });
+            for (const cells of labelDepressions(w).groups) {
+                const kinds = new Set(cells.map(c => w.water[c]));
+                assert.equal(kinds.size, 1, `mixed depression (seed ${seed}, ${landmass})`);
+                if (kinds.has(2)) lakeDeps++; else assert.ok(kinds.has(0));
+            }
+        }
+    }
+    assert.ok(lakeDeps >= 1, 'no lake depressions');
+});
+
+test('a lake has no dry hole inside it', () => {
+    for (const seed of [42, 7, 99]) {
+        const w = buildWorld({ ...S, seed, landmass: 'pangea', rivers: 12 });
+        const n = w.size, { label } = labelDepressions(w);
+        for (let i = 0; i < n * n; i++) {
+            if (w.water[i] !== 2 || label[i] < 0) continue;
+            const x = i % n, y = (i - x) / n;
+            const nb = [x > 0 ? i - 1 : -1, x < n - 1 ? i + 1 : -1, y > 0 ? i - n : -1, y < n - 1 ? i + n : -1];
+            for (const m of nb) if (m >= 0 && label[m] === label[i]) assert.equal(w.water[m], 2);
+        }
+    }
+});
+
 test('river sources are at least 20 grid cells apart', () => {
     for (const seed of [42, 7, 99]) {
         const w = buildWorld({ ...S, seed, rivers: 12 });
