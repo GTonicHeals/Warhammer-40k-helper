@@ -102,7 +102,7 @@ else
             <div class="col-lg-7">
                 <div class="d-flex align-items-center gap-2 mb-2 ce-map-toolbar">
                     <select class="form-select form-select-sm bg-dark text-warning border-secondary ce-biome-select"
-                            value="@_campaign.MapBiome"
+                            value="@BiomeCatalog.Get(_campaign.MapBiome).Key"
                             @onchange="OnBiomeChanged">
                         @foreach (var biome in BiomeCatalog.All)
                         {

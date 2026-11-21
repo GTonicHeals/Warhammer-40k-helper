@@ -52,6 +52,18 @@ public class CampaignEditorBiomeTests : SqliteTestBase, IDisposable
         saved.MapRivers.Should().Be(11);
     }
 
+    [Fact]
+    public async Task Editor_legacy_biome_shows_as_agri()
+    {
+        var campaign = await Fresh().LoadCampaignAsync();
+        campaign.MapBiome = "forge";
+        await Fresh().SaveCampaignAsync(campaign);
+
+        var cut = _ctx.RenderComponent<CampaignEditor>();
+
+        cut.WaitForElement(".ce-biome-select").GetAttribute("value").Should().Be("agri");
+    }
+
     public new void Dispose()
     {
         _ctx.Dispose();
