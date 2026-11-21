@@ -144,7 +144,6 @@ test('buildWorld completes under 300 ms', () => {
         const t0 = process.hrtime.bigint();
         buildWorld({ ...S, landmass, seaLevel: 0.85 });
         const ms = Number(process.hrtime.bigint() - t0) / 1e6;
-        console.log(`# buildWorld ${landmass}: ${ms.toFixed(1)} ms`);
         assert.ok(ms < 300, `${landmass} took ${ms} ms`);
     }
 });
@@ -234,7 +233,6 @@ test('still under 300 ms with 12 rivers', () => {
             const t0 = process.hrtime.bigint();
             buildWorld({ ...S, landmass, seaLevel, rivers: 12 });
             const ms = Number(process.hrtime.bigint() - t0) / 1e6;
-            console.log(`# buildWorld ${landmass} sea ${seaLevel} 12 rivers: ${ms.toFixed(1)} ms`);
             assert.ok(ms < 300, `${landmass} took ${ms} ms`);
         }
     }
@@ -282,7 +280,6 @@ test('a river stops at a junction: only its last point lies on an earlier river'
             cells.forEach(c => earlier.add(c));
         }
     }
-    console.log(`# junctions checked: ${junctions}`);
 });
 
 // ── Biome styles, features and roads ──────────────────────────────────────
