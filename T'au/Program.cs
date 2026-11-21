@@ -1,13 +1,22 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Warhammer.Components;
 using Warhammer.Data;
 using Warhammer.Services;
+using Warhammer.Services.Auth;
 using Warhammer.Tools;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContextFactory<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// GM identity comes from the Tailscale login header (see Services/Auth/GmIdentity.cs).
+builder.Services.Configure<GmOptions>(builder.Configuration.GetSection(GmOptions.Section));
+builder.Services.AddAuthentication(GmIdentity.Scheme)
+    .AddScheme<AuthenticationSchemeOptions, TailscaleAuthHandler>(GmIdentity.Scheme, null);
+builder.Services.AddAuthorization();
+builder.Services.AddCascadingAuthenticationState();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -62,6 +71,9 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.UseAntiforgery();
 
