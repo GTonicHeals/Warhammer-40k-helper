@@ -70,10 +70,7 @@ else
                         <CampaignMap Nodes="TerritoryReveal.VisibleOnWarRoom(_campaign.MapNodes)"
                                      MapNotes="_campaign.GmNotebook.Where(n => n.X >= 0 && n.IsPublic).ToList()"
                                      IsReadOnly="true"
-                                     MapSeed="_campaign.MapSeed" MapBiome="@_campaign.MapBiome"
-                                     MapOctaves="_campaign.MapOctaves" MapLacunarity="_campaign.MapLacunarity"
-                                     MapPersistence="_campaign.MapPersistence" MapScale="_campaign.MapScale"
-                                     MapOffsetX="_campaign.MapOffsetX" MapOffsetY="_campaign.MapOffsetY"
+                                     Surface="WorldSurfaceSettings.From(_campaign)"
                                      AllowPan="true"
                                      OnNodeSelected="HandleNodeSelected" />
                     }

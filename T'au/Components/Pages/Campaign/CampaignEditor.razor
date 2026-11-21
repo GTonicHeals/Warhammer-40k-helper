@@ -104,10 +104,10 @@ else
                     <select class="form-select form-select-sm bg-dark text-warning border-secondary ce-biome-select"
                             value="@_campaign.MapBiome"
                             @onchange="OnBiomeChanged">
-                        <option value="agri">Agri World</option>
-                        <option value="death">Death World</option>
-                        <option value="ice">Ice World</option>
-                        <option value="ash">Ash Wastes</option>
+                        @foreach (var biome in BiomeCatalog.All)
+                        {
+                            <option value="@biome.Key">@biome.Label</option>
+                        }
                     </select>
                     <button class="btn btn-sm btn-outline-warning flex-shrink-0" @onclick="RegenerateMap">
                         <i class="bi bi-arrow-repeat me-1"></i>Regenerate
@@ -129,10 +129,7 @@ else
                 <CampaignMap @ref="_mapComponent"
                              Nodes="_campaign.MapNodes"
                              MapNotes="_campaign.GmNotebook.Where(n => n.X >= 0).ToList()"
-                             MapSeed="_campaign.MapSeed" MapBiome="@_campaign.MapBiome"
-                             MapOctaves="_campaign.MapOctaves" MapLacunarity="_campaign.MapLacunarity"
-                             MapPersistence="_campaign.MapPersistence" MapScale="_campaign.MapScale"
-                             MapOffsetX="_campaign.MapOffsetX" MapOffsetY="_campaign.MapOffsetY"
+                             Surface="WorldSurfaceSettings.From(_campaign)"
                              AllowDrag="true"
                              NodeMoved="HandleNodeMoved"
                              OnNodeSelected="HandleNodeSelected" />

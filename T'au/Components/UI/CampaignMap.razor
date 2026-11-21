@@ -168,14 +168,7 @@
     [Parameter] public bool          IsReadOnly { get; set; }
     [Parameter] public EventCallback<string>                          OnNodeSelected { get; set; }
     [Parameter] public EventCallback<(string Id, double X, double Y)> NodeMoved     { get; set; }
-    [Parameter] public int    MapSeed        { get; set; } = 1;
-    [Parameter] public string MapBiome       { get; set; } = "agri";
-    [Parameter] public int    MapOctaves     { get; set; } = 4;
-    [Parameter] public double MapLacunarity  { get; set; } = 2.0;
-    [Parameter] public double MapPersistence { get; set; } = 0.5;
-    [Parameter] public double MapScale       { get; set; } = 2.0;
-    [Parameter] public double MapOffsetX     { get; set; } = 0.0;
-    [Parameter] public double MapOffsetY     { get; set; } = 0.0;
+    [Parameter, EditorRequired] public WorldSurfaceSettings Surface { get; set; } = default!;
     [Parameter] public bool   AllowDrag { get; set; }
     [Parameter] public bool   AllowPan  { get; set; }
     [Parameter] public string CssClass  { get; set; } = "";
@@ -184,24 +177,18 @@
     private ElementReference _inner;
     private DotNetObjectReference<CampaignMap>? _dotNetRef;
     private string? _selectedId;
-    private string _lastDrawKey = "";
+    private WorldSurfaceSettings? _lastDrawn;
     private bool _didDrag;
 
     private static string Fmt(double v) =>
         v.ToString("F2", CultureInfo.InvariantCulture);
 
-    private string DrawKey() =>
-        $"{MapSeed}|{MapBiome}|{MapOctaves}|{MapLacunarity:F2}|{MapPersistence:F2}|{MapScale:F1}|{MapOffsetX:F1}|{MapOffsetY:F1}";
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var key = DrawKey();
-        if (firstRender || key != _lastDrawKey)
+        if (!Surface.Equals(_lastDrawn))
         {
-            _lastDrawKey = key;
-            await JS.InvokeVoidAsync("topoMapInterop.drawById", "campaign-topo-canvas", MapSeed, MapBiome,
-                new { octaves = MapOctaves, lacunarity = MapLacunarity, persistence = MapPersistence,
-                      scale = MapScale, offsetX = MapOffsetX, offsetY = MapOffsetY });
+            _lastDrawn = Surface;
+            await JS.InvokeVoidAsync("topoMapInterop.drawById", "campaign-topo-canvas", Surface);
         }
 
         if (firstRender)
